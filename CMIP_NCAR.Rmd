@@ -7,9 +7,6 @@ output: html_document
 <https://www2.cisl.ucar.edu/sites/default/files/NychkaCMIP.pdf>
 
 cygwin (not the 64 one!)
-yes
-2803
-touch
 cygwin Rclick run as administrator
   DISPLAY=localhost:0.0
 ssh -XY deprengm@yellowstone.ucar.edu
@@ -134,9 +131,19 @@ precl2006_2080 <- lapply(sims, function(sims){
 
 
 time <- ncvar_get(precl2006_2080[[1]], "date")
+length(time)
 ```
 
-Everything is monthly - average over a year (75 years instead of )
+Everything is monthly - average over a year (75 years instead of 900)
+#Smaller
+```{r}
+start <- seq(1,900,12)
+end <- seq(13,900,12)
+
+
+```
+
+
 Clip to Colorado - less data? faster?
 netCDF coordinates are center of grid, raster coordinates are cell corners 
 are the values the same so data same? the lat and lon are same...
