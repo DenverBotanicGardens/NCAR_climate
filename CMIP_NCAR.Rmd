@@ -135,23 +135,107 @@ length(time)
 ```
 
 Everything is monthly - average over a year (75 years instead of 900)
-#Smaller
+```{r}
+
+
+
+
+```
+
+
+#gets too big, too much memory
 ```{r}
 start <- seq(1,900,12)
-end <- seq(12,900,12)
 
+cl <- makeCluster(6)
+registerDoParallel(cl)
+clusterEvalQ(cl, {library(ncdf4)})
+clusterExport(cl, varlist=c("precc2006_2080"))
+precc <- parLapply(cl, 1:30,function(mod){
+  precc <- ncvar_get(precc2006_2080[[mod]], "PRECC")
+  precc
+  })
+stopCluster(cl)
 
-precc <- (mod in 1:30){
-  precc[[mod]] <- ncvar_get(precc2006_2080[[mod]], "PRECC")
-}
+gc()
 
 
 cc_ann <- foreach(startindex = start,
                   .combine = "abind3",
-                  .packages = "ncdf4") %dopar%
+                  .packages = "ncdf4",
+                  .export = ls()) %dopar%
                   {
                     
                   }
+
+
+```
+
+```{r}
+##Yargggg
+precc1 <- ncvar_get(precc2006_2080[[1]], "PRECC")
+precc2 <- ncvar_get(precc2006_2080[[2]], "PRECC")
+precc3 <- ncvar_get(precc2006_2080[[3]], "PRECC")
+precc4 <- ncvar_get(precc2006_2080[[4]], "PRECC")
+precc5 <- ncvar_get(precc2006_2080[[5]], "PRECC")
+precc6 <- ncvar_get(precc2006_2080[[6]], "PRECC")
+precc7 <- ncvar_get(precc2006_2080[[7]], "PRECC")
+precc8 <- ncvar_get(precc2006_2080[[8]], "PRECC")
+precc9 <- ncvar_get(precc2006_2080[[9]], "PRECC")
+precc10 <- ncvar_get(precc2006_2080[[10]], "PRECC")
+precc11 <- ncvar_get(precc2006_2080[[11]], "PRECC")
+precc12 <- ncvar_get(precc2006_2080[[12]], "PRECC")
+precc13 <- ncvar_get(precc2006_2080[[13]], "PRECC")
+precc14 <- ncvar_get(precc2006_2080[[14]], "PRECC")
+precc15 <- ncvar_get(precc2006_2080[[15]], "PRECC")
+precc16 <- ncvar_get(precc2006_2080[[16]], "PRECC")
+precc17 <- ncvar_get(precc2006_2080[[17]], "PRECC")
+precc18 <- ncvar_get(precc2006_2080[[18]], "PRECC")
+precc19 <- ncvar_get(precc2006_2080[[19]], "PRECC")
+precc20 <- ncvar_get(precc2006_2080[[20]], "PRECC")
+precc21 <- ncvar_get(precc2006_2080[[21]], "PRECC")
+precc22 <- ncvar_get(precc2006_2080[[22]], "PRECC")
+precc23 <- ncvar_get(precc2006_2080[[23]], "PRECC")
+precc24 <- ncvar_get(precc2006_2080[[24]], "PRECC")
+precc25 <- ncvar_get(precc2006_2080[[25]], "PRECC")
+precc26 <- ncvar_get(precc2006_2080[[26]], "PRECC")
+precc27 <- ncvar_get(precc2006_2080[[27]], "PRECC")
+precc28 <- ncvar_get(precc2006_2080[[28]], "PRECC")
+precc29 <- ncvar_get(precc2006_2080[[29]], "PRECC")
+precc30 <- ncvar_get(precc2006_2080[[30]], "PRECC")
+
+
+precl1 <- ncvar_get(precl2006_2080[[1]], "PRECL")
+precl2 <- ncvar_get(precl2006_2080[[2]], "PRECL")
+precl3 <- ncvar_get(precl2006_2080[[3]], "PRECL")
+precl4 <- ncvar_get(precl2006_2080[[4]], "PRECL")
+precl5 <- ncvar_get(precl2006_2080[[5]], "PRECL")
+precl6 <- ncvar_get(precl2006_2080[[6]], "PRECL")
+precl7 <- ncvar_get(precl2006_2080[[7]], "PRECL")
+precl8 <- ncvar_get(precl2006_2080[[8]], "PRECL")
+precl9 <- ncvar_get(precl2006_2080[[9]], "PRECL")
+precl10 <- ncvar_get(precl2006_2080[[10]], "PRECL")
+precl11 <- ncvar_get(precl2006_2080[[11]], "PRECL")
+precl12 <- ncvar_get(precl2006_2080[[12]], "PRECL")
+precl13 <- ncvar_get(precl2006_2080[[13]], "PRECL")
+precl14 <- ncvar_get(precl2006_2080[[14]], "PRECL")
+precl15 <- ncvar_get(precl2006_2080[[15]], "PRECL")
+precl16 <- ncvar_get(precl2006_2080[[16]], "PRECL")
+precl17 <- ncvar_get(precl2006_2080[[17]], "PRECL")
+precl18 <- ncvar_get(precl2006_2080[[18]], "PRECL")
+precl19 <- ncvar_get(precl2006_2080[[19]], "PRECL")
+precl20 <- ncvar_get(precl2006_2080[[20]], "PRECL")
+precl21 <- ncvar_get(precl2006_2080[[21]], "PRECL")
+precl22 <- ncvar_get(precl2006_2080[[22]], "PRECL")
+precl23 <- ncvar_get(precl2006_2080[[23]], "PRECL")
+precl24 <- ncvar_get(precl2006_2080[[24]], "PRECL")
+precl25 <- ncvar_get(precl2006_2080[[25]], "PRECL")
+precl26 <- ncvar_get(precl2006_2080[[26]], "PRECL")
+precl27 <- ncvar_get(precl2006_2080[[27]], "PRECL")
+precl28 <- ncvar_get(precl2006_2080[[28]], "PRECL")
+precl29 <- ncvar_get(precl2006_2080[[29]], "PRECL")
+precl30 <- ncvar_get(precl2006_2080[[30]], "PRECL")
+
 
 ```
 
@@ -191,8 +275,6 @@ are the values the same so data same? the lat and lon are same...
 
 #1. create rasters
 ```{r}
-class(precc2006_2080[[1]])
-
 
 precc2006_2080.raster <- lapply(sims, function(sims){
   raster(paste("P:/hackathon/Simulations/b.e11.BRCP85C5CNBDRD.f09_g16.",sims,".cam.h0.PRECC.200601-208012.nc", collapse="", sep=""))
@@ -253,6 +335,7 @@ cc1.rot <- rotate(precc2006_2080.raster[[1]])
 
 #crop and mask
 cc1 <- crop(cc1.rot, extent(colo))
+# -109.375:-101.875 and 36.75393:41.46597
 
 plot(cc1)
 
