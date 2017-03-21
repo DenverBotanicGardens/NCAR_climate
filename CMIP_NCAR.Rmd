@@ -6,10 +6,10 @@ output: html_document
 ---
 <https://www2.cisl.ucar.edu/sites/default/files/NychkaCMIP.pdf>
 
-cygwin (not the 64 one!)
-cygwin Rclick run as administrator
-  DISPLAY=localhost:0.0
-ssh -XY deprengm@yellowstone.ucar.edu
+cygwin (not the 64 one!)         
+cygwin Rclick run as administrator            
+  DISPLAY=localhost:0.0              
+ssh -XY deprengm@yellowstone.ucar.edu            
 
 cd file name (otherwise Permission denied because it's trying to run as an excecutable)
 
@@ -138,10 +138,51 @@ Everything is monthly - average over a year (75 years instead of 900)
 #Smaller
 ```{r}
 start <- seq(1,900,12)
-end <- seq(13,900,12)
+end <- seq(12,900,12)
 
+
+precc <- (mod in 1:30){
+  precc[[mod]] <- ncvar_get(precc2006_2080[[mod]], "PRECC")
+}
+
+
+cc_ann <- foreach(startindex = start,
+                  .combine = "abind3",
+                  .packages = "ncdf4") %dopar%
+                  {
+                    
+                  }
 
 ```
+
+
+#is it adding over the thrid dimension?
+yes it is
+```{r}
+
+array.1 <- array(1:24, dim = c(3,4,2))
+array.2 <- array(100:124, dim =c(3,4,2))
+
+
+array.1[,,1]
+array.2[,,1]
+array.1[,,1]+array.2[,,1]
+array.1[,,2]+array.2[,,2]
+
+
+cl <- makeCluster(6)
+registerDoParallel(cl)
+array_sum <- foreach(timeindex = 1:2,
+                     .combine = "abind3") %dopar%
+                     {
+                       a1 <- array.1[,,timeindex]
+                       a2 <- array.2[,,timeindex]
+                       a1+a2
+                     }
+stopCluster(cl)
+
+```
+
 
 
 Clip to Colorado - less data? faster?
