@@ -1,0 +1,591 @@
+---
+title: "CMIP_NCAR"
+author: "Michelle DePrenger-Levin"
+date: "February 22, 2017"
+output: html_document
+---
+<https://www2.cisl.ucar.edu/sites/default/files/NychkaCMIP.pdf>
+
+cygwin (not the 64 one!)
+yes
+2803
+touch
+cygwin Rclick run as administrator
+  DISPLAY=localhost:0.0
+ssh -XY deprengm@yellowstone.ucar.edu
+
+cd file name (otherwise Permission denied because it's trying to run as an excecutable)
+
+# Don't open as administrator! open cygwin terminal
+Point to where you want to save stuff (to use ".")
+cd ..
+   /home
+cd ..
+   /
+cd P:
+cd hackathon
+cd Simulations
+
+#Save file to yellowstone
+from cygwin pointing to local drive, pre logging into yellowstone
+scp FILENAME.r deprengm@yellowstone.ucar.edu:/glade/u/home/deprengm
+
+#Save files from yellowstone to local
+from cygwin pointing to local drive, 
+
+#Run an R script that I've saved to yellowstone
+R --no-save < FILENAME.r
+
+#Open R script to edit but keep background so can still type in yellowstone cygwin
+emacs FILENAME.r & 
+or maybe just type bg after? can't remember excactly...
+cnrt+x then s to save
+
+Middle mouse click to paste whatever is highlighted
+
+look around in yellowstone /glade/
+large-sclae (stable) precipitation rate (liq+ice)
+ncdump -h /glade/p/cesmLE/CESM-CAM5-BGC-LE/atm/proc/tseries/monthly/PRECL/b.e11
+
+look up cmd line and nco operators for more shotcuts
+
+ls for whats in there
+
+
+R to get into R
+q() to get out of R
+http://www.cs.dartmouth.edu/~campbell/cs50/putty-cygwin-tutorial.pdf 
+
+
+netCDF to raster <http://www.timassal.com/?p=1210>
+
+Look up cmd line operators and NCO operators
+use emacs (when xterm working) to open editable window for R
+  ctrl X + 1 ?? or & after to keep in background
+Save = cntr + X S
+Run script with R --no-save < file name
+
+
+scp deprengm@yellowstone.ucar.edu:/glade/p/cesmLE/CESM-CAM5-BGC-LE/atm/proc/tseries/monthly/TS/b.e11.B20TRC5CNBDRD.f09_g16.001.cam.h0.TS.185001-200512.nc .
+
+rcp85.toga??
+
+Data https://www.ncdc.noaa.gov/data-access/model-data/model-datasets 
+
+https://www.esrl.noaa.gov/psd/data/gridded/data.cmap.html 
+
+~100 KM 
+PRECC foat means double
+date is first day of next month for the previous month
+
+just subtract 360 - my longitude
+
+add PRECC and PRECL - monthly mean data, matching 
+or average over the 30 runs for past and future
+Rain and snow: PRECC + PRECL
+SNOW: PRECSC + PRECSL
+
+
+TS instead of PRECC is temperature "TS" is the variable for surface temperature averaged over a month
+
+or in monthly TSMN and TSMX monthly min and max 
+
+for daily
+2 meter temerature TREFHTMN TREFHTMX for daily min and max
+
+like evaporation is flux
+
+bracket annual, chuncks, see change. 2081 - 2100 and see change precip. 
+
+Later chunk up spots
+25 KM in a couple simulations Rich will find it for me. 
+
+```{r}
+library(ncdf4)
+library(maptools)
+library(extRemes)
+library(fields)
+library(parallel)
+library(doParallel)
+library(foreach)
+library(ggplot2)
+library(abind)
+
+library(raster)
+library(rasterVis)
+
+
+# add the command to bind along the 3rd dimension
+abind3 <- function(...) { abind(along = 3, ...) }
+
+```
+
+Average and variation of 30 models
+```{r}
+sims <- sprintf('%0.3d', 1:30)
+
+precc2006_2080 <- lapply(sims, function(sims){
+  nc_open(paste("P:/hackathon/Simulations/b.e11.BRCP85C5CNBDRD.f09_g16.",sims,".cam.h0.PRECC.200601-208012.nc", collapse="", sep=""))
+})
+
+precl2006_2080 <- lapply(sims, function(sims){
+  nc_open(paste("P:/hackathon/Simulations/b.e11.BRCP85C5CNBDRD.f09_g16.",sims,".cam.h0.PRECL.200601-208012.nc", collapse="", sep=""))
+})
+
+
+time <- ncvar_get(precl2006_2080[[1]], "date")
+```
+
+Everything is monthly - average over a year (75 years instead of )
+Clip to Colorado - less data? faster?
+netCDF coordinates are center of grid, raster coordinates are cell corners 
+are the values the same so data same? the lat and lon are same...
+
+#1. create rasters
+```{r}
+class(precc2006_2080[[1]])
+
+
+precc2006_2080.raster <- lapply(sims, function(sims){
+  raster(paste("P:/hackathon/Simulations/b.e11.BRCP85C5CNBDRD.f09_g16.",sims,".cam.h0.PRECC.200601-208012.nc", collapse="", sep=""))
+})
+
+precl2006_2080.raster <- lapply(sims, function(sims){
+  raster(paste("P:/hackathon/Simulations/b.e11.BRCP85C5CNBDRD.f09_g16.",sims,".cam.h0.PRECL.200601-208012.nc", collapse="", sep=""))
+})
+
+
+projection(precc2006_2080.raster[[1]]) #"+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
+
+# raster coordinates - the center of cell
+setdiff(xFromCol(precc2006_2080.raster[[1]]),
+          ncvar_get(precc2006_2080[[1]], "lon"))
+
+# 
+setdiff(rev(yFromRow(precc2006_2080.raster[[1]])),
+  -ncvar_get(precc2006_2080[[1]], "lat"))
+
+cc <- ncvar_get(precc2006_2080[[1]], "PRECC")
+max(cc[,,1])
+min(cc[,,1])
+
+
+
+```
+
+
+#World2 is centered in the pacific ocean like the ncar data!!!
+```{r}
+# map the data
+world.outlines <- map("world2", plot=FALSE)
+world.outlines.sp <- map2SpatialLines(world.outlines, proj4string = CRS("+proj=longlat"))
+
+mapTheme <- rasterTheme(region = rev(brewer.pal(10, "RdBu")))
+cutpts <- seq(-.000000005,0.0000004, by = 0.00000001)
+plt <- levelplot(precc2006_2080.raster[[8]], margin = F, 
+                 at=cutpts, cuts=11, pretty=TRUE, par.settings = mapTheme,
+                 main="test variable -- as raster layer")
+plt + layer(sp.lines(world.outlines.sp, col = "black", lwd = 0.5))
+
+```
+
+#2. Clip rasters
+world2MapEnv is based on lat [0,360]
+```{r}
+data("world2MapEnv")
+us <- getData("GADM", country="USA", level=2)
+colo <- us[us$NAME_1 == "Colorado",]
+
+plot(colo)
+
+class(colo)
+
+# rotate raster that is in 0,360 to standard -180,180
+cc1.rot <- rotate(precc2006_2080.raster[[1]])
+
+#crop and mask
+cc1 <- crop(cc1.rot, extent(colo))
+
+plot(cc1)
+
+```
+
+
+#my machine has 12 processors 
+Can't handle this much stuffs.
+```{r}
+cl <- makeCluster(6)
+registerDoParallel(cl)
+
+#use foreach for loop instead of for or lapply
+#by default results are returned in a list
+#objects from parent environment not available
+cc_cl_30 <- lapply(1:2, function(model){
+  Ycl <- ncvar_get(precl2006_2080[[model]], "PRECL")
+  Ycc <- ncvar_get(precc2006_2080[[model]], "PRECC")
+  cccl <- foreach(timeindex = 1:dim(time), 
+                  .combine = "abind3",
+                  .export=ls(),
+                  .packages = "ncdf4") %dopar% {
+                    cc <- Ycc[,,timeindex]
+                    cl <- Ycl[,,timeindex]
+                    cc+cl
+                    }
+  })
+
+stopCluster(cl)
+
+```
+
+BRCP model from 2006 to 2080 
+monthly data given as the first day of the following month
+```{r}
+#First model of conductive precipitation (snow and ice) small storms
+precc1 <- nc_open("P:/hackathon/Simulations/b.e11.BRCP85C5CNBDRD.f09_g16.001.cam.h0.PRECC.200601-208012.nc")
+
+dates <- ncvar_get(precc1, "date")
+lon <- ncvar_get(precc1, "lon") # 0-360 so take -180 through 180... 
+
+
+lon2 <- lon
+lon2[lon2 > 180] <- lon2[lon2 > 180] - 360
+which(lon2 > -109 & lon2 < -102) # 202:207
+
+which(c(-180:0) == -109) #72 is the west edge of colorado - don't think this is right!
+which(c(-180:0) == -102) #79 is the east edge of colorado - don't think this is right!
+
+lat <- ncvar_get(precc1, "lat") # -90 to 90 36.9 to 41 is colorado
+
+names(precc1$var)
+
+#the half that's less than 180 should be -180 to 0
+#lon[lon > 180] <- lon[lon > 180] - 360
+
+
+precipCC <- ncvar_get(precc1, "PRECC")
+
+precip_t1 <- precipCC[,,1]
+
+library(maps)
+
+# will do it if run in concole, not here
+image((lon-180),lat,precip_t1)
+map("world", c("USA"))
+
+data(wrld_simpl)
+plot(wrld_simpl, add=TRUE)
+
+wrld_simpl$NAME
+
+
+plot(wrld_simpl$REGION)
+```
+
+
+Ctrl+Shift+Enter
+```{r}
+#run this in the console, won't work here 
+lon2 <- lon
+lon2[lon2>180] <- lon2[lon2>180]-360
+lon2 <- sort(lon2)
+```
+
+```{r}
+#image.plot(lon-360, lat, precip_t1)
+image.plot(lon, lat, precip_t1)
+plot(wrld_simpl, add=TRUE)
+```
+
+
+```{r}
+which(lon<=79 & lon>=72)
+lon[59:64]
+which(lat <= 41 & lat >= 37)
+lat[136:140]
+
+us <- getData("GADM", country="USA", level=2)
+us.states <- us[us$NAME_1 %in% c("Colorado","Utah","Wyoming","Nebraska","Kansas","New Mexico","Oklahoma"),]
+
+colo <- us[us$NAME_1 == "Colorado",]
+
+```
+
+Or do cntl+shift+enter to run whole chunch
+```{r}
+# have to copy and paste to console
+image.plot(lon[202:207]-360, lat[136:140], precip_t1[202:207,136:140]) #is this right?
+plot(us.states, add=TRUE)
+
+```
+
+```{r}
+
+image.plot(lon[58:63]-180, lat[136:140], precip_t1[58:63,136:140])
+plot(us.states, add=TRUE)
+
+```
+
+Add together the Large-scale (stable) precipitation rate (liq+ice) (PRECL) and the Convective precipitation rate (liq+ice) (PRECC)
+
+```{r}
+precl2080 <- nc_open("P:/hackathon/Simulations/b.e11.BRCP85C5CNBDRD.f09_g16.009.cam.h0.PRECL.208101-210012.nc")
+
+Y <- ncvar_get(precl2080, "PRECL")
+Y1 <- Y[60,137,] #all times, one point somewhere in CO
+
+#normalize to cm/day
+Y1 <- Y1 *3600*24/10
+
+#threshold as the 0.99 quantile
+tailProb <- 0.01
+
+threshold <- quantile(Y1,1-tailProb)
+
+head(data.frame(Y1, YrMo = 1:240))
+ggplot(data.frame(Y1, YrMo = 1:240), aes(YrMo, Y1))+
+  geom_line()
+  
+# rotate a raster object that has x coordinates longitude from 0 to 360, to standard coordinates between -180 and 180 degrees. Longitude between 0 and 360 is frequently used in global climate models.
+raster.precc2080 <- raster("P:/hackathon/Simulations/b.e11.BRCP85C5CNBDRD.f09_g16.009.cam.h0.PRECL.208101-210012.nc", varname = "PRECL")
+proj4string(raster.precc2080) = CRS("+init=EPSG:4326")
+raster.precc2080 <- rotate(raster.precc2080)
+
+
+precc2080 <- nc_open("P:/hackathon/Simulations/b.e11.BRCP85C5CNBDRD.f09_g16.009.cam.h0.PRECC.208101-210012.nc")
+
+lon <- ncvar_get(precl2080, "lon")
+dim(lon)
+
+lat <- ncvar_get(precl2080, "lat")
+dim(lat)
+
+time <- ncvar_get(precl2080, "date")
+dim(time)
+
+
+    Ycl <- ncvar_get(precl2080, "PRECL")
+    Ycc <- ncvar_get(precc2080, "PRECC")
+```
+
+
+doParallel to add together
+This is per month
+```{r}
+#my machine has 12 processors 
+cl <- makeCluster(12)
+registerDoParallel(cl)
+
+#use foreach for loop instead of for or lapply
+# I think I want for each time period add the lat and lon? so .combine=array or something? 
+
+cc_cl_mon <- foreach(timeindex = 1:dim(time),
+                 .combine = "abind3") %dopar%
+  {
+    library(ncdf4)
+    cc <- Ycc[,,timeindex]
+    cl <- Ycl[,,timeindex]
+    cc+cl
+  }
+
+stopCluster(cl)
+```
+
+```{r}
+lon2 <- lon
+lon2[lon2 > 180] <- lon2[lon2 > 180] - 360
+
+#image.plot(sort(lon2), lat, cc_cl_mon[,,1])
+#plot(us.states, add=TRUE)
+
+image.plot(sort(lon2),lat,cc_cl_mon[c(145:288,1:144),,2])
+plot(wrld_simpl, add=TRUE)
+#plot(us.states, add=TRUE)
+```
+
+
+both little and big precip at time something
+```{r}
+image.plot(lon[58:63]-180, lat[136:140], cc_cl_mon[58:63,136:140,1])
+plot(us.states, add=TRUE)
+```
+
+Should add together for a year for loop over every 12 months...
+```{r}
+#my machine has 12 processors 
+cl <- makeCluster(12)
+registerDoParallel(cl)
+
+#use foreach for loop instead of for or lapply
+# 20 years, want to add together the 12 months for each year
+cc_cl_annual <- foreach(timeindex = seq(0,dim(time),by = 12)[-1],
+                 .combine = "abind3") %dopar%
+  {
+    library(ncdf4)
+    cc <- Ycc[,,(timeindex-11):timeindex]
+    cl <- Ycl[,,(timeindex-11):timeindex]
+    cc1 <- apply(cc, MARGIN = c(1,2), sum) #over rows and cols meaning the thrid dimension I guess
+    cl1 <- apply(cl, MARGIN = c(1,2), sum)
+    cc1+cl1
+  }
+
+stopCluster(cl)
+```
+
+```{r}
+
+data("wrld_simpl")
+image((lon-180),lat,cc_cl_annual[,,5])
+plot(wrld_simpl, add=TRUE)
+```
+
+###START HERE###
+Now find the extremes and mean and variation over a 20 or 30 year period and compare earlier to later
+```{r}
+#my machine has 12 processors 
+cl <- makeCluster(12)
+registerDoParallel(cl)
+
+#use foreach for loop instead of for or lapply
+# 20 years, want to add together the 12 months for each year
+cc_cl_annual <- foreach(timeindex = seq(0,dim(time),by = 12)[-1],
+                 .combine = "abind3") %dopar%
+  {
+    library(ncdf4)
+    cc <- Ycc[,,(timeindex-11):timeindex]
+    cl <- Ycl[,,(timeindex-11):timeindex]
+    cc1 <- apply(cc, MARGIN = c(1,2), sum) #over rows and cols meaning the thrid dimension I guess
+    cl1 <- apply(cl, MARGIN = c(1,2), sum)
+    cc1+cl1
+  }
+
+stopCluster(cl)
+```
+
+```{r}
+
+data("wrld_simpl")
+image((lon-180),lat,cc_cl_annual[,,5])
+plot(wrld_simpl, add=TRUE)
+```
+
+```{r}
+
+ nc <- nc_open("/glade/p/cesmLE/CESM-CAM5-BGC-LE/atm/proc/tseries/monthly/PRECC/b.e11.BRCP85C5CNBDRD.f09_g16.105.cam.h0.PRECC.200601-210012.nc")
+
+
+dates <- ncvar_get(nc, "date") 
+point1_prec <- ncvar_get(nc, "PRECC")
+```
+
+```{r}
+
+
+nc1 <- nc_open("P:/hackathon/Simulations/precip.mon.mean.nc")
+
+lon <- ncvar_get(nc1, "lon")
+lat <- ncvar_get(nc1, "lat")
+tm <- ncvar_get(nc1, "time")
+
+
+lon <- ncvar_get(nc, "lon")
+
+precip <- ncvar_get(nc1, "precip")
+head(precip)
+str(precip)
+
+precip <- precip[,,200] # lat is the second dimension
+
+min(precip, na.rm = T)
+max(precip, na.rm = T)
+
+data(wrld_simpl)
+
+data("wrld_simpl")
+image((lon-180),rev(lat),precip)
+plot(wrld_simpl, add=TRUE)
+```
+
+create a vector 
+latitude task? so for each longitude along a latitude? 
+```{r}
+
+
+outSummary[latindex,,]<- foreach(lonindex = 1:dim(lon),
+                                 .combine=rbind) %dopar% {
+                                   library(extRemes) # library that is needed in inner loop
+                                   Y<- nc1[lonindex,]
+                                   # convert to cm/day
+                                   Y<- Y * 3600*24/10
+                                   threshold<- quantile( Y, 1- tailProb)
+                                   frac<- sum(Y > threshold) / length( Y)
+                                   GPFit<- fevd( Y, threshold=threshold, type="GP",
+                                                 method="MLE")
+                                   ReturnLevel<- return.level( GPFit, returnLevelYear,
+                                                               do.ci=TRUE)
+                                   #last line is the returned vector -- this is weird to me!
+                                   c( threshold,GPFit$results$par,frac = frac,ReturnLevel )
+                                   }
+
+```
+
+
+```{r}
+install.packages("extRemes")
+library(extRemes)
+```
+
+```{r}
+#load("CMIPExample.rda")
+
+load("C:/Users/deprengm/Documents/R/win-library/3.3/extRemes/data/Flood.rda")
+ls()
+
+dim(Flood)
+Flood[1,1]
+head(Flood)
+```
+
+
+#parallel for loop - convert a serial loop in R code to a parallel loop
+1. load libraries you need
+```{r}
+library(ncdf4)
+library(fields)
+library(extRemes)
+library(parallel)
+library(doParallel)
+library(foreach)
+
+library(raster) #?
+
+```
+
+2. read data
+```{r}
+dataHandle <- nc_open(dataFileName) # location of data file relative to working directory
+lon<- ncvar_get(dataHandle, "lon")
+lat<- ncvar_get(dataHandle,"lat")
+tm<- ncvar_get(dataHandle,"time")
+nc_close(dataHandle)
+
+summary.ncdf(dataHandle)
+
+```
+
+3. set up cluster
+```{r}
+c1 <- makePSOCKcluster(numCores) # create cluster , define cores?
+registerDoParallel(cl)
+
+
+```
+
+4. parallel loop
+```{r}
+
+
+```
+
+
+
+
