@@ -347,32 +347,22 @@ Visualize the average and var
 ```{r}
 #make rasters
 modelavg.raster <- lapply(modelavg_annual, function(model1){
-  mean.raster <- raster(as.matrix(model1[,,1]),
-                        xmn=0,xmx=358.75,
-                        ymn=-90,ymx=90,
-                        crs=CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
-  var.raster <- raster(as.matrix(model1[,,2]),
-                        xmn=0,xmx=358.75,
-                        ymn=-90,ymx=90,
-                        crs=CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
+  e <- extent(c(0,360,-90,90))
+  mean.raster <- flip(raster(t(as.matrix(model1[,,1], nrow=192))),
+                      direction = "y")
+  extent(mean.raster) <- e
+  var.raster <- flip(raster(t(as.matrix(model1[,,2], nrow=192))),
+                      direction = "y")
+  extent(var.raster) <- e
   list(mean.raster,var.raster)
   })
 
+```
 
-image(modelavg_annual[,,3])
-plot(modelavg.raster[[5]][[1]])
-plot(precc2006_2080.raster[[5]])
-
-plot(raster(modelavg_annual[[1]][,,1], 
-            crs=CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0")))
-
-r <- flip(raster(t(as.matrix(modelavg_annual[[1]][,,1], nrow = 192))),direction="y")
-e <- extent(c(0,358.75,-90,90))
-extent(r) <- e
-plot(r)
-r #dim are swapped, need 192 rows, 288 col
-class(precc2006_2080[[1]])
-dim(precc2006_2080.raster[[1]])
+```{r}
+data(wrld_simpl)
+plot(rotate(modelavg.raster[[70]][[1]]))
+plot(wrld_simpl, add=TRUE)
 ```
 
 ```{r}
