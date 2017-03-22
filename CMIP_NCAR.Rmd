@@ -288,35 +288,62 @@ prectotal_annual <- lapply(1:30, function(model){
 ```
 
 
-
-
-#gets too big, too much memory
 ```{r}
-start <- seq(1,900,12)
+test.list <- list(array.1, array.2, array.1)
+test.list[[1]][,,2]
+str(test.list) # as if there were 2 years for three models
 
-cl <- makeCluster(6)
+#need to bind the models but by year not all years all models
+binded <- do.call(abind, test.list) # all years all models
+str(binded)
+binded[,,3]
+
+# Now, byyear is ordered year 1 for the three models, then year 2 for the three models
+cl <- makeCluster(3)
 registerDoParallel(cl)
-clusterEvalQ(cl, {library(ncdf4)})
-clusterExport(cl, varlist=c("precc2006_2080"))
-precc <- parLapply(cl, 1:30,function(mod){
-  precc <- ncvar_get(precc2006_2080[[mod]], "PRECC")
-  precc
-  })
+byyear <- foreach(timeindex = 1:2,
+                  .combine = "abind3",
+                  .packages = "abind") %dopar%
+  {
+    byyearmodel <- lapply(test.list, function(model1){
+    model1[,,timeindex]
+    })
+    abind(byyearmodel, along=3)
+  }
 stopCluster(cl)
 
-gc()
 
-
-cc_ann <- foreach(startindex = start,
-                  .combine = "abind3",
-                  .packages = "ncdf4",
-                  .export = ls()) %dopar%
-                  {
-                    
-                  }
+lapply(1:2, function(year){
+  annavg <- apply(binded[,,year], MARGIN = c(1,2), mean)
+  annvar <- apply(binded[,,year], MARGIN = c(1,2), var)
+  list(annavg, annvar)
+})
 
 
 ```
+
+Average and variance over the 30 models, annual
+```{r}
+modelavg_annual <- foreach(timeindex = 1:75,
+                           .combine = "abind3") %dopar%
+                           {
+                             apply(prectotal_annual)
+                           }
+
+```
+
+
+
+Average and variance over 25 year periods: 2006:2030, 2031:2055, and 2056:2080   
+```{r}
+
+
+
+```
+
+
+
+
 
 #is it adding over the thrid dimension?
 yes it is
