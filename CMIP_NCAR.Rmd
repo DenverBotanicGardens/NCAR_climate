@@ -473,6 +473,58 @@ plt + layer(sp.lines(west, col = "black", lwd = 0.5))
 
 ```
 
+
+
+# Precipitation 2081:2100
+```{r}
+sims <- sprintf('%0.3d', 1:30)
+
+precc2081_2100 <- lapply(sims, function(sims){
+  nc_open(paste("P:/hackathon/Simulations/b.e11.BRCP85C5CNBDRD.f09_g16.",sims,".cam.h0.PRECC.208101-210012.nc", collapse="", sep=""))
+})
+
+precl2081_2100 <- lapply(sims, function(sims){
+  nc_open(paste("P:/hackathon/Simulations/b.e11.BRCP85C5CNBDRD.f09_g16.",sims,".cam.h0.PRECL.208101-210012.nc", collapse="", sep=""))
+})
+```
+
+#Sum 12 months CC and CL     
+###Conductive
+```{r}
+precc_annual_2081 <- lapply(1:30, function(model){
+  precc1 <- ncvar_get(precc2081_2100[[model]], "PRECC")
+  cl <- makeCluster(6)
+  registerDoParallel(cl)
+  precc <- foreach(timeindex = seq(1,240,12), # 240? not 900?
+                   .combine = "abind3") %dopar% 
+    {
+      apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), sum)
+      }
+  stopCluster(cl)
+  gc()
+  rm(precc1)
+  precc
+  })
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #is it adding over the thrid dimension?
 yes it is
 ```{r}
