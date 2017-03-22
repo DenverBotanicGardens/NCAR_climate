@@ -97,6 +97,66 @@ bracket annual, chuncks, see change. 2081 - 2100 and see change precip.
 Later chunk up spots
 25 KM in a couple simulations Rich will find it for me. 
 
+
+
+cl <- makePSOCKcluster(2)
+registerDoParallel(cl)
+
+#use foreach for loop instead of for or lapply
+#by default results are returned in a list
+#objects from parent environment not available
+cc_cl_30 <- lapply(1:30, function(modelindex){
+    Ycl <- ncvar_get(precl2006_2080[[modelindex]], "PRECL")
+    Ycc <- ncvar_get(precc2006_2080[[modelindex]], "PRECC")
+    CCCL <- foreach(timeindex = 1:dim(time), 
+                    .combine = "abind3",
+                    .export=ls(),
+                    .packages = "ncdf4") %dopar% {
+      cc <- Ycc[,,timeindex]
+      cl <- Ycl[,,timeindex]
+      cc+cl
+      }
+    CCCL
+    })
+
+
+#stopCluster(cl)
+
+save(CCCL, file = "CCCL1.RDATA")
+save(cc_cl_30, file ="cccl30.RData")
+
+From the rscript
+##Need to submit the Rscript as a batch file - only if really big!
+
+#logged in, not in R, type "bsub"
+
+#!/bin/bash
+#BSUB -J foreach           # job name to a job
+#BSUB -q small             # specified queue must be configured, host, find configured hosts for a que with bqueues -l
+#BSUB -n 16
+#BSUB -P P86850053
+#BSUB -W 00:40              #a runtime limit
+#BSUB -o %J.out
+#BSUB -e %J.err
+# try ctrl+c
+
+# https://www2.cisl.ucar.edu/resources/computational-systems/yellowstone/using-computing-resources/running-jobs#batchscript
+#!/bin/tcsh
+#
+# LSF batch script to run an MPI application
+#
+#BSUB -P project_code        # project code
+#BSUB -W 00:06               # wall-clock time (hrs:mins)
+#BSUB -n 64                  # number of tasks in job         
+#BSUB -R "span[ptile=16]"    # run 16 MPI tasks per node
+#BSUB -J job_name            # job name
+#BSUB -o job_name.%J.out     # output file name in which %J is replaced by the job ID
+#BSUB -e job_name.%J.err     # error file name in which %J is replaced by the job ID
+#BSUB -q queue_name          # queue
+
+#run the executable
+# mpirun.lsf ./myjob.exe
+
 ```{r}
 library(ncdf4)
 library(maptools)
@@ -137,10 +197,88 @@ length(time)
 Everything is monthly - average over a year (75 years instead of 900)
 ```{r}
 
+precc1 <- ncvar_get(precc2006_2080[[1]], "PRECC")
+
+cl <- makeCluster(6)
+registerDoParallel(cl)
+precc <- foreach(timeindex = seq(1,900,12),
+                 .combine = "abind3") %dopar% 
+  {
+    apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), sum)
+  }
+stopCluster(cl)
+
+gc()
+rm(precc1)
 
 
 
 ```
+
+Sum 12 months for annual conductive and bigger precipitation
+Then add two together
+####Conductive
+```{r}
+precc_annual <- lapply(1:30, function(model){
+  precc1 <- ncvar_get(precc2006_2080[[model]], "PRECC")
+  cl <- makeCluster(6)
+  registerDoParallel(cl)
+  precc <- foreach(timeindex = seq(1,900,12),
+                   .combine = "abind3") %dopar% 
+    {
+      apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), sum)
+      }
+  stopCluster(cl)
+  gc()
+  rm(precc1)
+  precc
+  })
+
+```
+
+####Large Scale precipitation
+```{r}
+precl_annual <- lapply(1:30, function(model){
+  precl1 <- ncvar_get(precl2006_2080[[model]], "PRECL")
+  cl <- makeCluster(6)
+  registerDoParallel(cl)
+  precl <- foreach(timeindex = seq(1,900,12),
+                   .combine = "abind3") %dopar% 
+    {
+      apply(precl1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), sum)
+      }
+  stopCluster(cl)
+  gc()
+  rm(precl1)
+  precl
+  })
+
+```
+
+
+Sum annual CC and CL precip
+```{r}
+prectotal_annual <- lapply(1:30, function(model){
+  cl <- makeCluster(6)
+  registerDoParallel(cl)
+  
+  cc <- precc_annual[[model]]
+  cl <- precl_annual[[model]]
+  
+  total <- foreach(timeindex = 1:75,
+                   .combine = "abind3") %dopar% 
+    {
+      cc[,,timeindex]+cl[,,timeindex]
+    }
+  
+  stopCluster(cl)
+  rm(cc,cl)
+  gc()
+  total
+  })
+
+```
+
 
 
 #gets too big, too much memory
@@ -171,75 +309,6 @@ cc_ann <- foreach(startindex = start,
 
 ```
 
-```{r}
-##Yargggg
-precc1 <- ncvar_get(precc2006_2080[[1]], "PRECC")
-precc2 <- ncvar_get(precc2006_2080[[2]], "PRECC")
-precc3 <- ncvar_get(precc2006_2080[[3]], "PRECC")
-precc4 <- ncvar_get(precc2006_2080[[4]], "PRECC")
-precc5 <- ncvar_get(precc2006_2080[[5]], "PRECC")
-precc6 <- ncvar_get(precc2006_2080[[6]], "PRECC")
-precc7 <- ncvar_get(precc2006_2080[[7]], "PRECC")
-precc8 <- ncvar_get(precc2006_2080[[8]], "PRECC")
-precc9 <- ncvar_get(precc2006_2080[[9]], "PRECC")
-precc10 <- ncvar_get(precc2006_2080[[10]], "PRECC")
-precc11 <- ncvar_get(precc2006_2080[[11]], "PRECC")
-precc12 <- ncvar_get(precc2006_2080[[12]], "PRECC")
-precc13 <- ncvar_get(precc2006_2080[[13]], "PRECC")
-precc14 <- ncvar_get(precc2006_2080[[14]], "PRECC")
-precc15 <- ncvar_get(precc2006_2080[[15]], "PRECC")
-precc16 <- ncvar_get(precc2006_2080[[16]], "PRECC")
-precc17 <- ncvar_get(precc2006_2080[[17]], "PRECC")
-precc18 <- ncvar_get(precc2006_2080[[18]], "PRECC")
-precc19 <- ncvar_get(precc2006_2080[[19]], "PRECC")
-precc20 <- ncvar_get(precc2006_2080[[20]], "PRECC")
-precc21 <- ncvar_get(precc2006_2080[[21]], "PRECC")
-precc22 <- ncvar_get(precc2006_2080[[22]], "PRECC")
-precc23 <- ncvar_get(precc2006_2080[[23]], "PRECC")
-precc24 <- ncvar_get(precc2006_2080[[24]], "PRECC")
-precc25 <- ncvar_get(precc2006_2080[[25]], "PRECC")
-precc26 <- ncvar_get(precc2006_2080[[26]], "PRECC")
-precc27 <- ncvar_get(precc2006_2080[[27]], "PRECC")
-precc28 <- ncvar_get(precc2006_2080[[28]], "PRECC")
-precc29 <- ncvar_get(precc2006_2080[[29]], "PRECC")
-precc30 <- ncvar_get(precc2006_2080[[30]], "PRECC")
-
-
-precl1 <- ncvar_get(precl2006_2080[[1]], "PRECL")
-precl2 <- ncvar_get(precl2006_2080[[2]], "PRECL")
-precl3 <- ncvar_get(precl2006_2080[[3]], "PRECL")
-precl4 <- ncvar_get(precl2006_2080[[4]], "PRECL")
-precl5 <- ncvar_get(precl2006_2080[[5]], "PRECL")
-precl6 <- ncvar_get(precl2006_2080[[6]], "PRECL")
-precl7 <- ncvar_get(precl2006_2080[[7]], "PRECL")
-precl8 <- ncvar_get(precl2006_2080[[8]], "PRECL")
-precl9 <- ncvar_get(precl2006_2080[[9]], "PRECL")
-precl10 <- ncvar_get(precl2006_2080[[10]], "PRECL")
-precl11 <- ncvar_get(precl2006_2080[[11]], "PRECL")
-precl12 <- ncvar_get(precl2006_2080[[12]], "PRECL")
-precl13 <- ncvar_get(precl2006_2080[[13]], "PRECL")
-precl14 <- ncvar_get(precl2006_2080[[14]], "PRECL")
-precl15 <- ncvar_get(precl2006_2080[[15]], "PRECL")
-precl16 <- ncvar_get(precl2006_2080[[16]], "PRECL")
-precl17 <- ncvar_get(precl2006_2080[[17]], "PRECL")
-precl18 <- ncvar_get(precl2006_2080[[18]], "PRECL")
-precl19 <- ncvar_get(precl2006_2080[[19]], "PRECL")
-precl20 <- ncvar_get(precl2006_2080[[20]], "PRECL")
-precl21 <- ncvar_get(precl2006_2080[[21]], "PRECL")
-precl22 <- ncvar_get(precl2006_2080[[22]], "PRECL")
-precl23 <- ncvar_get(precl2006_2080[[23]], "PRECL")
-precl24 <- ncvar_get(precl2006_2080[[24]], "PRECL")
-precl25 <- ncvar_get(precl2006_2080[[25]], "PRECL")
-precl26 <- ncvar_get(precl2006_2080[[26]], "PRECL")
-precl27 <- ncvar_get(precl2006_2080[[27]], "PRECL")
-precl28 <- ncvar_get(precl2006_2080[[28]], "PRECL")
-precl29 <- ncvar_get(precl2006_2080[[29]], "PRECL")
-precl30 <- ncvar_get(precl2006_2080[[30]], "PRECL")
-
-
-```
-
-
 #is it adding over the thrid dimension?
 yes it is
 ```{r}
@@ -249,6 +318,8 @@ array.2 <- array(100:124, dim =c(3,4,2))
 
 
 array.1[,,1]
+
+apply(array.1, MARGIN = c(1,2), sum)
 array.2[,,1]
 array.1[,,1]+array.2[,,1]
 array.1[,,2]+array.2[,,2]
@@ -343,7 +414,6 @@ plot(cc1)
 
 
 #my machine has 12 processors 
-Can't handle this much stuffs.
 ```{r}
 cl <- makeCluster(6)
 registerDoParallel(cl)
@@ -351,17 +421,18 @@ registerDoParallel(cl)
 #use foreach for loop instead of for or lapply
 #by default results are returned in a list
 #objects from parent environment not available
-cc_cl_30 <- lapply(1:2, function(model){
+cc_cl_30 <- lapply(1:30, function(model){
   Ycl <- ncvar_get(precl2006_2080[[model]], "PRECL")
   Ycc <- ncvar_get(precc2006_2080[[model]], "PRECC")
   cccl <- foreach(timeindex = 1:dim(time), 
                   .combine = "abind3",
-                  .export=ls(),
                   .packages = "ncdf4") %dopar% {
                     cc <- Ycc[,,timeindex]
                     cl <- Ycl[,,timeindex]
                     cc+cl
-                    }
+                  }
+  rm(Ycl,Ycc)
+  gc()
   })
 
 stopCluster(cl)
