@@ -381,17 +381,97 @@ plt + layer(sp.lines(world.outlines.sp, col = "black", lwd = 0.5))
 
 
 
-
+Average of      
 Average and variance over 25 year periods: 2006:2030, 2031:2055, and 2056:2080   
 ```{r}
 
+model25_annual <- lapply(seq(1,75,25), function(year){
+  model1 <- abind(modelavg_annual[year+24], along=3)
+  mn <- apply(model1[,,1], MARGIN = c(1,2), mean)
+  vr <- apply(model1[,,2], MARGIN = c(1,2), mean)
+  list(mn,vr)
+})
+
+model25.raster <- lapply(model25_annual, function(model1){
+  e <- extent(c(0,360,-90,90))
+  mean.raster <- flip(raster(t(as.matrix(model1[[1]], nrow=192))),
+                      direction="y")
+  extent(mean.raster) <- e
+  var.raster <- flip(raster(t(as.matrix(model1[[2]], nrow=192))),
+                      direction = "y")
+  extent(var.raster) <- e
+  list(mean.raster,var.raster)
+  })
+
+save(list="model25_annual", file="P:/hackathon/Simulations/model25_annual.RData")
 
 
 ```
 
+```{r}
+data(wrld_simpl)
+plot(rotate(model25.raster[[1]][[1]]))
+plot(wrld_simpl, add=TRUE)
+```
 
 
+#Clip 25 year CC and CL averages to Colorado, or west at least
+```{r}
+us <- getData("GADM", country="USA", level=2)
+us1 <- getData("GADM", country="USA", level=1)
+westernUS1 <- us1[us1$NAME_1 %in% c("Utah","Wyoming","Nebraska",
+                                  "Kansas","New Mexico","Oklahoma"),]
+colo <- us[us$NAME_1 == "Colorado",]
 
+west <- bind(westernUS1,colo)
+
+```
+
+Clip to west
+```{r}
+#take raster in 0-360 to -180-180
+rot.25_2006 <- rotate(model25.raster[[1]][[1]])
+rot.25_2031 <- rotate(model25.raster[[2]][[1]])
+rot.25_2056 <- rotate(model25.raster[[3]][[1]])
+
+#Crop and mask
+prec25_2006 <- crop(rot.25_2006, extent(west))
+prec25_2031 <- crop(rot.25_2031, extent(west))
+prec25_2056 <- crop(rot.25_2056, extent(west))
+```
+
+ctrl+shift+enter
+```{r}
+plot(prec25_2006)
+plot(west, add=TRUE)
+```
+
+```{r}
+plot(prec25_2056)
+plot(west, add=TRUE)
+```
+
+```{r}
+mapTheme <- rasterTheme(region = (brewer.pal(10, "RdBu")))
+cutpts <- seq(range(getValues(prec25_2006))[1],
+              range(getValues(prec25_2006))[2], by = 0.00000001)
+plt <- levelplot(prec25_2056, margin = F, 
+                 at=cutpts, cuts=11, pretty=TRUE, par.settings = mapTheme,
+                 main="Average precipitation 2006 - 2055")
+plt + layer(sp.lines(west, col = "black", lwd = 0.5))
+
+```
+
+```{r}
+mapTheme <- rasterTheme(region = (brewer.pal(10, "RdBu")))
+cutpts <- seq(range(getValues(prec25_2056))[1],
+              range(getValues(prec25_2056))[2], by = 0.00000001)
+plt <- levelplot(prec25_2056, margin = F, 
+                 at=cutpts, cuts=11, pretty=TRUE, par.settings = mapTheme,
+                 main="Average precipitation 2056 - 2080")
+plt + layer(sp.lines(west, col = "black", lwd = 0.5))
+
+```
 
 #is it adding over the thrid dimension?
 yes it is
