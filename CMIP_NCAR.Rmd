@@ -256,28 +256,37 @@ precl_annual <- lapply(1:30, function(model){
 ```
 
 
+```{r}
+dimens <- lapply(1:30, function(mod){
+  rbind(dim(precc_annual[[mod]]),
+        dim(precl_annual[[mod]]))
+        })
+
+do.call(rbind, dimens)
+  
+```
+
+
 Sum annual CC and CL precip
 ```{r}
 prectotal_annual <- lapply(1:30, function(model){
+  Ycc <- precc_annual[[model]]
+  Ycl <- precl_annual[[model]]
   cl <- makeCluster(6)
   registerDoParallel(cl)
-  
-  cc <- precc_annual[[model]]
-  cl <- precl_annual[[model]]
-  
   total <- foreach(timeindex = 1:75,
                    .combine = "abind3") %dopar% 
     {
-      cc[,,timeindex]+cl[,,timeindex]
+      Ycc[,,timeindex]+Ycl[,,timeindex]
     }
-  
   stopCluster(cl)
-  rm(cc,cl)
   gc()
+  rm(Ycc,Ycl)
   total
   })
 
 ```
+
 
 
 
