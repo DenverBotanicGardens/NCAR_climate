@@ -323,14 +323,72 @@ lapply(1:2, function(year){
 ```
 
 Average and variance over the 30 models, annual
+modelavg_annual is [lon, lat, avg then var per year]   
+
 ```{r}
+cl <- makeCluster(2)
+registerDoParallel(cl)
 modelavg_annual <- foreach(timeindex = 1:75,
-                           .combine = "abind3") %dopar%
-                           {
-                             apply(prectotal_annual)
-                           }
+                           .packages = "abind") %dopar%
+  {
+    byyearmodel <- lapply(prectotal_annual, function(model1){
+      model1[,,timeindex]
+    })
+    oneyear <- abind(byyearmodel, along=3)
+    abind(apply(oneyear, MARGIN = c(1,2), mean),
+          apply(oneyear, MARGIN = c(1,2), var), along=3)
+  }
+stopCluster(cl)
+
+save(list="modelavg_annual", file="P:/hackathon/Simulations/modelavg_annual.RData")
+```
+
+Visualize the average and var
+```{r}
+#make rasters
+modelavg.raster <- lapply(modelavg_annual, function(model1){
+  mean.raster <- raster(as.matrix(model1[,,1]),
+                        xmn=0,xmx=358.75,
+                        ymn=-90,ymx=90,
+                        crs=CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
+  var.raster <- raster(as.matrix(model1[,,2]),
+                        xmn=0,xmx=358.75,
+                        ymn=-90,ymx=90,
+                        crs=CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
+  list(mean.raster,var.raster)
+  })
+
+
+image(modelavg_annual[,,3])
+plot(modelavg.raster[[5]][[1]])
+plot(precc2006_2080.raster[[5]])
+
+plot(raster(modelavg_annual[[1]][,,1], 
+            crs=CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0")))
+
+r <- flip(raster(t(as.matrix(modelavg_annual[[1]][,,1], nrow = 192))),direction="y")
+e <- extent(c(0,358.75,-90,90))
+extent(r) <- e
+plot(r)
+r #dim are swapped, need 192 rows, 288 col
+class(precc2006_2080[[1]])
+dim(precc2006_2080.raster[[1]])
+```
+
+```{r}
+# map the data
+world.outlines <- map("world2", plot=FALSE)
+world.outlines.sp <- map2SpatialLines(world.outlines, proj4string = CRS("+proj=longlat"))
+
+mapTheme <- rasterTheme(region = rev(brewer.pal(10, "RdBu")))
+cutpts <- seq(-.000000005,0.0000004, by = 0.00000001)
+plt <- levelplot(r, margin = F, 
+                 at=cutpts, cuts=11, pretty=TRUE, par.settings = mapTheme,
+                 main="test variable -- as raster layer")
+plt + layer(sp.lines(world.outlines.sp, col = "black", lwd = 0.5))
 
 ```
+
 
 
 
