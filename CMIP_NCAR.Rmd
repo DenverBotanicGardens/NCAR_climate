@@ -194,26 +194,6 @@ time <- ncvar_get(precl2006_2080[[1]], "date")
 length(time)
 ```
 
-Everything is monthly - average over a year (75 years instead of 900)
-```{r}
-
-precc1 <- ncvar_get(precc2006_2080[[1]], "PRECC")
-
-cl <- makeCluster(6)
-registerDoParallel(cl)
-precc <- foreach(timeindex = seq(1,900,12),
-                 .combine = "abind3") %dopar% 
-  {
-    apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), sum)
-  }
-stopCluster(cl)
-
-gc()
-rm(precc1)
-
-
-
-```
 
 Sum 12 months for annual conductive and bigger precipitation
 Then add two together
@@ -255,7 +235,7 @@ precl_annual <- lapply(1:30, function(model){
 
 ```
 
-
+Check dimensions
 ```{r}
 dimens <- lapply(1:30, function(mod){
   rbind(dim(precc_annual[[mod]]),
@@ -288,45 +268,11 @@ prectotal_annual <- lapply(1:30, function(model){
 ```
 
 
-```{r}
-test.list <- list(array.1, array.2, array.1)
-test.list[[1]][,,2]
-str(test.list) # as if there were 2 years for three models
-
-#need to bind the models but by year not all years all models
-binded <- do.call(abind, test.list) # all years all models
-str(binded)
-binded[,,3]
-
-# Now, byyear is ordered year 1 for the three models, then year 2 for the three models
-cl <- makeCluster(3)
-registerDoParallel(cl)
-byyear <- foreach(timeindex = 1:2,
-                  .combine = "abind3",
-                  .packages = "abind") %dopar%
-  {
-    byyearmodel <- lapply(test.list, function(model1){
-    model1[,,timeindex]
-    })
-    abind(byyearmodel, along=3)
-  }
-stopCluster(cl)
-
-
-lapply(1:2, function(year){
-  annavg <- apply(binded[,,year], MARGIN = c(1,2), mean)
-  annvar <- apply(binded[,,year], MARGIN = c(1,2), var)
-  list(annavg, annvar)
-})
-
-
-```
-
 Average and variance over the 30 models, annual
 modelavg_annual is [lon, lat, avg then var per year]   
 
 ```{r}
-cl <- makeCluster(2)
+cl <- makeCluster(6)
 registerDoParallel(cl)
 modelavg_annual <- foreach(timeindex = 1:75,
                            .packages = "abind") %dopar%
@@ -343,6 +289,16 @@ stopCluster(cl)
 save(list="modelavg_annual", file="P:/hackathon/Simulations/modelavg_annual.RData")
 class(modelavg_annual[[1]])
 dim(modelavg_annual[[1]])
+
+```
+
+#Can skip all preceeding for 2006 2080 precip
+```{r}
+load("P:/hackathon/Simulations/modelavg_annual.RData")
+
+```
+
+```{r}
 
 # make netCDF and export 
 Longvector <- seq(-180, 180, length = 288)
@@ -386,11 +342,30 @@ modelavg.raster <- lapply(modelavg_annual, function(model1){
   mean.raster <- flip(raster(t(as.matrix(model1[,,1], nrow=192))),
                       direction = "y")
   extent(mean.raster) <- e
+  proj4string(mean.raster) <- CRS("+init=epsg:4326")
   var.raster <- flip(raster(t(as.matrix(model1[,,2], nrow=192))),
                       direction = "y")
   extent(var.raster) <- e
+  proj4string(var.raster) <- CRS("+init=epsg:4326")
   list(mean.raster,var.raster)
   })
+
+years <- c(2006:2080)
+type <- c("avg","var")
+
+
+#projection
+#"+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
+# EPSG:4326
+
+#write rasters
+for(i in 1:75){
+  for(j in 1:2){
+    writeRaster(rotate(modelavg.raster[[i]][[j]]), 
+                paste("P:/hackathon/Simulations/",type[j],years[i],collapse="",sep=""),
+                format = "GTiff")
+  }
+}
 
 ```
 
@@ -399,22 +374,6 @@ data(wrld_simpl)
 plot(rotate(modelavg.raster[[70]][[1]]))
 plot(wrld_simpl, add=TRUE)
 ```
-
-```{r}
-# map the data
-world.outlines <- map("world2", plot=FALSE)
-world.outlines.sp <- map2SpatialLines(world.outlines, proj4string = CRS("+proj=longlat"))
-
-mapTheme <- rasterTheme(region = rev(brewer.pal(10, "RdBu")))
-cutpts <- seq(-.000000005,0.0000004, by = 0.00000001)
-plt <- levelplot(r, margin = F, 
-                 at=cutpts, cuts=11, pretty=TRUE, par.settings = mapTheme,
-                 main="test variable -- as raster layer")
-plt + layer(sp.lines(world.outlines.sp, col = "black", lwd = 0.5))
-
-```
-
-
 
 Average of      
 Average and variance over 25 year periods: 2006:2030, 2031:2055, and 2056:2080   
@@ -445,7 +404,7 @@ save(list="model25_annual", file="P:/hackathon/Simulations/model25_annual.RData"
 
 ```{r}
 data(wrld_simpl)
-plot(rotate(model25.raster[[1]][[1]]))
+plot(rotate(model25.raster[[3]][[1]]))
 plot(wrld_simpl, add=TRUE)
 ```
 
@@ -523,7 +482,8 @@ precl2081_2100 <- lapply(sims, function(sims){
 })
 ```
 
-#Sum 12 months CC and CL     
+#Sum 12 months CC and CL, will be 20 lists long     
+Tried to create a netCDF from the combined data, need to run nc_open again on these to have them work.    
 ###Conductive
 ```{r}
 precc_annual_2081 <- lapply(1:30, function(model){
@@ -543,6 +503,115 @@ precc_annual_2081 <- lapply(1:30, function(model){
 
 
 ```
+
+###Large
+```{r}
+precl_annual_2081 <- lapply(1:30, function(model){
+  precl1 <- ncvar_get(precl2081_2100[[model]], "PRECL")
+  cl <- makeCluster(6)
+  registerDoParallel(cl)
+  precl <- foreach(timeindex = seq(1,240,12), # 240? not 900?
+                   .combine = "abind3") %dopar% 
+    {
+      apply(precl1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), sum)
+      }
+  stopCluster(cl)
+  gc()
+  rm(precl1)
+  precl
+  })
+
+
+```
+
+Sum CC and CL for 2081:2100
+```{r}
+prectotal_annual_2081 <- lapply(1:30, function(model){
+  Ycc <- precc_annual_2081[[model]]
+  Ycl <- precl_annual_2081[[model]]
+  cl <- makeCluster(6)
+  registerDoParallel(cl)
+  total <- foreach(timeindex = 1:20,
+                   .combine = "abind3") %dopar%
+                   {
+                     Ycc[,,timeindex]+Ycl[,,timeindex]
+                   }
+  stopCluster(cl)
+  gc()
+  rm(Ycc,Ycl)
+  total
+})
+
+
+```
+
+Average and variance over the 30 models, annual
+```{r}
+cl <- makeCluster(6)
+registerDoParallel(cl)
+modelavg_annual_2081 <- foreach(timeindex = 1:20,
+                           .packages = "abind") %dopar%
+  {
+    byyearmodel <- lapply(prectotal_annual_2081, function(model1){
+      model1[,,timeindex]
+    })
+    oneyear <- abind(byyearmodel, along=3)
+    abind(apply(oneyear, MARGIN = c(1,2), mean),
+          apply(oneyear, MARGIN = c(1,2), var), along=3)
+  }
+stopCluster(cl)
+
+save(list="modelavg_annual_2081", file="P:/hackathon/Simulations/modelavg_annual.RData")
+
+
+```
+
+
+Average of average and variance over the 20 year period      
+Maybe extent should be different?   - no, the netCDF is 192, 288 as well, yarg!
+class       : RasterLayer        
+dimensions  : 192, 288, 55296  (nrow, ncol, ncell)        
+resolution  : 1.25, 0.9375  (x, y)         
+extent      : 0, 360, -90, 90  (xmin, xmax, ymin, ymax)        
+```{r}
+model20_annual <- list(apply(abind(modelavg_annual_2081, along=3)[,,1], MARGIN=c(1,2), mean),
+                       apply(abind(modelavg_annual_2081, along=3)[,,2], MARGIN=c(1,2), mean))
+
+e <- extent(c(0,360,-90,90))
+mod1 <- flip(raster(t(as.matrix(model20_annual[[1]], nrow=192))),
+                      direction="y")
+extent(mod1) <- e
+mod2 <- flip(raster(t(as.matrix(model20_annual[[2]], nrow=192))),
+            direction = "y")
+extent(mod2) <- e
+
+model20.raster <- list(mod1,mod2)
+  
+save(list="model20_annual", file="P:/hackathon/Simulations/model25_annual.RData")
+```
+
+225 values for precip   
+resolution (res(model20.raster[[1]]) = 1.2500 0.9375) but shouldn't it be 0.94241?? that's the steps for lat. Lon seems right, maybe that's why I'm missing a few grid cell values!
+```{r}
+rot.20_2081 <- rotate(model20.raster[[1]])
+prec20_2081 <- crop(rot.20_2081, extent(west))
+
+```
+
+```{r}
+mapTheme <- rasterTheme(region = (brewer.pal(10, "RdBu")))
+cutpts <- seq(range(getValues(prec20_2081))[1],
+              range(getValues(prec20_2081))[2], by = 0.00000001)
+plt <- levelplot(prec20_2081, margin = F, 
+                 at=cutpts, cuts=11, pretty=TRUE, par.settings = mapTheme,
+                 main="Average precipitation 2081 - 2100")
+plt + layer(sp.lines(west, col = "black", lwd = 0.5))
+
+```
+
+
+
+
 
 
 
