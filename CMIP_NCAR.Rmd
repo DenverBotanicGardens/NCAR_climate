@@ -97,65 +97,35 @@ bracket annual, chuncks, see change. 2081 - 2100 and see change precip.
 Later chunk up spots
 25 KM in a couple simulations Rich will find it for me. 
 
+#######################
+#######################
+#######################  
+# NCAR data
+#######################
+#######################
+#######################
+Quick description
+CESM model has an 
 
+'B' prefix = individual land, atmosphere, ocean and sea-ice model running together. 
+ 
+'F' prefix = turns off ocean
+ 
+'E" prefix = replace the complex ocean model in 'B' and replace it with a very simple model - probably not important for us.
+ 
+The next set of numbers refers to the time period.
+'1850' - Says it is a simulation that is meant to be in 1850, or more generally pre-industrial conditions, where the influence of humans was effectively zero, so a 'natural' climate thought to be in equilibrium.
+ 
+'20TRC' - Simulation of the20th century climate from 1850 to 2005 where the influence of humans due to e.g., increasing greenhouse gasses (CO2) is gradually ramped up leading to warming of the whole system. including surface temperatures.
+ 
+F1850C5/FAMIPC5 - Not really important to us. Just relates to the time periods for the prescribed Sea Surface Temperatures in the 'F' cases
+ 
+'RCP8.5' - These are simulations where we are estimating what the future impact on climate would be (e.g., in terms of increasing greenhouse gases) by the end of this century. This is a pretty non-optimistic scenario where we don't do much to curb fossil fuel and generally results in a very large temperature increase by 2100.
+ 
+The different time periods are just a file size convenience. The B1850 simulation is just split int 100-yr chunks. The RCP files split off the last 20-years not sure why. You should be able to read in the whole period of runs and stitch the data together.
 
-cl <- makePSOCKcluster(2)
-registerDoParallel(cl)
+<http://www.cesm.ucar.edu/models/cesm1.0/cam/docs/ug5_0/hist_flds_fv_cam5.html> 
 
-#use foreach for loop instead of for or lapply
-#by default results are returned in a list
-#objects from parent environment not available
-cc_cl_30 <- lapply(1:30, function(modelindex){
-    Ycl <- ncvar_get(precl2006_2080[[modelindex]], "PRECL")
-    Ycc <- ncvar_get(precc2006_2080[[modelindex]], "PRECC")
-    CCCL <- foreach(timeindex = 1:dim(time), 
-                    .combine = "abind3",
-                    .export=ls(),
-                    .packages = "ncdf4") %dopar% {
-      cc <- Ycc[,,timeindex]
-      cl <- Ycl[,,timeindex]
-      cc+cl
-      }
-    CCCL
-    })
-
-
-#stopCluster(cl)
-
-save(CCCL, file = "CCCL1.RDATA")
-save(cc_cl_30, file ="cccl30.RData")
-
-From the rscript
-##Need to submit the Rscript as a batch file - only if really big!
-
-#logged in, not in R, type "bsub"
-
-#!/bin/bash
-#BSUB -J foreach           # job name to a job
-#BSUB -q small             # specified queue must be configured, host, find configured hosts for a que with bqueues -l
-#BSUB -n 16
-#BSUB -P P86850053
-#BSUB -W 00:40              #a runtime limit
-#BSUB -o %J.out
-#BSUB -e %J.err
-# try ctrl+c
-
-# https://www2.cisl.ucar.edu/resources/computational-systems/yellowstone/using-computing-resources/running-jobs#batchscript
-#!/bin/tcsh
-#
-# LSF batch script to run an MPI application
-#
-#BSUB -P project_code        # project code
-#BSUB -W 00:06               # wall-clock time (hrs:mins)
-#BSUB -n 64                  # number of tasks in job         
-#BSUB -R "span[ptile=16]"    # run 16 MPI tasks per node
-#BSUB -J job_name            # job name
-#BSUB -o job_name.%J.out     # output file name in which %J is replaced by the job ID
-#BSUB -e job_name.%J.err     # error file name in which %J is replaced by the job ID
-#BSUB -q queue_name          # queue
-
-#run the executable
-# mpirun.lsf ./myjob.exe
 
 ```{r}
 library(ncdf4)
@@ -179,6 +149,13 @@ library(RCurl)
 
 # add the command to bind along the 3rd dimension
 abind3 <- function(...) { abind(along = 3, ...) }
+
+load("P:/hackathon/Simulations/modelavg_annual.RData")
+load("P:/hackathon/Simulations/model25_annual.RData")
+load("P:/hackathon/Simulations/modelavg.raster.RData")
+load("P:/hackathon/Simulations/modelavg_annual2081.RData")
+load("P:/hackathon/Simulations/modelavg_annual2081.RData")
+load("P:/hackathon/Simulations/model20_annual.RData")
 
 ```
 
@@ -238,6 +215,7 @@ precl_annual <- lapply(1:30, function(model){
   precl
   })
 
+save(list="precl_annual", file="P:/hackathon/Simulations/precl_annual.RData")
 ```
 
 Check dimensions
@@ -303,6 +281,9 @@ load("P:/hackathon/Simulations/modelavg_annual.RData")
 
 ```
 
+
+Error in ncvar_add(nc, vars[[ivar]], verbose = verbose, indefine = TRUE) : 
+  Error in ncvar_add, defining var lon
 ```{r}
 
 # make netCDF and export 
@@ -340,7 +321,8 @@ levelplot(raster(annual2006_2008.nc))
 ```
 
 Visualize the average and var
-```{r}
+Don't need to make these again
+```{r, eval=FALSE}
 #make rasters
 modelavg.raster <- lapply(modelavg_annual, function(model1){
   e <- extent(c(0,360,-90,90))
@@ -357,6 +339,9 @@ modelavg.raster <- lapply(modelavg_annual, function(model1){
 
 years <- c(2006:2080)
 type <- c("avg","var")
+
+save(list="modelavg.raster", file="P:/hackathon/Simulations/modelavg.raster.RData")
+
 
 
 #projection
@@ -434,6 +419,14 @@ for(k in 1:3){
 
 
 
+
+#### START HERE ############
+###########################################################################        
+If previously loaded run from here         
+###########################################################################
+
+
+
 ```{r}
 data(wrld_simpl)
 plot(rotate(model25.raster[[3]][[1]]))
@@ -501,7 +494,6 @@ plt + layer(sp.lines(west, col = "black", lwd = 0.5))
 
 
 
-### START HERE####
 # Precipitation 2081:2100
 ```{r}
 sims <- sprintf('%0.3d', 1:30)
@@ -594,7 +586,7 @@ modelavg_annual_2081 <- foreach(timeindex = 1:20,
   }
 stopCluster(cl)
 
-save(list="modelavg_annual_2081", file="P:/hackathon/Simulations/modelavg_annual.RData")
+save(list="modelavg_annual_2081", file="P:/hackathon/Simulations/modelavg_annual2081.RData")
 
 
 ```
@@ -620,7 +612,7 @@ extent(mod2) <- e
 
 model20.raster <- list(mod1,mod2)
   
-save(list="model20_annual", file="P:/hackathon/Simulations/model25_annual.RData")
+save(list="model20_annual", file="P:/hackathon/Simulations/model20_annual.RData")
 ```
 
 225 values for precip   
@@ -635,12 +627,44 @@ prec20_2081 <- crop(rot.20_2081, extent(west))
 mapTheme <- rasterTheme(region = (brewer.pal(10, "RdBu")))
 cutpts <- seq(range(getValues(prec20_2081))[1],
               range(getValues(prec20_2081))[2], by = 0.00000001)
-plt <- levelplot(prec20_2081, margin = F, 
+plt <- levelplot(prec20_2081, margin = F,
                  at=cutpts, cuts=11, pretty=TRUE, par.settings = mapTheme,
                  main="Average precipitation 2081 - 2100")
 plt + layer(sp.lines(west, col = "black", lwd = 0.5))
 
 ```
+
+
+Past models    
+```{r}
+sims <- sprintf('%0.3d', 1:30)
+
+#The first one is 1850 through 2005 while the rest 2:30 are 1920:2005
+
+precc1920_2005 <- lapply(sims, function(sims){
+  nc_open(paste("P:/hackathon/Simulations/b.e11.B20TRC5CNBDRD.f09_g16.",sims,".cam.h0.PRECL.185001-200512.nc", collapse="", sep=""))
+})
+
+precl1920_2005 <- lapply(sims, function(sims){
+  nc_open(paste("P:/hackathon/Simulations/b.e11.B20TRC5CNBDRD.f09_g16.",sims,".cam.h0.PRECL.185001-200512.nc", collapse="", sep=""))
+})
+
+
+time <- ncvar_get(precl2006_2080[[1]], "date")
+length(time)
+
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
