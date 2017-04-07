@@ -172,6 +172,11 @@ library(raster)
 library(rasterVis)
 
 
+library(measurements)
+library(ENMeval)
+library(RCurl)
+
+
 # add the command to bind along the 3rd dimension
 abind3 <- function(...) { abind(along = 3, ...) }
 
@@ -478,7 +483,7 @@ cutpts <- seq(range(getValues(prec25_2006))[1],
               range(getValues(prec25_2006))[2], by = 0.00000001)
 plt <- levelplot(prec25_2056, margin = F, 
                  at=cutpts, cuts=11, pretty=TRUE, par.settings = mapTheme,
-                 main="Average precipitation 2006 - 2055")
+                 main="Average precipitation 2006 - 2030")
 plt + layer(sp.lines(west, col = "black", lwd = 0.5))
 
 ```
@@ -496,6 +501,7 @@ plt + layer(sp.lines(west, col = "black", lwd = 0.5))
 
 
 
+### START HERE####
 # Precipitation 2081:2100
 ```{r}
 sims <- sprintf('%0.3d', 1:30)
@@ -640,6 +646,80 @@ plt + layer(sp.lines(west, col = "black", lwd = 0.5))
 
 
 
+#ENMeval - builds a series of candidate models in MaxEnt with variety of settings and provides multiple evaluation metrics to select optimal model
+```{r}
+#install.packages("ENMeval")
+#install.packages("measurements")
+
+
+```
+
+Only implements Maxent     
+process to optimize model complexity to balance goodness-of-fit and predictive ability     
+<https://cran.r-project.org/web/packages/ENMeval/vignettes/ENMeval-vignette.html>
+     
+     
+Read in Alpine phenology data
+```{r}
+colo <- read.csv("P:/hackathon/alpine-phenology/datasets/Complete COLO DB .csv") 
+seinet <- read.csv(text = getURL("https://raw.githubusercontent.com/DenverBotanicGardens/alpine-phenology/master/datasets/CO_SEINet_3200_20160304.csv"))
+
+colo$scientificName <- paste(colo$Genus,colo$Specific.Epithet,sep=" ")
+colo$Year <- (sub('.*(\\d{4}).*', '\\1',
+                  as.character(colo$Date..dd.month.yyyy.)))
+
+seinet <- seinet[seinet$scientificName!="",]
+
+colo <- colo[!is.na(colo$Decimal.Latitude),]
+seinet <- seinet[!is.na(seinet$decimalLatitude),]
+
+names(colo) # 40 scientificName, 19 Latitude, 20 Longitude
+names(seinet) # 13 scientificName, 63 decimalLatitude, 64 decimalLongitude
+
+cololl <- colo[,c(40,19,20)]
+str(cololl)
+cololl[,2:3] <- lapply(cololl[,2:3], function(x) as.character(x))
+
+names <- names(cololl)
+seinetll <- seinet[,c(13,63,64)]
+names(seinetll) <- names
+str(seinetll)
+seinetll$scientificName <- as.character(seinetll$scientificName)
+
+#already in decimal degrees
+table(seinetll$Latitude)
+
+table(cololl$Latitude)
+# change the degree symbol to a space
+cololl[,2:3] <- lapply(cololl[,2:3], function(x) gsub('°', ' ', x))
+
+# change the ' to a space
+cololl[,2:3] <- lapply(cololl[,2:3],  function(x) gsub("'", ' ',x))
+
+# change the " to a space
+cololl[,2:3] <- lapply(cololl[,2:3],  function(x) gsub("\"", ' ',x))
+
+# get rid of letters
+cololl[,2:3] <- lapply(cololl[,2:3],  function(x) gsub("[a-zA-Z]", "", x))
+
+# convert from decimal minutes to decimal degrees
+cololl[,2:3] <- lapply(cololl[,2:3],  
+                       function(x) conv_unit(x, from = "deg_min_sec",
+                                             to = "dec_deg"))
+
+cololl[,2:3] <- lapply(cololl[,2:3], function(x) as.numeric(x))
+
+# Anything below 37 or greater than 41 is an error, remove
+cololl <- cololl[cololl$Latitude > 37,]
+cololl <- cololl[cololl$Latitude < 41,]
+
+str(cololl)
+
+
+samples <- rbind(cololl,seinetll)
+
+head(samples)
+```
 
 
 
@@ -1093,6 +1173,9 @@ dim(Flood)
 Flood[1,1]
 head(Flood)
 ```
+
+
+
 
 
 #parallel for loop - convert a serial loop in R code to a parallel loop
