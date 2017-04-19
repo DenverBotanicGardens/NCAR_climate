@@ -137,6 +137,7 @@ library(doParallel)
 library(foreach)
 library(ggplot2)
 library(abind)
+library(prism)
 
 library(raster)
 library(rasterVis)
@@ -156,6 +157,7 @@ load("P:/hackathon/Simulations/modelavg.raster.RData")
 load("P:/hackathon/Simulations/modelavg_annual2081.RData")
 load("P:/hackathon/Simulations/modelavg_annual2081.RData")
 load("P:/hackathon/Simulations/model20_annual.RData")
+load("P:/hackathon/Simulations/model25_raster.RData")
 
 ```
 
@@ -404,6 +406,8 @@ model25.raster <- lapply(model25_annual, function(model1){
   list(mean.raster,var.raster)
   })
 
+save(list="model25.raster", file="P:/hackathon/Simulations/model25_raster.RData")
+
 yrs <- c("2006_2030","2031_2055","2056_2080")
 #write rasters
 for(k in 1:3){
@@ -417,6 +421,127 @@ for(k in 1:3){
 
 ```
 
+Average and SD of 29 models (the first one is funny, different time span)   
+Can't figure out why not working!
+```{r}
+sims <- sprintf('%0.3d', 2:30)
+
+snow1920_2005 <- lapply(sims, function(sims){
+  nc_open(paste("P:/hackathon/Simulations/b.e11.B20TRC5CNBDRD.f09_g16.",sims,".cam.h0.SNOWHLND.192001-200512.nc", collapse="",sep=""))
+})
+
+#models have 86 years
+snow+annual <- lapply(1:2, function(model){
+  snow1 <- ncvar_get(snow1920_2005[[model]], "SNOWHLND")
+  cl <- makeCluster(8)
+  registerDoParallel(cl)
+  snow <- foreach(timeindex = seq(1,1032,12),
+                  .combine = "abind3") %dopar%
+                  {
+                    apply(snow1[,,(timeindex+11)], MARGIN = c(1,2), sum)
+                  }
+  stopCluster(cl)
+  gc()
+  rm(snow1)
+  snow
+  })
+
+
+```
+
+
+Downscaled PRISM layer  
+```{r}
+options(prism.path = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/PRISM_layers")
+
+x <- seq(-109,-102,.005) # 3 decimal places == 111m at equator (555 meters)
+y <- seq(37,41,0.005)
+
+length(x)*length(y)
+cogridpts <- expand.grid(x,y)
+
+# 1971-2000 period
+#get_prism_normals(type="ppt",resolution = "800m", mon=1:12, annual=FALSE)
+
+ppts <- grep("ppt", ls_prism_data(absPath=TRUE)[,2])
+latlongs <- read.delim(path.expand("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_QGIS Projects/Alpine Phenology Project/Sampling Points/LatLongabove3200m.txt"), sep=",")
+
+
+ppt.co <- lapply(ppts, function(x){
+  rastertemps <- raster(ls_prism_data(absPath=TRUE)[x,2])
+  date <- ls_prism_data()[x,]
+  data.frame(data = extract(rastertemps, latlongs[,c(4,3)]), date)
+  })
+ppt.co[[4]] #april
+ppt.co.months <- do.call(rbind, ppt.co)
+ppt.ann.avg <- aggregate(data~date, data=ppt.co.months, mean)
+sum(ppt.ann.avg$data) #933.6855mm/year averaged over points and then all months summed
+sum(ppt.ann.avg$data)*(10/365.25) #25.56292 cm/day averaged over points and then all months summed
+
+sum(ppt.ann.avg$data)*(10/365.25)/100 #0.2556292 cm/day averaged over points and then all months summed
+
+
+ppt.ann.sd <- aggregate(data~date, data=ppt.co.months, sd)
+sum(ppt.ann.sd$data) #276.9792mm/year SD over points and then all months summed
+
+
+#Extract from model times model25.raster; modelavg.raster
+model25.raster[[1]] # average and variance over 2006:2030
+model25.raster[[2]] # average and variance over 2031:2055
+
+ppt.2006_2030 <- data.frame(data= extract(rotate(model25.raster[[1]][[1]]), 
+                                          latlongs[,c(4,3)]), 
+                            date = "Avg2006:2030")
+ppt.2006_2030$data <- ppt.2006_2030$data*3600*24/10
+table(ppt.2006_2030$data) #cm/day
+mean(ppt.2006_2030$data) #0.002472653 cm/day
+
+
+ppt.2006_2080 <- lapply(model25.raster, function(rast){
+  avg <- extract(rotate(rast[[1]]), latlongs[,c(4,3)])
+  sddev <- extract(rotate(rast[[2]]), latlongs[,c(4,3)])
+  cbind(avg*3600*24/10,sddev*3600*24/10)
+})
+
+
+head(ppt.2006_2080[[1]]) #
+head(ppt.2006_2030) #Yay, same!!!
+
+#1271 points per model
+oh6oh8 <- data.frame(ppt.2006_2080[[1]])
+oh855 <- data.frame(ppt.2006_2080[[2]])
+oh5580 <- data.frame(ppt.2006_2080[[3]])
+three2006_2080 <- rbind(oh6oh8,oh855,oh5580)
+
+#three2006_2080 <- do.call(rbind,ppt.2006_2080)
+names(three2006_2080) <- c("avg","sddev")
+three2006_2080$model <- c(rep("M06-30",1271),
+                          rep("M31-55",1271),
+                          rep("M56-80",1271))
+
+
+three2006_2080$timeframe <- c(rep(1,1271),
+                          rep(2,1271),
+                          rep(3,1271))
+
+
+#Plot values
+ggplot(three2006_2080, aes(timeframe, avg, colour = model))+
+  geom_errorbar(aes(ymax = avg+sddev*100000, ymin= avg-sddev*100000))+
+  geom_point()
+
+
+avgoverpoints <- aggregate(cbind(avg,sddev)~timeframe+model, data= three2006_2080, mean)
+
+ggplot(avgoverpoints, aes(timeframe, avg,colour=model))+
+  geom_errorbar(aes(ymax = avg+sddev*100000, ymin= avg-sddev*100000, width = 0.3))+
+  geom_point() +
+  theme_bw()+
+  xlab("25 year average")+
+  ylab("Annual precipitation cm/day")
+```
+
+
 
 
 
@@ -424,6 +549,9 @@ for(k in 1:3){
 ###########################################################################        
 If previously loaded run from here         
 ###########################################################################
+
+
+
 
 
 
@@ -459,6 +587,14 @@ prec25_2031 <- crop(rot.25_2031, extent(west))
 prec25_2056 <- crop(rot.25_2056, extent(west))
 ```
 
+Extract points from species for these models  
+```{r}
+
+
+```
+
+
+
 ctrl+shift+enter
 ```{r}
 plot(prec25_2006)
@@ -469,7 +605,7 @@ plot(west, add=TRUE)
 plot(prec25_2056)
 plot(west, add=TRUE)
 ```
-
+This when I lose a block of data... maybe they're all there (from before?) so it's fine?
 ```{r}
 mapTheme <- rasterTheme(region = (brewer.pal(10, "RdBu")))
 cutpts <- seq(range(getValues(prec25_2006))[1],
