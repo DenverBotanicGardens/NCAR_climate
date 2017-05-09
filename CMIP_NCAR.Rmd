@@ -158,6 +158,8 @@ load("P:/hackathon/Simulations/modelavg_annual2081.RData")
 load("P:/hackathon/Simulations/modelavg_annual2081.RData")
 load("P:/hackathon/Simulations/model20_annual.RData")
 load("P:/hackathon/Simulations/model25_raster.RData")
+load("P:/hackathon/Simulations/TSMNmodelavg_annual.RData")
+load("P:/hackathon/Simulations/TSMNmodel25_annual.RData")
 
 ```
 
@@ -342,6 +344,8 @@ modelavg.raster <- lapply(modelavg_annual, function(model1){
 years <- c(2006:2080)
 type <- c("avg","var")
 
+
+#Might need to rerun! I think I saved over this with the temp min, I think I saved again after loading it...
 save(list="modelavg.raster", file="P:/hackathon/Simulations/modelavg.raster.RData")
 
 
@@ -450,6 +454,125 @@ snow+annual <- lapply(1:2, function(model){
 ```
 
 
+
+#sdsmR   
+sdsmR - downscaling with Snow  
+<https://www2.cisl.ucar.edu/sites/default/files/Richardson.pdf> 
+```{r}
+#install.packages("sdsmR")
+library("devtools")
+devtools::install_github('leerichardson/sdsmR')
+library(sdsmR)
+```
+<https://github.com/leerichardson/sdsmR/blob/master/vignettes/blogsville-example.Rmd>
+```{r}
+head(blogsville)
+quality_control(blogsville)
+
+
+```
+
+#clim.pact - climate analysis and empirical-statistical downscaling 
+```{r}
+install.packages("clim.pact")
+```
+#esd R package   
+
+```{r}
+library(RCurl)
+url <- "ftp://ftp.met.no/users/rasmusb/" 
+esdpack <- getURL(url, ftp.use.epsv = FALSE, dirlistonly = TRUE)
+
+install.packages(esdpack)
+install.packages("esd_0.5-5.tar.gz")
+
+```
+
+<http://eremrah.com/articles/How-to-extract-data-from-PRISM-raster/>
+#before downscale, extract points from raster stack
+```{r}
+library(tidyr)
+library(stringr)
+library(raster)
+library(magrittr)
+
+options(prism.path = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/World BioClim Date/prism_ppt_1895_2016") 
+
+# stack rasters
+rasterstack <- ls_prism_data()[7:100,] %>% prism_stack(.)
+rscrs <- rasterstack@crs@projargs
+```
+
+```{r}
+#Poa secunda
+pose <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/Poa secunda_georeferencing.csv")
+
+posell <- pose[,c("scientificName","year","decimalLatitude","decimalLongitude","minimumElevationInMeters","startDayOfYear")]
+
+ggplot(posell[posell$year>1800,], aes( year,startDayOfYear))+
+  geom_point()
+
+library(RColorBrewer)
+    cols <- rev(brewer.pal(11, 'RdYlBu'))
+
+ggplot(posell[posell$year>1800,])+
+  geom_point(aes(year,startDayOfYear, colour=minimumElevationInMeters))+
+  scale_colour_gradientn(colours = cols)+
+  ggtitle("Poa secunda")
+
+
+summary(lm(startDayOfYear~minimumElevationInMeters*year, data=posell))
+table(posell$year)
+
+ggplot(posell[posell$year>1949,])+
+  geom_point(aes(year,minimumElevationInMeters, colour=startDayOfYear))+
+  scale_colour_gradientn(colours = cols)
+
+summary(lm(startDayOfYear~minimumElevationInMeters*year, data=posell[posell$year>1949,]))
+
+summary(lm(minimumElevationInMeters~startDayOfYear*year, data=posell[posell$year>1949,]))
+
+summary(lm(minimumElevationInMeters~year, data=posell[posell$year>1949,]))
+
+```
+
+```{r}
+#Hieracium triste
+hitr <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/Hierarcium triste.csv")
+
+hitrll <- hitr[,c("scientificName","year","decimalLatitude","decimalLongitude","minimumElevationInMeters","startDayOfYear")]
+
+hitrll <- hitrll[hitrll$startDayOfYear>10,]
+
+ggplot(hitrll[hitrll$year>1800,], aes( year,startDayOfYear))+
+  geom_point()
+
+library(RColorBrewer)
+    cols <- rev(brewer.pal(11, 'RdYlBu'))
+
+ggplot(hitrll[hitrll$year>1800,])+
+  geom_point(aes(year,startDayOfYear, colour=minimumElevationInMeters))+
+  scale_colour_gradientn(colours = cols)
+
+
+summary(lm(startDayOfYear~minimumElevationInMeters*year, data=hitrll))
+table(hitrll$year)
+
+ggplot(hitrll[hitrll$year>1949,])+
+  geom_point(aes(year,minimumElevationInMeters, colour=startDayOfYear))+
+  scale_colour_gradientn(colours = cols)+
+  ggtitle("Hieracium triste")
+
+summary(lm(startDayOfYear~minimumElevationInMeters*year, data=hitrll[hitrll$year>1949,]))
+
+summary(lm(minimumElevationInMeters~startDayOfYear*year, data=hitrll[hitrll$year>1949,]))
+
+summary(lm(minimumElevationInMeters~year, data=hitrll[hitrll$year>1949,]))
+```
+
+
+
+
 Downscaled PRISM layer  
 ```{r}
 options(prism.path = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/PRISM_layers")
@@ -540,7 +663,176 @@ ggplot(avgoverpoints, aes(timeframe, avg,colour=model))+
   xlab("25 year average")+
   ylab("Annual precipitation cm/day")
 ```
+030.cam.h0.TSMN.200601-208012
+Now Temperature over time periods
+```{r}
+sims <- sprintf('%0.3d', 1:30)
 
+TSMN2006_2080 <- lapply(sims, function(sims){
+  nc_open(paste("P:/hackathon/Simulations/b.e11.BRCP85C5CNBDRD.f09_g16.",sims,".cam.h0.TSMN.200601-208012.nc", collapse="", sep=""))
+})
+
+#Sum 12 months for annual 
+TSMN_annual <- lapply(1:30, function(model){
+  precc1 <- ncvar_get(TSMN2006_2080[[model]], "TSMN")
+  cl <- makeCluster(6)
+  registerDoParallel(cl)
+  precc <- foreach(timeindex = seq(1,900,12),
+                   .combine = "abind3") %dopar% 
+    {
+      apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), sum)
+      }
+  stopCluster(cl)
+  gc()
+  rm(precc1)
+  precc
+  })
+
+
+# Avreage and variance over the 30 models 
+#Temp Surface Minimum
+cl <- makeCluster(6)
+registerDoParallel(cl)
+TSMNmodelavg_annual <- foreach(timeindex = 1:75,
+                           .packages = "abind") %dopar%
+  {
+    byyearmodel <- lapply(TSMN_annual, function(model1){
+      model1[,,timeindex]
+    })
+    oneyear <- abind(byyearmodel, along=3)
+    abind(apply(oneyear, MARGIN = c(1,2), mean),
+          apply(oneyear, MARGIN = c(1,2), var), along=3)
+  }
+stopCluster(cl)
+
+save(list="TSMNmodelavg_annual", file="P:/hackathon/Simulations/TSMNmodelavg_annual.RData")
+class(TSMNmodelavg_annual[[1]])
+dim(TSMNmodelavg_annual[[1]]) #288 192 2
+
+#make rasters
+TSMNmodelavg.raster <- lapply(TSMNmodelavg_annual, function(model1){
+  e <- extent(c(0,360,-90,90))
+  mean.raster <- flip(raster(t(as.matrix(model1[,,1], nrow=192))),
+                      direction = "y")
+  extent(mean.raster) <- e
+  proj4string(mean.raster) <- CRS("+init=epsg:4326")
+  var.raster <- flip(raster(t(as.matrix(model1[,,2], nrow=192))),
+                      direction = "y")
+  extent(var.raster) <- e
+  proj4string(var.raster) <- CRS("+init=epsg:4326")
+  list(mean.raster,var.raster)
+  })
+
+years <- c(2006:2080)
+type <- c("avg","var")
+
+save(list="TSMNmodelavg.raster", file="P:/hackathon/Simulations/TSMNmodelavg.raster.RData")
+#write rasters
+for(i in 1:75){
+  for(j in 1:2){
+    writeRaster(rotate(TSMNmodelavg.raster[[i]][[j]]), 
+                paste("P:/hackathon/Simulations/TSMN",type[j],years[i],collapse="",sep=""),
+                format = "GTiff")
+  }
+}
+
+#Average and variance over 25 year periods  2006:2030, 2031:2055, and 2056:2080
+TSMNmodel25_annual <- lapply(seq(1,75,25), function(year){
+  model1 <- abind(TSMNmodelavg_annual[year+24], along=3)
+  mn <- apply(model1[,,1], MARGIN = c(1,2), mean)
+  vr <- apply(model1[,,2], MARGIN = c(1,2), mean)
+  list(mn,vr)
+})
+
+
+
+save(list="TSMNmodel25_annual", file="P:/hackathon/Simulations/TSMNmodel25_annual.RData")
+
+
+TSMNmodel25.raster <- lapply(TSMNmodel25_annual, function(model1){
+  e <- extent(c(0,360,-90,90))
+  mean.raster <- flip(raster(t(as.matrix(model1[[1]], nrow=192))),
+                      direction="y")
+  extent(mean.raster) <- e
+  proj4string(mean.raster) <- CRS("+init=epsg:4326")
+  var.raster <- flip(raster(t(as.matrix(model1[[2]], nrow=192))),
+                      direction = "y")
+  extent(var.raster) <- e
+  proj4string(mean.raster) <- CRS("+init=epsg:4326")
+  list(mean.raster,var.raster)
+  })
+
+save(list="TSMNmodel25.raster", file="P:/hackathon/Simulations/TSMNmodel25_raster.RData")
+
+
+yrs <- c("2006_2030","2031_2055","2056_2080")
+#write rasters
+for(k in 1:3){
+  for(j in 1:2){
+    writeRaster(rotate(TSMNmodel25.raster[[k]][[j]]),
+                paste("P:/hackathon/Simulations/TSMN",type[j],yrs[k],collapse="",sep=""),
+                format = "GTiff")
+    
+  }
+}
+
+
+
+#Extract from model times model25.raster; modelavg.raster
+TSMNmodel25.raster[[1]] # average and variance over 2006:2030
+TSMNmodel25.raster[[2]] # average and variance over 2031:2055
+
+TSMNppt.2006_2030 <- data.frame(data= extract(rotate(TSMNmodel25.raster[[1]][[1]]), 
+                                          latlongs[,c(4,3)]), 
+                            date = "Avg2006:2030")
+
+
+TSMNppt.2006_2080 <- lapply(TSMNmodel25.raster, function(rast){
+  avg <- extract(rotate(rast[[1]]), latlongs[,c(4,3)])
+  sddev <- extract(rotate(rast[[2]]), latlongs[,c(4,3)])
+  cbind(avg,sddev)
+})
+
+
+head(TSMNppt.2006_2080[[1]]) #
+table(TSMNppt.2006_2080[[1]][,1])
+head(TSMNppt.2006_2030) #Yay, same!!!
+
+#1271 points per model
+TSMNoh6oh8 <- data.frame(TSMNppt.2006_2080[[1]])
+TSMNoh855 <- data.frame(TSMNppt.2006_2080[[2]])
+TSMNoh5580 <- data.frame(TSMNppt.2006_2080[[3]])
+TSMNthree2006_2080 <- rbind(TSMNoh6oh8,TSMNoh855,TSMNoh5580)
+
+#three2006_2080 <- do.call(rbind,ppt.2006_2080)
+names(TSMNthree2006_2080) <- c("avg","sddev")
+TSMNthree2006_2080$model <- c(rep("M06-30",1271),
+                          rep("M31-55",1271),
+                          rep("M56-80",1271))
+
+
+TSMNthree2006_2080$timeframe <- c(rep(1,1271),
+                          rep(2,1271),
+                          rep(3,1271))
+
+
+#Plot values
+ggplot(TSMNthree2006_2080, aes(timeframe, avg, colour = model))+
+  geom_errorbar(aes(ymax = avg+sddev*100000, ymin= avg-sddev*100000))+
+  geom_point()
+
+
+TSMNavgoverpoints <- aggregate(cbind(avg,sddev)~timeframe+model, data= TSMNthree2006_2080, mean)
+
+ggplot(TSMNavgoverpoints, aes(timeframe, avg,colour=model))+
+  geom_errorbar(aes(ymax = avg+sddev*100000, ymin= avg-sddev*100000, width = 0.3))+
+  geom_point() +
+  theme_bw()+
+  xlab("25 year average")+
+  ylab("Annual precipitation cm/day")
+
+
+```
 
 
 
@@ -862,6 +1154,14 @@ cololl[,2:3] <- lapply(cololl[,2:3],  function(x) gsub("\"", ' ',x))
 # get rid of letters
 cololl[,2:3] <- lapply(cololl[,2:3],  function(x) gsub("[a-zA-Z]", "", x))
 
+# get rid of punctuation characters
+cololl[,2:3] <- lapply(cololl[,2:3],  function(x) gsub("[^[:alnum:]]", " ", x))
+
+#trim leading trailing whitespace
+cololl[,2:3] <- lapply(cololl[,2:3],  function(x) trimws(x))
+
+
+table(cololl$Latitude)
 # convert from decimal minutes to decimal degrees
 cololl[,2:3] <- lapply(cololl[,2:3],  
                        function(x) conv_unit(x, from = "deg_min_sec",
@@ -879,6 +1179,26 @@ str(cololl)
 samples <- rbind(cololl,seinetll)
 
 head(samples)
+
+llsamples <- samples[!is.na(samples$Latitude),]
+llsamples <- llsamples[!is.na(llsamples$Longitude),]
+
+head(llsamples)
+
+
+llsamples[,2:3] <- lapply(llsamples[,2:3], function(x) as.numeric(x))
+
+
+llsamples <- llsamples[abs(llsamples$Longitude) > 102,]
+llsamples <- llsamples[abs(llsamples$Latitude) > 36,]
+
+#round to three decimals which is around 147 to 125 meters
+table(round(llsamples$Latitude,3))
+length(unique(round(llsamples$Latitude,3))) #2049
+
+length(unique(round(llsamples$Longitude,3))) #1940
+length(unique(round(llsamples$Longitude,4))) #4131 - across CO seems like a better number... 
+
 ```
 
 
