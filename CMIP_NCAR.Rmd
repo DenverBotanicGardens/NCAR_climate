@@ -147,6 +147,9 @@ library(measurements)
 library(ENMeval)
 library(RCurl)
 
+library(devtools)
+#install_github('hadley/rvest')
+library(rvest)
 
 # add the command to bind along the 3rd dimension
 abind3 <- function(...) { abind(along = 3, ...) }
@@ -160,6 +163,7 @@ load("P:/hackathon/Simulations/model20_annual.RData")
 load("P:/hackathon/Simulations/model25_raster.RData")
 load("P:/hackathon/Simulations/TSMNmodelavg_annual.RData")
 load("P:/hackathon/Simulations/TSMNmodel25_annual.RData")
+
 
 ```
 
@@ -1698,6 +1702,69 @@ registerDoParallel(cl)
 
 ```
 
+in case I want to use this <https://github.com/tidyverse/magrittr>
+
+# rvest - to get point data from <http://www.climatewna.com/>
+```{r}
+climatewna <- read_html("http://www.climatewna.com/")
+
+wna.session <- html_session("http://www.climatewna.com/")
+
+wna.form <- html_form(read_html(wna.session))
+
+# lapply or function or loop of some sort for all lat/longs -> lat_n, lon_n
+
+filled_form <- set_values(wna.form[[1]],
+                          txt_lat = lat_n,
+                          txt_lng = lon_n,
+                          DropD_hist = "")
+
+submit_form(wna.session, )
+
+#Calculate
+table:nth-child(1) input
+//*[(@id = "Button1")] #the XPath for the Calculate button. 
+
+hists <- climatewna %>% html_nodes("#DropD_hist option") %>% html_attr("value")
+futs <- climatewna %>% html_nodes("#DropD_gcm option") %>% html_attr("value")
+
+lat <- html_nodes(climatewna, "#txt_lat")
+elev <- html_nodes(climatewna, "tr:nth-child(5) td , #dl_ovl_tif , #txt_lng") #maybe just get from download?
+
+movie <- read_html("http://www.imdb.com/title/tt1490017/")
+cast <- html_nodes(movie, "#titleCast span.itemprop")
+html_text(cast)
+html_name(cast)
+html_attrs(cast)
+html_attr(cast, "class")
+
+climatewna
+
+html_nodes(climatewna, "table td")
+
+
+
+html_text(climatewna)
+
+html_text(climatewna, "#txt_lat")
+html_attrs(climatewna)
+
+
+
+#Historical
+#dl_ovl_tif , #txt_lng , #txt_el
+
+#Future
+td:nth-child(2) , #dl_ovl_tif , #txt_lng , #txt_el
+
+
+#download overlay raster files
+#dl_ovl_tif , tr:nth-child(1) td , #txt_lng , #txt_el
+//*[(@id = "dl_ovl_tif")] | //*[(@id = "Button1")] #xpath 
+
+
+submit <- Filter(function(x) identical(x$type, "Calculate"))
+```
 
 
 
