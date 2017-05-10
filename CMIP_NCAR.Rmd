@@ -1704,13 +1704,23 @@ registerDoParallel(cl)
 
 in case I want to use this <https://github.com/tidyverse/magrittr>
 
-# rvest - to get point data from <http://www.climatewna.com/>
+# rvest - to get point data from <http://www.climatewna.com/>    
+
+Calculate
+table:nth-child(1) input
+//*[(@id = "Button1")] #the XPath for the Calculate button. 
+
 ```{r}
 climatewna <- read_html("http://www.climatewna.com/")
 
 wna.session <- html_session("http://www.climatewna.com/")
 
 wna.form <- html_form(read_html(wna.session))
+
+# values for dropdown of historical
+hists <- climatewna %>% html_nodes("#DropD_hist option") %>% html_attr("value")
+# values for dropdown of future climate models
+futs <- climatewna %>% html_nodes("#DropD_gcm option") %>% html_attr("value")
 
 # lapply or function or loop of some sort for all lat/longs -> lat_n, lon_n
 
@@ -1719,14 +1729,10 @@ filled_form <- set_values(wna.form[[1]],
                           txt_lng = lon_n,
                           DropD_hist = "")
 
+climatewna %>% html_nodes(xpath = '//*[(@id = "Button1")]') %>% html_attr("value")
+
 submit_form(wna.session, )
 
-#Calculate
-table:nth-child(1) input
-//*[(@id = "Button1")] #the XPath for the Calculate button. 
-
-hists <- climatewna %>% html_nodes("#DropD_hist option") %>% html_attr("value")
-futs <- climatewna %>% html_nodes("#DropD_gcm option") %>% html_attr("value")
 
 lat <- html_nodes(climatewna, "#txt_lat")
 elev <- html_nodes(climatewna, "tr:nth-child(5) td , #dl_ovl_tif , #txt_lng") #maybe just get from download?
