@@ -1733,6 +1733,7 @@ climatewna %>% html_nodes(xpath = '//*[(@id = "Button1")]') %>% html_attr("value
 
 submit_form(wna.session, )
 
+#<http://stackoverflow.com/questions/36026144/getting-next-results-using-rvest-submit-form> 
 
 lat <- html_nodes(climatewna, "#txt_lat")
 elev <- html_nodes(climatewna, "tr:nth-child(5) td , #dl_ovl_tif , #txt_lng") #maybe just get from download?
