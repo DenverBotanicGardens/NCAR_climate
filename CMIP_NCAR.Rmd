@@ -147,6 +147,7 @@ library(measurements)
 library(ENMeval)
 library(RCurl)
 
+#install.packages("digest")
 library(devtools)
 #install_github('hadley/rvest')
 library(rvest)
@@ -172,6 +173,7 @@ load("P:/hackathon/Simulations/SNOWHLNDmodelavg_annual.RData") # 1920-2005
 load("P:/hackathon/Simulations/SNOWHLNDmodelavg.raster.RData")
 load("P:/hackathon/Simulations/SNOWHLNDmodel17_annual.RData") # 5, 17 year blocks averaged 
 load("P:/hackathon/Simulations/SNOWHLNDmodel17_raster.RData")
+load("P:/hackathon/Simulations/PRISMseason.RData")
 
 
 ```
@@ -1198,6 +1200,113 @@ ggplot(SNOWHLNDavgoverpoints, aes(model, avg,colour=model))+
 
 ```
 
+
+PRISM that Rich made a finer scale
+```{r}
+PRSIM1981_1990 <- nc_open("P:/hackathon/Simulations/PRISM_day_1981-1990.nc")
+
+PRSIM1981_1990$var$PRECT$longname # precipitation I guess, "PRECT"
+
+PRSIM1981_1990$var$PRECT$units # month_day
+PRSIM1981_1990$var$PRECT$varsize #1405 (degrees_east, X, 0-360 range, varid=3, "lon")  621 (degrees_north,Y,"lat")  365 ("time", days of year)
+
+#Turn into sum for 73 day chunks 1:74 (Jan1-Mar15), 74:147 (Mar16-May27), 148:220 (May28-Aug8), 221:293 (Aug9-Oct20), 294:365 (Oct21-Dec31)
+memory.limit(size = 10000)
+precc1 <- ncvar_get(PRSIM1981_1990, "PRECT") # memory.limit of 8117
+
+cl <- makeCluster(7)
+registerDoParallel(cl)
+PRISMseason <- foreach(timeindex = seq(1,365,73),
+                 .combine = "abind3") %dopar% 
+  {
+    apply(precc1[,,timeindex:(timeindex+72)], MARGIN = c(1,2), sum)
+    }
+stopCluster(cl)
+
+
+save(list="PRISMseason", file="P:/hackathon/Simulations/PRISMseason.RData")
+
+str(PRISMseason[,,1]) #1405, 621
+PRISMseason[1:6,1:5,1]
+
+
+
+# Avreage and variance over the 30 models over 5 'years'seasons'
+#Temp Surface Minimum
+cl <- makeCluster(6)
+registerDoParallel(cl)
+PRISM_season <- foreach(timeindex = 1:5,
+                           .packages = "abind") %dopar%
+  {
+    byyearmodel <- PRISMseason[,,timeindex]
+    oneyear <- abind(byyearmodel, along=3)
+    abind(apply(oneyear, MARGIN = c(1,2), mean),
+          apply(oneyear, MARGIN = c(1,2), var), along=3)
+  }
+stopCluster(cl) 
+
+save(list="PRISM_season", file="P:/hackathon/Simulations/PRISM_season.RData")
+class(PRISM_season[[1]])
+dim(PRISM_season[[1]]) #1405  621    2
+
+str(PRISM_season)
+
+c(PRISM_season[[1]][900:950])
+table(c(PRISM_season[[1]]))
+min(which(!is.na(c(PRISM_season[[1]])))) #15079
+max(which(!is.na(c(PRISM_season[[1]])))) #854958
+max(which(!is.na(PRISM_season[[1]][,,1])))
+
+
+################
+# can I make the average and var back into a .nc?
+PRSIM1981_1990$var$PRECT$dim[[1]]$vals # degrees east
+PRSIM1981_1990$var$PRECT$dim[[2]]$vals # degrees north
+PRSIM1981_1990$var$PRECT$dim[[3]]$vals # days of the year? wha? 
+xvals <- PRSIM1981_1990$var$PRECT$dim[[1]]$vals
+yvals <- PRSIM1981_1990$var$PRECT$dim[[2]]$vals
+nx <- length(xvals)
+ny <- length(yvals)
+lon1 <- ncdim_def("lon","degrees_east", xvals)
+lat1 <- ncdim_def("lat","degrees_north", yvals)
+time <- ncdim_def("Time","days", 1:365, unlim=TRUE)
+mv <- -999 #or NA?
+var_prect <- ncvar_def("PRECT","PRECT", list(lon1,lat1,time),
+                       longname = "made up PRECT", mv)
+ncnew.avg <- nc_create("P:/hackathon/Simulations/avgPRISMnc.nc", list(var_prect))
+ncvar_put(ncnew.avg, var_prect, PRISMseason[,,1], 
+          start=c(1,1,1),count=c(nx,ny,1))
+
+
+yrs <- c("1:74","74:147","148:220","221:293","294:365")
+type <- c("avg","var")
+
+ncnew.var <- nc_create("P:/hackathon/Simulations/varPRISMnc.nc", list(var_prect))
+ncvar_put(ncnew.var, var_prect, PRISMseason[,,2], 
+          start=c(1,1,1),count=c(nx,ny,1))
+
+avgPRISM.raster <- raster("P:/hackathon/Simulations/avgPRISMnc.nc", varname="PRECT")
+varPRISM.raster <- raster("P:/hackathon/Simulations/varPRISMnc.nc", varname="PRECT")
+#library(rasterVis)
+levelplot(avgPRISM.raster, margin=FALSE)
+levelplot(varPRISM.raster, margin=FALSE)
+################
+
+
+
+min(PRISM.raster[[1]][[1]]@data@values, na.rm=TRUE)
+which(!is.na(PRISM.raster[[1]][[1]]@data@values))
+
+for(k in 1:5){
+  for(i in 1:2){
+    writeRaster(rotate(PRISM.raster[[k]][[i]]),
+                paste("P:/hackathon/Simulations/PRISM",type[j],yrs[k],collapse="",sep=""),
+                format = "GTiff")
+  }
+}
+
+
+```
 
 
 
