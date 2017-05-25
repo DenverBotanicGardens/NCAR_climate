@@ -1273,37 +1273,26 @@ time <- ncdim_def("Time","days", 1:365, unlim=TRUE)
 mv <- -999 #or NA?
 var_prect <- ncvar_def("PRECT","PRECT", list(lon1,lat1,time),
                        longname = "made up PRECT", mv)
-ncnew.avg <- nc_create("P:/hackathon/Simulations/avgPRISMnc.nc", list(var_prect))
-ncvar_put(ncnew.avg, var_prect, PRISMseason[,,1], 
-          start=c(1,1,1),count=c(nx,ny,1))
 
 
-yrs <- c("1:74","74:147","148:220","221:293","294:365")
+yrs <- c("1_74","74_147","148_220","221_293","294_365")  #the ":" made it just give the first number
 type <- c("avg","var")
-
-ncnew.var <- nc_create("P:/hackathon/Simulations/varPRISMnc.nc", list(var_prect))
-ncvar_put(ncnew.var, var_prect, PRISMseason[,,2], 
-          start=c(1,1,1),count=c(nx,ny,1))
-
-avgPRISM.raster <- raster("P:/hackathon/Simulations/avgPRISMnc.nc", varname="PRECT")
-varPRISM.raster <- raster("P:/hackathon/Simulations/varPRISMnc.nc", varname="PRECT")
-#library(rasterVis)
-levelplot(avgPRISM.raster, margin=FALSE)
-levelplot(varPRISM.raster, margin=FALSE)
-################
-
-
-
-min(PRISM.raster[[1]][[1]]@data@values, na.rm=TRUE)
-which(!is.na(PRISM.raster[[1]][[1]]@data@values))
 
 for(k in 1:5){
   for(i in 1:2){
-    writeRaster(rotate(PRISM.raster[[k]][[i]]),
-                paste("P:/hackathon/Simulations/PRISM",type[j],yrs[k],collapse="",sep=""),
+    ncnew <- nc_create("P:/hackathon/Simulations/avgPRISMnc.nc", list(var_prect))
+    ncvar_put(ncnew, var_prect, PRISM_season[[k]][,,i], 
+              start=c(1,1,1),count=c(nx,ny,1))
+    PRISM.raster <- raster("P:/hackathon/Simulations/avgPRISMnc.nc", varname="PRECT")
+    writeRaster(PRISM.raster,
+                paste("P:/hackathon/Simulations/PRISM",type[i],yrs[k],collapse="",sep=""),
                 format = "GTiff")
   }
 }
+
+################
+
+
 
 
 ```
