@@ -146,6 +146,7 @@ library(rasterVis)
 library(measurements)
 library(ENMeval)
 library(RCurl)
+library(dismo)
 
 #install.packages("digest")
 library(devtools)
@@ -1225,78 +1226,159 @@ stopCluster(cl)
 
 
 save(list="PRISMseason", file="P:/hackathon/Simulations/PRISMseason.RData")
+load("P:/hackathon/Simulations/PRISMseason.RData")
 
-str(PRISMseason[,,1]) #1405, 621
-PRISMseason[1:6,1:5,1]
+PRISM.raster <- lapply(1:5, function(time){
+  e <- extent(c(0,360,-90,90))
+  raster <- flip(raster(t(as.matrix(PRISMseason[,,time], nrow=1405))), #the number of rows should be the lat, but when transpose then it's 1405, not 621?
+                      direction="y")
+  extent(raster) <- e
+  proj4string(raster) <- CRS("+init=epsg:4326")
+  raster
+  })
 
+PRISM.raster[[1]]
 
+save(list="PRISM.raster", file="P:/hackathon/Simulations/PRISM.raster.RData")
 
-# Avreage and variance over the 30 models over 5 'years'seasons'
-#Temp Surface Minimum
-cl <- makeCluster(6)
-registerDoParallel(cl)
-PRISM_season <- foreach(timeindex = 1:5,
-                           .packages = "abind") %dopar%
-  {
-    byyearmodel <- PRISMseason[,,timeindex]
-    oneyear <- abind(byyearmodel, along=3)
-    abind(apply(oneyear, MARGIN = c(1,2), mean),
-          apply(oneyear, MARGIN = c(1,2), var), along=3)
-  }
-stopCluster(cl) 
-
-save(list="PRISM_season", file="P:/hackathon/Simulations/PRISM_season.RData")
-class(PRISM_season[[1]])
-dim(PRISM_season[[1]]) #1405  621    2
-
-str(PRISM_season)
-
-c(PRISM_season[[1]][900:950])
-table(c(PRISM_season[[1]]))
-min(which(!is.na(c(PRISM_season[[1]])))) #15079
-max(which(!is.na(c(PRISM_season[[1]])))) #854958
-max(which(!is.na(PRISM_season[[1]][,,1])))
-
-
-################
-# can I make the average and var back into a .nc?
-PRSIM1981_1990$var$PRECT$dim[[1]]$vals # degrees east
-PRSIM1981_1990$var$PRECT$dim[[2]]$vals # degrees north
-PRSIM1981_1990$var$PRECT$dim[[3]]$vals # days of the year? wha? 
-xvals <- PRSIM1981_1990$var$PRECT$dim[[1]]$vals
-yvals <- PRSIM1981_1990$var$PRECT$dim[[2]]$vals
-nx <- length(xvals)
-ny <- length(yvals)
-lon1 <- ncdim_def("lon","degrees_east", xvals)
-lat1 <- ncdim_def("lat","degrees_north", yvals)
-time <- ncdim_def("Time","days", 1:365, unlim=TRUE)
-mv <- -999 #or NA?
-var_prect <- ncvar_def("PRECT","PRECT", list(lon1,lat1,time),
-                       longname = "made up PRECT", mv)
-
-
-yrs <- c("1_74","74_147","148_220","221_293","294_365")  #the ":" made it just give the first number
-type <- c("avg","var")
-
-for(k in 1:5){
-  for(i in 1:2){
-    ncnew <- nc_create("P:/hackathon/Simulations/avgPRISMnc.nc", list(var_prect))
-    ncvar_put(ncnew, var_prect, PRISM_season[[k]][,,i], 
-              start=c(1,1,1),count=c(nx,ny,1))
-    PRISM.raster <- raster("P:/hackathon/Simulations/avgPRISMnc.nc", varname="PRECT")
-    writeRaster(PRISM.raster,
-                paste("P:/hackathon/Simulations/PRISM",type[i],yrs[k],collapse="",sep=""),
-                format = "GTiff")
-  }
+yrs <- c("1_74","74_147","148_220","221_293","294_365")
+for(i in 1:5){
+  writeRaster(rotate(PRISM.raster[[i]]),
+              paste("P:/hackathon/Simulations/PRISM",yrs[i], collapse="",sep=""),
+              format = "GTiff", overwrite=TRUE)
 }
-
-################
-
-
 
 
 ```
 
+
+
+### May 25, 2017
+Add 12 months for annual conductive and CL precipitation, add two together for 1920-2005
+```{r}
+sims <- sprintf('%0.3d', 2:6)
+
+precc1920_2005 <- lapply(sims, function(sims){
+  nc_open(paste("P:/hackathon/Simulations/b.e11.B20TRC5CNBDRD.f09_g16.",sims,".cam.h0.PRECC.192001-200512.nc", collapse="", sep=""))
+})
+
+precl1920_2005 <- lapply(sims, function(sims){
+  nc_open(paste("P:/hackathon/Simulations/b.e11.B20TRC5CNBDRD.f09_g16.",sims,".cam.h0.PRECL.192001-200512.nc", collapse="", sep=""))
+})
+
+
+time <- ncvar_get(precl1920_2005[[1]], "date")
+length(time) #1032
+length(precl1920_2005)
+
+precc1920_2005_annual <- lapply(1:5, function(model){
+  precc1 <- ncvar_get(precc1920_2005[[model]], "PRECC")
+  cl <- makeCluster(6)
+  registerDoParallel(cl)
+  precc <- foreach(timeindex = seq(1,1032,12),
+                   .combine = "abind3") %dopar% 
+    {
+      apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), sum)
+      }
+  stopCluster(cl)
+  gc()
+  rm(precc1)
+  precc
+  })
+
+precl1920_2005_annual <- lapply(1:5, function(model){
+  precc1 <- ncvar_get(precl1920_2005[[model]], "PRECL")
+  cl <- makeCluster(6)
+  registerDoParallel(cl)
+  precc <- foreach(timeindex = seq(1,1032,12),
+                   .combine = "abind3") %dopar% 
+    {
+      apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), sum)
+      }
+  stopCluster(cl)
+  gc()
+  rm(precc1)
+  precc
+  })
+
+
+save(list="precc1920_2005_annual", file="P:/hackathon/Simulations/precc1920_2005_annual.RData")
+save(list="precl1920_2005_annual", file="P:/hackathon/Simulations/precl1920_2005_annual.RData")
+
+prectotal1920_2005_annual <- lapply(1:5, function(model){
+  Ycc <- precc1920_2005_annual[[model]]
+  Ycl <- precl1920_2005_annual[[model]]
+  cl <- makeCluster(6)
+  registerDoParallel(cl)
+  total <- foreach(timeindex = 1:85,
+                   .combine = "abind3") %dopar% 
+    {
+      Ycc[,,timeindex]+Ycl[,,timeindex]
+    }
+  stopCluster(cl)
+  gc()
+  rm(Ycc,Ycl)
+  total
+  })
+
+#Avg and Var over the 5 models
+cl <- makeCluster(6)
+registerDoParallel(cl)
+modelavg1920_2005_annual <- foreach(timeindex = 1:85,
+                           .packages = "abind") %dopar%
+  {
+    byyearmodel <- lapply(prectotal1920_2005_annual, function(model1){
+      model1[,,timeindex]
+    })
+    oneyear <- abind(byyearmodel, along=3)
+    abind(apply(oneyear, MARGIN = c(1,2), mean),
+          apply(oneyear, MARGIN = c(1,2), var), along=3)
+  }
+stopCluster(cl)
+
+save(list="modelavg1920_2005_annual", file="P:/hackathon/Simulations/modelavg1920_2005_annual.RData")
+
+dim(modelavg1920_2005_annual[[1]]) #288 192 2
+
+#Averages over what times?
+#make rasters
+modelavg1920_2005.raster <- lapply(modelavg1920_2005_annual, function(model1){
+  e <- extent(c(0,360,-90,90))
+  mean.raster <- flip(raster(t(as.matrix(model1[,,1], nrow=192))),
+                      direction = "y")
+  extent(mean.raster) <- e
+  proj4string(mean.raster) <- CRS("+init=epsg:4326")
+  var.raster <- flip(raster(t(as.matrix(model1[,,2], nrow=192))),
+                      direction = "y")
+  extent(var.raster) <- e
+  proj4string(var.raster) <- CRS("+init=epsg:4326")
+  list(mean.raster,var.raster)
+  })
+
+years <- c(2006:2080)
+type <- c("avg","var")
+
+
+#Might need to rerun! I think I saved over this with the temp min, I think I saved again after loading it...
+save(list="modelavg.raster", file="P:/hackathon/Simulations/modelavg.raster.RData")
+
+
+
+#projection
+#"+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
+# EPSG:4326
+
+#write rasters
+for(i in 1:75){
+  for(j in 1:2){
+    writeRaster(rotate(modelavg.raster[[i]][[j]]), 
+                paste("P:/hackathon/Simulations/",type[j],years[i],collapse="",sep=""),
+                format = "GTiff")
+  }
+}
+
+
+```
 
 
 
