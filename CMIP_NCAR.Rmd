@@ -1208,6 +1208,14 @@ PRSIM1981_1990 <- nc_open("P:/hackathon/Simulations/PRISM_day_1981-1990.nc")
 
 PRSIM1981_1990$var$PRECT$longname # precipitation I guess, "PRECT"
 
+lon <- ncvar_get(PRSIM1981_1990, "lon")
+lat <- ncvar_get(PRSIM1981_1990, "lat")
+
+ml <- min(lon)
+maxl <- max(lon)
+mlat <- min(lat)
+mxlat <- max(lat)
+
 PRSIM1981_1990$var$PRECT$units # month_day
 PRSIM1981_1990$var$PRECT$varsize #1405 (degrees_east, X, 0-360 range, varid=3, "lon")  621 (degrees_north,Y,"lat")  365 ("time", days of year)
 
@@ -1229,7 +1237,7 @@ save(list="PRISMseason", file="P:/hackathon/Simulations/PRISMseason.RData")
 load("P:/hackathon/Simulations/PRISMseason.RData")
 
 PRISM.raster <- lapply(1:5, function(time){
-  e <- extent(c(0,360,-90,90))
+  e <- extent(c(ml,maxl,mlat,mxlat))
   raster <- flip(raster(t(as.matrix(PRISMseason[,,time], nrow=1405))), #the number of rows should be the lat, but when transpose then it's 1405, not 621?
                       direction="y")
   extent(raster) <- e
@@ -1243,7 +1251,7 @@ save(list="PRISM.raster", file="P:/hackathon/Simulations/PRISM.raster.RData")
 
 yrs <- c("1_74","74_147","148_220","221_293","294_365")
 for(i in 1:5){
-  writeRaster(rotate(PRISM.raster[[i]]),
+  writeRaster(PRISM.raster[[i]],
               paste("P:/hackathon/Simulations/PRISM",yrs[i], collapse="",sep=""),
               format = "GTiff", overwrite=TRUE)
 }
@@ -1355,12 +1363,12 @@ modelavg1920_2005.raster <- lapply(modelavg1920_2005_annual, function(model1){
   list(mean.raster,var.raster)
   })
 
-years <- c(2006:2080)
+years <- c(1920:2005)
 type <- c("avg","var")
 
 
 #Might need to rerun! I think I saved over this with the temp min, I think I saved again after loading it...
-save(list="modelavg.raster", file="P:/hackathon/Simulations/modelavg.raster.RData")
+save(list="modelavg1920_2005.raster", file="P:/hackathon/Simulations/modelavg1920_2005.raster.RData")
 
 
 
@@ -1369,14 +1377,19 @@ save(list="modelavg.raster", file="P:/hackathon/Simulations/modelavg.raster.RDat
 # EPSG:4326
 
 #write rasters
-for(i in 1:75){
+for(i in 1:85){
   for(j in 1:2){
-    writeRaster(rotate(modelavg.raster[[i]][[j]]), 
+    writeRaster(rotate(modelavg1920_2005.raster[[i]][[j]]), 
                 paste("P:/hackathon/Simulations/",type[j],years[i],collapse="",sep=""),
-                format = "GTiff")
+                format = "GTiff",
+                overwrite=TRUE)
   }
 }
 
+
+######### STart here to make average that makes sense for modeling!
+##### 05/26/2017
+model
 
 ```
 
