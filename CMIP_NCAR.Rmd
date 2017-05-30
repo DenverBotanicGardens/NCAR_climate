@@ -179,6 +179,119 @@ load("P:/hackathon/Simulations/PRISMseason.RData")
 
 ```
 
+
+Function to get rasters of models
+```{r}
+NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, SimulationStartName,
+                          SimulationEndName, variablename, fun){
+  sims <- sprintf('%0.3d', simulationmin:simulationmax)
+  
+  varyears <- lapply(sims, function(sims){
+    nc_open(paste(SimulationStartName,sims,SimulationEndName,sep=""))
+    })
+  
+  #Sum 12 months for annual 
+  varannual <- lapply(1:length(varyears), function(model){
+    precc1 <- ncvar_get(SNOWHLND1920_2005[[model]], variablename)
+    cl <- makeCluster(6)
+    registerDoParallel(cl)
+    precc <- foreach(timeindex = seq(1,(Yearmax-Yearmin)*12,12),
+                     .combine = "abind3") %dopar% 
+      {
+        apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), fun)
+        }
+    stopCluster(cl)
+    gc()
+    rm(precc1)
+    precc
+    })
+  
+  # Avreage over the models over years
+  cl <- makeCluster(6)
+  registerDoParallel(cl)
+  avg_annual <- foreach(timeindex = 1:(Yearmax-Yearmin),
+                        .packages = "abind") %dopar%
+    {
+      byyearmodel <- lapply(varannual, function(model1){
+      model1[,,timeindex]
+    })
+    oneyear <- abind(byyearmodel, along=3)
+    abind(apply(oneyear, MARGIN = c(1,2), mean),
+          apply(oneyear, MARGIN = c(1,2), var), along=3)
+    }
+  stopCluster(cl)
+  
+  save(list="avg_annual", file=paste("P:/hackathon/Simulations/",variablename,"modelavg_annual.RData",
+                                     sep=""))
+  dims <- dim(SNOWHLNDmodelavg_annual[[1]])
+  
+  #make rasters
+  var.raster <- lapply(avg_annual, function(model1){
+  e <- extent(c(0,360,-90,90))
+  mean.raster <- flip(raster(t(as.matrix(model1[,,1], nrow=dims[2]))),
+                      direction = "y")
+  extent(mean.raster) <- e
+  proj4string(mean.raster) <- CRS("+init=epsg:4326")
+  mean.raster
+  })
+  
+  years <- c(Yearmin:Yearmax)
+  save(list="var.raster", file=paste("P:/hackathon/Simulations/",variablename,Yearmin,Yearmax,
+                                     "modelavg.raster.RData",sep=""))
+  
+  #write rasters
+  for(i in 1:(Yearmax-Yearmin)){
+    writeRaster(rotate(SNOWHLNDmodelavg.raster[[i]]), 
+                paste("P:/hackathon/Simulations/",variablename,years[i],sep="_"),
+                format = "GTiff")
+    }
+  
+  #Average over 20 years
+  annual20 <- lapply(seq(1,(Yearmax-Yearmin) - ((Yearmax-Yearmin)/20),20),
+                     function(year){
+                       model1 <- abind(SNOWHLNDmodelavg_annual[year+16], along=3)
+                       mn <- apply(model1[,,1], MARGIN = c(1,2), mean)
+                       mn
+                       })
+  
+  save(list="annual20", file=paste("P:/hackathon/Simulations/",variable,
+                                   Yearmin,Yearmax,"20_annual.RData",sep=""))
+  
+  var.raster <- lapply(annual20, function(model1){
+    e <- extent(c(0,360,-90,90))
+    mean.raster <- flip(raster(t(as.matrix(model1[[1]], nrow=192))),
+                        direction="y")
+    extent(mean.raster) <- e
+    proj4string(mean.raster) <- CRS("+init=epsg:4326")
+    mean.raster
+    })
+  
+  save(list="var.raster", file=paste("P:/hackathon/Simulations/",
+                                     variablename,Yearmin,Yearmax,
+                                     "_raster.RData", sep=""))
+  
+  yrs <- paste(Yearmin,Yearmin+20,sep="-")
+  for(i in 1:(trunc((Yearmax-Yearmin)/20)-1)){
+  yrs <- c(yrs,paste(Yearmin+((20*i)+1),Yearmin+(20*(i+1)),sep="-"))
+  } 
+  
+  
+  #write rasters
+  for(k in 1:trunc((Yearmax-Yearmin)/20)){
+    writeRaster(rotate(SNOWHLNDmodel17.raster[[k]]),
+                paste("P:/hackathon/Simulations/",variablename,yrs[k],sep=""),
+                format = "GTiff")
+  }
+}
+
+
+```
+
+
+
+
+
+
 Average and variation of 30 models
 ```{r}
 sims <- sprintf('%0.3d', 1:30)
@@ -886,6 +999,21 @@ TSMX_annual <- lapply(1:28, function(model){
   precc
   })
 
+#Average 12 months for annual 
+TSMX_annual_avg <- lapply(1:28, function(model){
+  precc1 <- ncvar_get(TSMX2006_2080[[model]], "TSMX")
+  cl <- makeCluster(6)
+  registerDoParallel(cl)
+  precc <- foreach(timeindex = seq(1,900,12),
+                   .combine = "abind3") %dopar% 
+    {
+      apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), mean)
+      }
+  stopCluster(cl)
+  gc()
+  rm(precc1)
+  precc
+  })
 
 # Avreage and variance over the 30 models 
 #Temp Surface Minimum
@@ -904,6 +1032,27 @@ TSMXmodelavg_annual <- foreach(timeindex = 1:75,
 stopCluster(cl)
 
 save(list="TSMXmodelavg_annual", file="P:/hackathon/Simulations/TSMXmodelavg_annual.RData")
+class(TSMXmodelavg_annual[[1]])
+dim(TSMXmodelavg_annual[[1]]) #288 192 2
+
+
+# Avreage and variance over the 30 models 
+#Temp Surface Minimum
+cl <- makeCluster(6)
+registerDoParallel(cl)
+TSMXmodelavg_annual_avg <- foreach(timeindex = 1:75,
+                           .packages = "abind") %dopar%
+  {
+    byyearmodel <- lapply(TSMX_annual_avg, function(model1){
+      model1[,,timeindex]
+    })
+    oneyear <- abind(byyearmodel, along=3)
+    abind(apply(oneyear, MARGIN = c(1,2), mean),
+          apply(oneyear, MARGIN = c(1,2), var), along=3)
+  }
+stopCluster(cl)
+
+save(list="TSMXmodelavg_annual_avg", file="P:/hackathon/Simulations/TSMXmodelavg_annual_avg.RData")
 class(TSMXmodelavg_annual[[1]])
 dim(TSMXmodelavg_annual[[1]]) #288 192 2
 
@@ -1028,6 +1177,136 @@ ggplot(TSMXavgoverpoints, aes(model, avg,colour=model))+
   theme_bw()+
   xlab("25 year average")+
   ylab("Maximum temp")
+
+
+```
+
+Average instaed of Sum for TMX
+```{r}
+#make rasters
+TSMXmodelavg.raster_avg <- lapply(TSMXmodelavg_annual_avg, function(model1){
+  e <- extent(c(0,360,-90,90))
+  mean.raster <- flip(raster(t(as.matrix(model1[,,1], nrow=192))),
+                      direction = "y")
+  extent(mean.raster) <- e
+  proj4string(mean.raster) <- CRS("+init=epsg:4326")
+  var.raster <- flip(raster(t(as.matrix(model1[,,2], nrow=192))),
+                      direction = "y")
+  extent(var.raster) <- e
+  proj4string(var.raster) <- CRS("+init=epsg:4326")
+  list(mean.raster,var.raster)
+  })
+
+years <- c(2006:2080)
+type <- c("avg","var")
+
+save(list="TSMXmodelavg.raster_avg", file="P:/hackathon/Simulations/TSMXmodelavg.raster_avg.RData")
+#write rasters
+for(i in 1:75){
+  for(j in 1:2){
+    writeRaster(rotate(TSMXmodelavg.raster_avg[[i]][[j]]), 
+                paste("P:/hackathon/Simulations/TSMXavg",type[j],years[i],collapse="",sep=""),
+                format = "GTiff")
+  }
+}
+
+#Average and variance over 25 year periods  2006:2030, 2031:2055, and 2056:2080
+TSMXmodel25_annual_avg <- lapply(seq(1,75,25), function(year){
+  model1 <- abind(TSMXmodelavg_annual_avg[year+24], along=3)
+  mn <- apply(model1[,,1], MARGIN = c(1,2), mean)
+  vr <- apply(model1[,,2], MARGIN = c(1,2), mean)
+  list(mn,vr)
+})
+
+
+
+save(list="TSMXmodel25_annual_avg", file="P:/hackathon/Simulations/TSMXmodel25_annual_avg.RData")
+
+
+TSMXmodel25.raster_avg <- lapply(TSMXmodel25_annual_avg, function(model1){
+  e <- extent(c(0,360,-90,90))
+  mean.raster <- flip(raster(t(as.matrix(model1[[1]], nrow=192))),
+                      direction="y")
+  extent(mean.raster) <- e
+  proj4string(mean.raster) <- CRS("+init=epsg:4326")
+  var.raster <- flip(raster(t(as.matrix(model1[[2]], nrow=192))),
+                      direction = "y")
+  extent(var.raster) <- e
+  proj4string(mean.raster) <- CRS("+init=epsg:4326")
+  list(mean.raster,var.raster)
+  })
+
+save(list="TSMXmodel25.raster_avg", file="P:/hackathon/Simulations/TSMXmodel25_raster_avg.RData")
+
+
+yrs <- c("2006_2030","2031_2055","2056_2080")
+#write rasters
+for(k in 1:3){
+  for(j in 1:2){
+    writeRaster(rotate(TSMXmodel25.raster_avg[[k]][[j]]),
+                paste("P:/hackathon/Simulations/TSMXavg",type[j],yrs[k],collapse="",sep=""),
+                format = "GTiff")
+    
+  }
+}
+
+
+######
+#Extract from model times model25.raster; modelavg.raster
+TSMXmodel25.raster_avg[[1]] # average and variance over 2006:2030
+TSMXmodel25.raster_avg[[2]] # average and variance over 2031:2055
+
+latlongs <- read.delim(path.expand("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_QGIS Projects/Alpine Phenology Project/Sampling Points/LatLongabove3200m.txt"), sep=",")
+
+TSMXppt.2006_2030_avg <- data.frame(data= extract(rotate(TSMXmodel25.raster_avg[[1]][[1]]), 
+                                          latlongs[,c(4,3)]), 
+                            date = "Avg2006:2030")
+
+
+TSMXppt.2006_2080_avg <- lapply(TSMXmodel25.raster_avg, function(rast){
+  avg <- extract(rotate(rast[[1]]), latlongs[,c(4,3)])
+  sddev <- extract(rotate(rast[[2]]), latlongs[,c(4,3)])
+  cbind(avg,sddev)
+})
+
+
+head(TSMXppt.2006_2080_avg[[1]]) #
+table(TSMXppt.2006_2080_avg[[1]][,1])
+head(TSMXppt.2006_2030_avg) #Yay, same!!!
+
+#1271 points per model
+TSMXoh6oh8_avg <- data.frame(TSMXppt.2006_2080_avg[[1]])
+TSMXoh855_avg <- data.frame(TSMXppt.2006_2080_avg[[2]])
+TSMXoh5580_avg <- data.frame(TSMXppt.2006_2080_avg[[3]])
+TSMXthree2006_2080_avg <- rbind(TSMXoh6oh8_avg,TSMXoh855_avg,TSMXoh5580_avg)
+
+#three2006_2080 <- do.call(rbind,ppt.2006_2080)
+names(TSMXthree2006_2080_avg) <- c("avg","sddev")
+TSMXthree2006_2080_avg$model <- c(rep("M06-30",1271),
+                          rep("M31-55",1271),
+                          rep("M56-80",1271))
+
+
+TSMXthree2006_2080_avg$timeframe <- c(rep(1,1271),
+                          rep(2,1271),
+                          rep(3,1271))
+
+
+#Plot values
+ggplot(TSMXthree2006_2080_avg, aes(timeframe, avg, colour = model))+
+  geom_errorbar(aes(ymax = avg+sddev, ymin= avg-sddev))+
+  geom_point()
+
+
+TSMXavgoverpoints_avg <- aggregate(cbind(avg,sddev)~model, data= TSMXthree2006_2080_avg, mean)
+
+ggplot(TSMXavgoverpoints_avg, aes(model, avg,colour=model))+
+  geom_errorbar(aes(ymax = avg+sddev, ymin= avg-sddev, width = 0.3))+
+  geom_point() +
+  theme_bw()+
+  xlab("25 year average")+
+  ylab("Maximum temp")
+
 
 
 ```
@@ -1258,6 +1537,16 @@ for(i in 1:5){
 
 
 ```
+
+#Fine scale other Rich maps
+```{r}
+PRECT2070_2099 <- nc_open("P:/hackathon/Simulations/f.e13.FAMIPC5.ne120_ne120.RCP85_2070_2099_sst2.001_clim_dmeans_ts_PRECT.nc")
+
+ncvar_get(PRECT2070_2099, "time")
+
+```
+
+
 
 
 
