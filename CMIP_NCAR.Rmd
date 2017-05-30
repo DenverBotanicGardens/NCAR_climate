@@ -184,7 +184,7 @@ Function to get rasters of models
 ```{r}
 NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, SimulationStartName,
                           SimulationEndName, SimulationEndName2, 
-                          variablename,variablename2, fun,precip = TRUE){
+                          variablename,variablename2, precip = TRUE){
   sims <- sprintf('%0.3d', simulationmin:simulationmax)
   
   varyears <- lapply(sims, function(sims){
@@ -194,19 +194,23 @@ NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, Simula
   #Precip needs to add together CC and CL
   if(precip){
   varyears2 <- lapply(sims, function(sims){
-    nc_open(paste(SimulationsStartName,sims,SimulationEndName2,sep=""))
+    nc_open(paste(SimulationStartName,sims,SimulationEndName2,sep=""))
   })
   }
   
   #Sum 12 months for annual 
   varannual <- lapply(1:length(varyears), function(model){
-    precc1 <- ncvar_get(SNOWHLND1920_2005[[model]], variablename)
+    precc1 <- ncvar_get(varyears[[model]], variablename)
     cl <- makeCluster(6)
     registerDoParallel(cl)
     precc <- foreach(timeindex = seq(1,(Yearmax-Yearmin)*12,12),
                      .combine = "abind3") %dopar% 
       {
-        apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), fun)
+        apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), if(precip){
+          sum
+          } else {
+            mean
+          })
         }
     stopCluster(cl)
     gc()
@@ -217,13 +221,13 @@ NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, Simula
   if(precip){
   #Sum 12 months for annual 
   varannual2 <- lapply(1:length(varyears), function(model){
-    precc1 <- ncvar_get(SNOWHLND1920_2005[[model]], variablename2)
+    precc1 <- ncvar_get(varyears2[[model]], variablename2)
     cl <- makeCluster(6)
     registerDoParallel(cl)
     precc <- foreach(timeindex = seq(1,(Yearmax-Yearmin)*12,12),
                      .combine = "abind3") %dopar% 
       {
-        apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), fun)
+        apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), sum)
         }
     stopCluster(cl)
     gc()
@@ -248,7 +252,6 @@ NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, Simula
   })
   }
   
-  
   # Avreage over the models over years
   cl <- makeCluster(6)
   registerDoParallel(cl)
@@ -263,15 +266,13 @@ NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, Simula
       model1[,,timeindex]
     })
     oneyear <- abind(byyearmodel, along=3)
-    abind(apply(oneyear, MARGIN = c(1,2), mean),
-          apply(oneyear, MARGIN = c(1,2), var), along=3)
+    abind(apply(oneyear, MARGIN = c(1,2), mean), along=3)
     }
   stopCluster(cl)
   
-  
   save(list="avg_annual", file=paste("P:/hackathon/Simulations/",variablename,"modelavg_annual.RData",
                                      sep=""))
-  dims <- dim(SNOWHLNDmodelavg_annual[[1]])
+  dims <- dim(avg_annual [[1]])
   
   #make rasters
   var.raster <- lapply(avg_annual, function(model1){
@@ -289,25 +290,26 @@ NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, Simula
   
   #write rasters
   for(i in 1:(Yearmax-Yearmin)){
-    writeRaster(rotate(SNOWHLNDmodelavg.raster[[i]]), 
+    writeRaster(rotate(var.raster[[i]]), 
                 paste("P:/hackathon/Simulations/",variablename,years[i],sep="_"),
-                format = "GTiff")
+                format = "GTiff",
+                overwrite=TRUE)
     }
   
   #Average over 20 years
   annual20 <- lapply(seq(1,(Yearmax-Yearmin) - ((Yearmax-Yearmin)/20),20),
                      function(year){
-                       model1 <- abind(SNOWHLNDmodelavg_annual[year+16], along=3)
-                       mn <- apply(model1[,,1], MARGIN = c(1,2), mean)
+                       model1 <- abind(avg_annual[year:year+19], along=3)
+                       mn <- apply(model1, MARGIN = c(1,2), mean)
                        mn
                        })
   
-  save(list="annual20", file=paste("P:/hackathon/Simulations/",variable,
+  save(list="annual20", file=paste("P:/hackathon/Simulations/",variablename,
                                    Yearmin,Yearmax,"20_annual.RData",sep=""))
   
   var.raster <- lapply(annual20, function(model1){
     e <- extent(c(0,360,-90,90))
-    mean.raster <- flip(raster(t(as.matrix(model1[[1]], nrow=192))),
+    mean.raster <- flip(raster(t(as.matrix(model1, nrow=192))),
                         direction="y")
     extent(mean.raster) <- e
     proj4string(mean.raster) <- CRS("+init=epsg:4326")
@@ -326,9 +328,10 @@ NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, Simula
   
   #write rasters
   for(k in 1:trunc((Yearmax-Yearmin)/20)){
-    writeRaster(rotate(SNOWHLNDmodel17.raster[[k]]),
+    writeRaster(rotate(var.raster[[k]]),
                 paste("P:/hackathon/Simulations/",variablename,yrs[k],sep=""),
-                format = "GTiff")
+                format = "GTiff",
+                overwrite = TRUE)
   }
 }
 
@@ -338,7 +341,12 @@ NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, Simula
 
 Precipitation 1920 to 2005
 ```{r}
-precip1920_2005 <- NetCDF2Raster()
+precip1920_2005 <- NetCDF2Raster(2,6,1920,2005,"b.e11.B20TRC5CNBDRD.f09_g16.",
+                                 ".cam.h0.PRECL.192001-200512.nc",
+                                 ".cam.h0.PRECC.192001-200512.nc",
+                                 "PRECL","PRECC")
+
+
 
 ```
 
