@@ -183,12 +183,20 @@ load("P:/hackathon/Simulations/PRISMseason.RData")
 Function to get rasters of models
 ```{r}
 NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, SimulationStartName,
-                          SimulationEndName, variablename, fun){
+                          SimulationEndName, SimulationEndName2, 
+                          variablename,variablename2, fun,precip = TRUE){
   sims <- sprintf('%0.3d', simulationmin:simulationmax)
   
   varyears <- lapply(sims, function(sims){
     nc_open(paste(SimulationStartName,sims,SimulationEndName,sep=""))
     })
+  
+  #Precip needs to add together CC and CL
+  if(precip){
+  varyears2 <- lapply(sims, function(sims){
+    nc_open(paste(SimulationsStartName,sims,SimulationEndName2,sep=""))
+  })
+  }
   
   #Sum 12 months for annual 
   varannual <- lapply(1:length(varyears), function(model){
@@ -206,13 +214,52 @@ NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, Simula
     precc
     })
   
+  if(precip){
+  #Sum 12 months for annual 
+  varannual2 <- lapply(1:length(varyears), function(model){
+    precc1 <- ncvar_get(SNOWHLND1920_2005[[model]], variablename2)
+    cl <- makeCluster(6)
+    registerDoParallel(cl)
+    precc <- foreach(timeindex = seq(1,(Yearmax-Yearmin)*12,12),
+                     .combine = "abind3") %dopar% 
+      {
+        apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), fun)
+        }
+    stopCluster(cl)
+    gc()
+    rm(precc1)
+    precc
+    })
+  
+  varannual_sum <- lapply(1:length(sims), function(model){
+    Ycc <- varannual[[model]]
+    Ycl <- varannual2[[model]]
+    cl <- makeCluster(6)
+    registerDoParallel(cl)
+    total <- foreach(timeindex = 1:75,
+                     .combine = "abind3") %dopar% 
+      {
+        Ycc[,,timeindex]+Ycl[,,timeindex]
+        }
+    stopCluster(cl)
+    gc()
+    rm(Ycc,Ycl)
+    total
+  })
+  }
+  
+  
   # Avreage over the models over years
   cl <- makeCluster(6)
   registerDoParallel(cl)
   avg_annual <- foreach(timeindex = 1:(Yearmax-Yearmin),
                         .packages = "abind") %dopar%
     {
-      byyearmodel <- lapply(varannual, function(model1){
+      byyearmodel <- lapply(if(precip){
+        varannual
+        } else {
+          varannual_sum
+        }, function(model1){
       model1[,,timeindex]
     })
     oneyear <- abind(byyearmodel, along=3)
@@ -220,6 +267,7 @@ NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, Simula
           apply(oneyear, MARGIN = c(1,2), var), along=3)
     }
   stopCluster(cl)
+  
   
   save(list="avg_annual", file=paste("P:/hackathon/Simulations/",variablename,"modelavg_annual.RData",
                                      sep=""))
@@ -288,7 +336,11 @@ NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, Simula
 ```
 
 
+Precipitation 1920 to 2005
+```{r}
+precip1920_2005 <- NetCDF2Raster()
 
+```
 
 
 
