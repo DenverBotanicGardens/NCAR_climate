@@ -206,11 +206,12 @@ NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, Simula
     precc <- foreach(timeindex = seq(1,(Yearmax-Yearmin)*12,12),
                      .combine = "abind3") %dopar% 
       {
-        apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), if(precip){
-          sum
-          } else {
-            mean
-          })
+        apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), 
+              if(precip){
+                sum
+                } else {
+                  mean
+                })
         }
     stopCluster(cl)
     gc()
@@ -220,7 +221,7 @@ NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, Simula
   
   if(precip){
   #Sum 12 months for annual 
-  varannual2 <- lapply(1:length(varyears), function(model){
+  varannual2 <- lapply(1:length(varyears2), function(model){
     precc1 <- ncvar_get(varyears2[[model]], variablename2)
     cl <- makeCluster(6)
     registerDoParallel(cl)
@@ -235,12 +236,12 @@ NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, Simula
     precc
     })
   
-  varannual_sum <- lapply(1:length(sims), function(model){
+  varannual_sum <- lapply(1:length(varyears), function(model){
     Ycc <- varannual[[model]]
     Ycl <- varannual2[[model]]
     cl <- makeCluster(6)
     registerDoParallel(cl)
-    total <- foreach(timeindex = 1:75,
+    total <- foreach(timeindex = 1:(Yearmax-Yearmin),
                      .combine = "abind3") %dopar% 
       {
         Ycc[,,timeindex]+Ycl[,,timeindex]
@@ -350,6 +351,8 @@ precip1920_2005 <- NetCDF2Raster(2,6,1920,2005,"b.e11.B20TRC5CNBDRD.f09_g16.",
 snow1920_2005 <- NetCDF2Raster(2,30,1920,2005,"b.e11.B20TRC5CNBDRD.f09_g16.",
                                ".cam.h0.SNOWHLND.192001-200512.nc",
                                variablename = "SNOWHLND",variablename2 = NULL, precip = FALSE)
+
+
 ```
 
 
