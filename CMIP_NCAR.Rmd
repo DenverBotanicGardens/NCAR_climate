@@ -259,9 +259,9 @@ NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, Simula
                         .packages = "abind") %dopar%
     {
       byyearmodel <- lapply(if(precip){
-        varannual
+        varannual_sum
         } else {
-          varannual_sum
+          varannual
         }, function(model1){
       model1[,,timeindex]
     })
@@ -347,7 +347,9 @@ precip1920_2005 <- NetCDF2Raster(2,6,1920,2005,"b.e11.B20TRC5CNBDRD.f09_g16.",
                                  "PRECL","PRECC")
 
 
-
+snow1920_2005 <- NetCDF2Raster(2,30,1920,2005,"b.e11.B20TRC5CNBDRD.f09_g16.",
+                               ".cam.h0.SNOWHLND.192001-200512.nc",
+                               variablename = "SNOWHLND",variablename2 = NULL, precip = FALSE)
 ```
 
 
