@@ -183,8 +183,39 @@ load("P:/hackathon/Simulations/PRISMseason.RData")
 8/2/2017   
 Determine which GeoTiffs from VisTrails made bin_map.tif with information  
 ```{r}
+r1 <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/output_test21_30/ApplyGLM2_1/glm_bin_map.tif")
+
+r1
+r1@data@max
+
+r2 <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/output_test21_30/ApplyGLM3_1/glm_bin_map.tif")
+r2@data@max
 
 
+dirs <- list.dirs("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/output_test21_30")
+
+dirs2 <- dirs[dirs %in% grep(paste(c("GLM","MARS","MAXENT"),collapse="|"),
+                             dirs, value=TRUE)]
+
+dirs2 <- dirs2[grep("ExpandedOutput", dirs2, invert=TRUE)]
+                   
+
+
+ls1 <- list.files(dirs2[1], pattern="*.tif")
+intersect(grep("bin", ls1),grep("aux",ls1, invert=TRUE))
+paste(dirs2[1], ls1[intersect(grep("bin", ls1),grep("aux",ls1, invert=TRUE))], sep="/")
+
+r_all <- lapply(dirs2, function(x){
+  ls <- list.files(x, pattern="*.tif")
+  r <- raster(paste(x,ls[intersect(grep("bin", ls),grep("aux",ls, invert=TRUE))], sep="/"))
+  if(r@data@max == 1){
+    r
+  } else {
+    NA
+  }
+})
+
+r_all[!is.na(r_all)]
 ```
 
 
