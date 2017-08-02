@@ -180,6 +180,14 @@ load("P:/hackathon/Simulations/PRISMseason.RData")
 ```
 
 
+8/2/2017   
+Determine which GeoTiffs from VisTrails made bin_map.tif with information  
+```{r}
+
+
+```
+
+
 Function to get rasters of models
 ```{r}
 NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, SimulationStartName,
@@ -2731,6 +2739,23 @@ td:nth-child(2) , #dl_ovl_tif , #txt_lng , #txt_el
 
 
 submit <- Filter(function(x) identical(x$type, "Calculate"))
+```
+
+
+#Downscale climate to DEM   
+```{r}
+dem <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Elevation_VT/CO_Mosaic_Elevation_VT/co_elev_VT.tif")
+
+codewpoint <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/climate_VT/CO_1981-2010_Mean_dewpoint_temp/mean_dewpoint.tif")
+
+#convert to SpatialPointsDataFrame or SpatialGridDataFrame, check this, might have to allot more memory. 
+#codewpoint <- SpatialPointsDataFrame()
+#dem <- SpatialPointsDataFrame(dem)
+
+coordsdem <- coordinates(dem)
+head(coordsd)
+
+codewpoint 
 ```
 
 
