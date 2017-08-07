@@ -1,0 +1,189 @@
+---
+title: "PRISM_calculations"
+author: "Michelle DePrenger-Levin"
+date: "July 7, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(raster)
+library(rasterVis)
+library(dismo)
+library(foreach)
+```
+
+Make same named layers averages for early 1900-1930   
+```{r}
+
+df <- expand.grid(1900:1930,sprintf("%02d", 1:12))
+df <- df[with(df, order(df[,1])),]
+
+yearsearly <- apply(df,1,FUN =  function(x) paste(x[1],x[2],sep="")) 
+
+## Need one year at a time, then can average maybe? 
+precEarly <- stack(paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Prism_Climate_Data/Historical_Data_1895-1980/PRISM_ppt_stable_4kmM2_189501_198012_bil/PRISM_ppt_stable_4kmM2_",yearsearly,"_bil.bil",sep=""))
+
+tminEarly <- stack(paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Prism_Climate_Data/Historical_Data_1895-1980/PRISM_tmin_stable_4kmM2_189501_198012_bil/PRISM_tmin_stable_4kmM2_",yearsearly,"_bil.bil",sep=""))
+
+tmaxEarly <- stack(paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Prism_Climate_Data/Historical_Data_1895-1980/PRISM_tmax_stable_4kmM2_189501_198012_bil/PRISM_tmax_stable_4kmM2_",yearsearly,"_bil.bil",sep=""))
+
+```
+
+```{r}
+# for monthly values for each of the 30 years, make bio1:bio19 
+# 1900:1930
+xannual <- lapply(seq(1,(12*30),by = 12), function(x){
+  x <- biovars(prec=precEarly[[x:(x+11)]], tmin=tminEarly[[x:(x+11)]], tmax = tmaxEarly[[x:(x+11)]])
+  x
+})
+
+# Want average for each bio layer over the 30 years
+# Now have 19 layers that are averages of early 30 years
+meanE <- lapply(1:19, function(bioNum){
+  foo.stack <- stack(lapply(1:30, function(year){
+    xannual[[year]][[bioNum]]
+    }))
+  foo.mean <- mean(foo.stack)
+  foo.mean
+  })
+
+# Now write all layers as Bio1... 
+for(i in 1:19){
+  writeRaster(meanE[[i]], 
+              paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/prism_1900_1930/bio",i,".tif", sep=""),
+              formate="GTiff")
+  }
+
+# write just 5,18,3,and 9 to one folder for VisTrails
+for(i in c(5,18,3,9)){
+  writeRaster(meanE[[i]], 
+              paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/prism_19001930_Bio5_18_3_9/bio",i,".tif", sep=""),
+              formate="GTiff")
+  }
+
+
+
+```
+
+
+
+Make same named layers averages for late 1981-2011
+```{r}
+
+df <- expand.grid(1981:2011,sprintf("%02d", 1:12))
+df <- df[with(df, order(df[,1])),]
+
+yearsLate <- apply(df,1,FUN =  function(x) paste(x[1],x[2],sep="")) 
+
+## Need one year at a time, then can average maybe? 
+precLate <- stack(paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Prism_Climate_Data/Recent_Data_1981-2016/PRISM_ppt_stable_4kmM3_198101_201611_bil/PRISM_ppt_stable_4kmM3_",yearsLate,"_bil.bil",sep=""))
+
+tminLate <- stack(paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Prism_Climate_Data/Recent_Data_1981-2016/PRISM_tmin_stable_4kmM2_198101_201611_bil/PRISM_tmin_stable_4kmM2_",yearsLate,"_bil.bil",sep=""))
+
+tmaxLate <- stack(paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Prism_Climate_Data/Recent_Data_1981-2016/PRISM_tmax_stable_4kmM2_198101_201611_bil/PRISM_tmax_stable_4kmM2_",yearsLate,"_bil.bil",sep=""))
+
+```
+
+```{r}
+# for monthly values for each of the 30 years, make bio1:bio19 
+# 1981-2011
+xannual_late <- foreach(seq(1,(12*30),by = 12), function(x){
+  x <- biovars(prec=precLate[[x:(x+11)]], 
+               tmin=tminLate[[x:(x+11)]], 
+               tmax = tmaxLate[[x:(x+11)]])
+  x
+})
+
+# Want average for each bio layer over the 30 years
+# Now have 19 layers that are averages of Late 30 years
+meanL <- lapply(1:19, function(bioNum){
+  foo.stack <- stack(lapply(1:30, function(year){
+    xannual_late[[year]][[bioNum]]
+    }))
+  foo.mean <- mean(foo.stack)
+  foo.mean
+  })
+
+# Now write all layers as Bio1... 
+for(i in 1:19){
+  writeRaster(meanL[[i]], 
+              paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/prism_1981_2011/bio",i,".tif", sep=""),
+              formate="GTiff")
+  }
+
+# write just 5,18,3,and 9 to one folder for VisTrails
+for(i in c(5,18,3,9)){
+  writeRaster(meanL[[i]], 
+              paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/prism_1981_2011_Bio5_18_3_9/bio",i,".tif", sep=""),
+              formate="GTiff")
+  }
+
+
+
+```
+
+
+#Python code
+```{r}
+
+"""
+rangestring = range(1,5)
+S2 = (','.join(map("'[ID]' == '{0}'".format, rangestring))).split(",")
+outputrecent =  ("".join(",".join(map("Recent_{0}".format,rangestring)))).split(",")
+output26 =  ("".join(",".join(map("BCrcp26_{0}".format,rangestring)))).split(",")
+output85 =  ("".join(",".join(map("BCrcp85_{0}".format,rangestring)))).split(",")
+zip_outputs = zip(S2,outputrecent,output26,output85)
+def ID_call(x): 
+    return [x[0] for x in zip_outputs]
+def outputrecent_call(x): 
+       return [x[1] for x in zip_outputs]
+def output26_call(x):
+    return [x[2] for x in zip_outputs]
+def output85_call(x):
+    return [x[3] for x in zip_outputs]
+"""
+
+"""
+def ID_call(i): 
+    rangestring = range(1,5)
+    S2 = (','.join(map("'[ID]' == '{0}'".format, rangestring))).split(",")
+    outputrecent = ("".join(",".join(map("Recent_{0}".format,rangestring)))).split(",")
+    output26 = ("".join(",".join(map("BCrcp26_{0}".format,rangestring)))).split(",")
+    output85 = ("".join(",".join(map("BCrcp85_{0}".format,rangestring)))).split(",")
+    zip_outputs = zip(S2,outputrecent,output26,output85)
+    return [i[0] for i in zip_outputs]
+
+
+def value(i):
+    rangestring = range(1,6)
+    S2 = (','.join(map("'[ID]' == '{0}'".format, rangestring))).split(",")
+    outputrecent = ("".join(",".join(map("Recent_{0}".format,rangestring)))).split(",")
+    output26 = ("".join(",".join(map("BCrcp26_{0}".format,rangestring)))).split(",")
+    output85 = ("".join(",".join(map("BCrcp85_{0}".format,rangestring)))).split(",")
+    zip_outputs = zip(S2,outputrecent,output26,output85)
+    return [i[1] for i in zip_outputs]
+
+print(value(23))
+"""
+
+def value(i):
+    rangestring = range(1,5)
+    S2 = (','.join(map("'[ID]' == '{0}'".format, rangestring))).split(",")
+    return S2
+
+
+print(value(2))
+   
+```
+
+
+
+
+
+
+
