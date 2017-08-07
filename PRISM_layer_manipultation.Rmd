@@ -15,6 +15,8 @@ library(raster)
 library(rasterVis)
 library(dismo)
 library(foreach)
+library(parallel)
+library(doParallel)
 ```
 
 Make same named layers averages for early 1900-1930   
@@ -92,12 +94,19 @@ tmaxLate <- stack(paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/
 ```{r}
 # for monthly values for each of the 30 years, make bio1:bio19 
 # 1981-2011
-xannual_late <- foreach(seq(1,(12*30),by = 12), function(x){
-  x <- biovars(prec=precLate[[x:(x+11)]], 
-               tmin=tminLate[[x:(x+11)]], 
-               tmax = tmaxLate[[x:(x+11)]])
-  x
-})
+# the combining as just "list" isn't right. maybe just take out the .combine factor? 
+cl <- makeCluster(6)
+registerDoParallel(cl)
+xannual_late <- foreach(x = seq(1,(12*30),by = 12),
+#                        .combine = "list",
+                        .packages = "dismo") %dopar% 
+  {
+    x <- biovars(prec=precLate[[x:(x+11)]],
+                 tmin=tminLate[[x:(x+11)]], 
+                 tmax = tmaxLate[[x:(x+11)]])
+    x
+  }
+stopCluster(cl)
 
 # Want average for each bio layer over the 30 years
 # Now have 19 layers that are averages of Late 30 years
