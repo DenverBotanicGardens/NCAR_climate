@@ -14,6 +14,8 @@ library(rgdal)
 library(maptools)
 library(raster)
 library(Taxonstand)
+library(mapproj)
+library(maps)
 
 # exact match multisub
 multisub <- function(pattern,replacement,x){
@@ -136,6 +138,8 @@ coloG1G2 <- coloradosps[coloradosps$scientificName %in% speciesG1G2,]
 
 #write.csv(coloG1G2, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/occurrencesG1G2_nosynonyms.csv")
 
+
+
 nrow(coloG1G2) #2125
 length(unique(coloG1G2$scientificName)) #59
 length(species)
@@ -195,24 +199,45 @@ proj4string(l1eor) <- "+proj=utm +zone=13 ellps=WGS84"
 
 Try to do an apply and split by species, don't really care which EO, just which mapped occurance of a species is closest     
 ```{r}
+#59 species
 
-mindistxsp <- lappply(unique(coloG1G2$scientificName), function(x){
-  distout <- apply(gDistance(UTMpts[UTMpts]))
+x<- unique(coloG1G2$scientificName)[1]
+nms <- intersect(unique(seinet$scientificName),unique(l1eor$GNAME)) #67 names
+
+mindistxsp <- lapply(nms, function(x){
+  pts.sp <- SpatialPoints(seinet[seinet$scientificName == x,
+                                 c("decimalLongitude","decimalLatitude")])
+  proj4string(pts.sp) <- CRS("+proj=longlat +datum=WGS84")
+  UTMpts.sp <- spTransform(pts.sp,CRS("+proj=utm +zone=13 ellps=WGS84"))
+  
+  l1.sp <- disaggregate(l1eor[l1eor$GNAME == x,])
+  
+  distout <- apply(gDistance(UTMpts.sp, l1.sp, byid=TRUE),2,min)
+  out <- data.frame(distout,seinet[seinet$scientificName == x,])
+  list(out,UTMpts.sp,l1.sp)
 })
+
+
+head(mindistxsp[[1]])
+
+mndistsp <- do.call(rbind,lapply(mindistxsp,'[[',1))
+
+#This is in UTM!!! Want it! WANT!
+colomap<-  shapefile("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties/counties.shp")
+
+for(i in 1:length(mindistxsp)){
+  plot(mindistxsp[[i]][[3]],
+     xlim=c(142063.3, 740922.7), ylim=c(4094495, 4543961), 
+     border="red",cex=5,lwd=3)
+  points(mindistxsp[[i]][[2]],col="blue")
+  points(gCentroid(colomap, byid=TRUE),col="green",pch=5)
+  plot(colomap,add=TRUE)
+  }
 
 ```
 
 
 ```{r}
-#Distance from points to nearest polygon - this is to all polygons for G1:G5
-mindist <- apply(gDistance(UTMpts, polyid, byid = TRUE),2,min)
-
-
-
-## For each point, find name of nearest polygon
-
-#name of the nearest polygon
-minname <- apply()
 
 
 ```
