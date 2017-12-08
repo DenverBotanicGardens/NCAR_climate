@@ -6,6 +6,8 @@ output: html_document
 ---
 
 ```{r}
+rm(list=ls())
+
 library(ggplot2)
 library(rgeos)
 library(sp)
@@ -25,7 +27,6 @@ multisub <- function(pattern,replacement,x){
   }
   result
 }
-
 ```
 
 Mo Ewing:    
@@ -50,7 +51,7 @@ Mo Ewing:
 
 
 
-
+# Mo worked on this list to add map method and distance
 ```{r}
 seinet <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/seinet_colorado_with_coordinates_ALLG1G2.csv")
 
@@ -71,8 +72,6 @@ table(eors.tax$Taxonomic.status)
 
 eors[eors$institutio=="USU",]
 eors[eors$institutio=="USUUB",]
-
-
 eors$institutio[eors$institutio=="USU"] <- "USUUB"
 
 ```
@@ -82,7 +81,9 @@ eors$institutio[eors$institutio=="USU"] <- "USUUB"
 In ArcMap do this: <https://blogs.esri.com/esri/arcgis/2010/09/16/nearbygroup/>
 repeat distance analysis in R          
 SEINet collections from Colorado - downloaded 12/6/2017 from SEINet        
-Only G1G2 EORs (to limit range of species)
+Only G1G2 EORs (to limit range of species)   
+Change names according to TPL as a best effort to match up.    
+Only this first chunck if you want to redo naming changes- otherwise SKIP TO NEXT        
 ```{r}
 coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences.csv")
 
@@ -94,10 +95,28 @@ sum(table(colonames$Taxonomic.status))
 # 1929 not in The Plant List, 6 misapplied??, lots of synonyms. 
 #             Accepted Misapplied    Synonym Unresolved 
 #      1929       9149          6       6083        682
+colonames[colonames$Taxonomic.status == "Misapplied",]
+
+head(colonames[colonames$Taxonomic.status == "Misapplied",])
+
+fixcolonames <- colonames[colonames$Taxonomic.status == "Synonym",]
+
+coloradosps$genus <- multisub(fixcolonames$Genus, fixcolonames$New.Genus, coloradosps$genus) 
+coloradosps$specificEpithet <- multisub(fixcolonames$Species, 
+                                   fixcolonames$New.Species, coloradosps$specificEpithet) 
+
+write.csv(coloradosps, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/coloradosps_synonymsTPL.csv")
+```
+
+```{r}
+coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/coloradosps_synonymsTPL.csv")
 
 
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
+```
 
+#Skip this because want split by species, not labeled and match by label. 
+```{r}
 #Each polygon might be made of multiple disconnected polygons. Need to separate and label
 l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
 l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
@@ -105,23 +124,9 @@ l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
               x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
               x
               }))
+```
 
-
-# Want SEINet species that are G1G2s. Synonyms?
-species <- unique(seinet$scientificName)
-speciesL1 <- unique(polyid$GNAME)
-speciesG1G2 <- unique(l1G1G2$GNAME)
-intersect(species, speciesL1) #Only have spatial data on 67 species
-match(sort(intersect(species, speciesG1G2)), #Only have spatial data on 43 species
-sort(intersect(speciesG1G2, species))) #Only have spatial data on 43 species
-union(species, speciesG1G2) #110 species
-
-setdiff(species,speciesL1) #26 are in SEINet but not L1 
-setdiff(speciesL1,species) #318 are in L1 but not SEINet - oh because 
-
-setdiff(species,speciesG1G2) #50 are in SEINet but not G1G2s
-setdiff(speciesG1G2,species) #17 are in G1G2 but not SEINet 
-
+```{r}
 #The Plant List
 sp43 <- TPL(intersect(speciesG1G2, species))
 table(sp43$Taxonomic.status)
@@ -132,38 +137,19 @@ seinet$specificEpithet <- multisub(syn$Species, syn$New.Species, seinet$specific
 
 species <- unique(seinet$scientificName)
 sort(intersect(species, speciesG1G2))
+```
 
+Download all Colorado collections from SEINet (coloradosps) and limit to matching G1 G2 global names by CNHP. Will be missing synonyms
+```{r}
 #Without synonym corrections
-coloG1G2 <- coloradosps[coloradosps$scientificName %in% speciesG1G2,]
+coloG1G2 <- coloradosps[coloradosps$scientificName %in% 
+                          unique(l1eor$GNAME[l1eor$GRANK %in% c("G1","G2")]),]
 
 #write.csv(coloG1G2, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/occurrencesG1G2_nosynonyms.csv")
-
-
 
 nrow(coloG1G2) #2125
 length(unique(coloG1G2$scientificName)) #59
 length(species)
-
-
-```
-
-
-All CNHP tracked species   
-```{r}
-#Each polygon might be made of multiple disconnected polygons. Need to separate and label
-l1eor.disaggregate <- disaggregate(l1eor)
-
-uniqueIDstring <- lapply(split(l1eor.disaggregate, l1eor.disaggregate$OBJECTID),
-                         function(x){
-                           x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],
-                                             sep="")
-                           x
-                         })
-
-polyid <- do.call(rbind, uniqueIDstring)
-polyrast <- polyid
-polyrast <- raster(polyrast)
-
 ```
 
 
@@ -236,13 +222,29 @@ for(i in 1:length(mindistxsp)){
 
 ```
 
-
+# Have mndistsp is the minimum distances from each point (from SEINet gather all collections from Colorado; match names that are G1G2 with names in SEINet; will be missing any synonyms)   
+Unlike eors2 where Mo added a label for method used or accuracy of mapping, need to add to mndistsp     
+I don't think we can tell how much infomration there really was without looking at the specimens.   
 ```{r}
+table(mndistsp$year) #1871 to 2017
+#Find degree symbol
+head(mndistsp[grep(intToUtf8(176),mndistsp$locality),])
+mndistsp[grep("[T]{1}[0-9]{2}[NS]{1}",mndistsp$locality),] #Lists TRS but also other UTM or lat long
 
+table(mndistsp$verbatimCoordinates[grep()])
+
+
+mndistsp[mndistsp$year == 2017 & !is.na(mndistsp$year),] #Eriogonum coloradense
 
 ```
 
+```{r}
+ggplot(mndistsp[mndistsp$distout<1000000,], aes(scientificName,distout))+
+  geom_boxplot()+ 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
+
+```
 
 
 
@@ -357,6 +359,33 @@ ggplot(eors2, aes(Year.2,NEAR_DIST, colour=InstNear))+
 ggplot(eors2, aes(NEAR_DIST))+
   geom_density(aes(fill=InstNear))
 ```
+
+Eastern Illinois Univeristy (Charleston)     
+FLD Fort Lewis College     
+MARY University of Maryland    
+MNA Museum of Northern Arizona     
+MWI Western Illinois Univeristy   
+NAVA Navajo Nation Department of FIsh and Wildlife     
+SDSU San Diego State Univ    
+SEINet: error in reporting??    
+```{r}
+local <- c("COLO","CS","DBG","FLD","MESA","RM","RMBL")
+Adjacent <- c("ARIZ","ASC","ASU","BRY","DES","MNA","NAVA","NMC","RM","SJNM","UNM","USUUB","UVSC")
+far <- c("CHIC","CM","EIU","F","MARY","MISSA","MO","MWI","NY","RENO","SDSU","UCR","SEINet")
+
+table(mndistsp$institutionCode)
+mndistsp[mndistsp$]
+
+eors2$InstNear[eors2$institutio %in% local] <- "Local"
+eors2$InstNear[eors2$institutio %in% Adjacent] <- "Near"
+eors2$InstNear[eors2$institutio %in% far] <- "Far"
+
+eors2$InstNear <- factor(eors2$InstNear, levels = c("Far","Near","Local"))
+
+
+
+```
+
 
 Would assume that Locality method would be best for local institutions, worse for far
 ```{r}
