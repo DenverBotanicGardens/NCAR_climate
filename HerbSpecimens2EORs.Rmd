@@ -27,6 +27,13 @@ multisub <- function(pattern,replacement,x){
   }
   result
 }
+
+
+lseq <- function(from=1, to=100000, length.out=6) {
+  # logarithmic spaced sequence
+  # blatantly stolen from library("emdbook"), because need only this
+  exp(seq(log(from), log(to), length.out = length.out))
+}
 ```
 
 Mo Ewing:    
@@ -113,7 +120,11 @@ coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/
 
 
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
+
+#Does not read th .prj file so need to tell it that they're in UTM
+proj4string(l1eor) <- "+proj=utm +zone=13 ellps=WGS84"
 ```
+
 
 #Skip this because want split by species, not labeled and match by label. 
 ```{r}
@@ -139,20 +150,23 @@ species <- unique(seinet$scientificName)
 sort(intersect(species, speciesG1G2))
 ```
 
+
+
+
+
 Download all Colorado collections from SEINet (coloradosps) and limit to matching G1 G2 global names by CNHP. Will be missing synonyms
 ```{r}
 #Without synonym corrections
 coloG1G2 <- coloradosps[coloradosps$scientificName %in% 
                           unique(l1eor$GNAME[l1eor$GRANK %in% c("G1","G2")]),]
 
-#write.csv(coloG1G2, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/occurrencesG1G2_nosynonyms.csv")
+write.csv(coloG1G2, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/occurrencesG1G2_nosynonyms.csv")
 
 nrow(coloG1G2) #2125
 length(unique(coloG1G2$scientificName)) #59
-length(species)
 ```
 
-
+#Can skip this too
 ```{r}
 nrow(seinet[!is.na(seinet$decimalLatitude),]) #1875 points
 
@@ -186,8 +200,6 @@ proj4string(l1eor) <- "+proj=utm +zone=13 ellps=WGS84"
 Try to do an apply and split by species, don't really care which EO, just which mapped occurance of a species is closest     
 ```{r}
 #59 species
-
-x<- unique(coloG1G2$scientificName)[1]
 nms <- intersect(unique(seinet$scientificName),unique(l1eor$GNAME)) #67 names
 
 mindistxsp <- lapply(nms, function(x){
@@ -202,9 +214,6 @@ mindistxsp <- lapply(nms, function(x){
   out <- data.frame(distout,seinet[seinet$scientificName == x,])
   list(out,UTMpts.sp,l1.sp)
 })
-
-
-head(mindistxsp[[1]])
 
 mndistsp <- do.call(rbind,lapply(mindistxsp,'[[',1))
 
@@ -221,6 +230,45 @@ for(i in 1:length(mindistxsp)){
   }
 
 ```
+
+#A number of these points do line up, is this different by species or by herbarium or by year? 
+```{r}
+names(mndistsp)
+
+ggplot(mndistsp, aes(year,distout,colour=genus))+
+  geom_point()+
+  theme_bw()
+
+mndistsp$DistanceGroup <- cut(mndistsp$distout,
+                              breaks=c(-0.0001,lseq(1,(max(mndistsp$distout))+0.000001)),
+                              labels= c(1:6))
+  
+
+# Who has no order? 
+table(mndistsp$order)
+mndistsp[mndistsp$order == "",]
+
+#From Plants USDA
+#Add factor levels
+levels(mndistsp$order)
+levels(mndistsp$order) <- c(levels(mndistsp$order),"Capparales")
+
+mndistsp$order[mndistsp$order == ""] <- c("Asterales","Capparales")
+
+# As you get older, more distant (should be function of infomration avaliable) not consistant among Orders. 
+ggplot(mndistsp, aes(DistanceGroup,year,colour=order))+
+  geom_boxplot()+
+  theme_bw()
+```
+
+
+
+
+
+
+
+
+
 
 # Have mndistsp is the minimum distances from each point (from SEINet gather all collections from Colorado; match names that are G1G2 with names in SEINet; will be missing any synonyms)   
 Unlike eors2 where Mo added a label for method used or accuracy of mapping, need to add to mndistsp     
@@ -369,21 +417,46 @@ NAVA Navajo Nation Department of FIsh and Wildlife
 SDSU San Diego State Univ    
 SEINet: error in reporting??    
 ```{r}
-local <- c("COLO","CS","DBG","FLD","MESA","RM","RMBL")
-Adjacent <- c("ARIZ","ASC","ASU","BRY","DES","MNA","NAVA","NMC","RM","SJNM","UNM","USUUB","UVSC")
-far <- c("CHIC","CM","EIU","F","MARY","MISSA","MO","MWI","NY","RENO","SDSU","UCR","SEINet")
+local <- c("COLO","CS","DBG","FLD","MESA","RM","RMBL","SEINet")
+Adjacent <- c("ARIZ","ASC","ASU","BRY","DES","MNA","NAVA","NMC","RM","SJNM","UNM","USUUB","UVSC",
+              "UT")
+far <- c("CHIC","CM","EIU","F","MARY","MISSA","MO","MWI","NY","RENO","SDSU","UCR")
+
+noquote(paste(local,sep=","))
 
 table(mndistsp$institutionCode)
-mndistsp[mndistsp$]
+mndistsp[mndistsp$institutionCode=="SEINet",] #"Human observation", Shelley Silva
+mndistsp[mndistsp$institutio=="USU",]
+mndistsp[mndistsp$institutio=="USUUB",]
+mndistsp$institutio[mndistsp$institutio=="USU"] <- "USUUB"
 
-eors2$InstNear[eors2$institutio %in% local] <- "Local"
-eors2$InstNear[eors2$institutio %in% Adjacent] <- "Near"
-eors2$InstNear[eors2$institutio %in% far] <- "Far"
+mndistsp$InstNear[mndistsp$institutio %in% local] <- "Local"
+mndistsp$InstNear[mndistsp$institutio %in% Adjacent] <- "Near"
+mndistsp$InstNear[mndistsp$institutio %in% far] <- "Far"
 
-eors2$InstNear <- factor(eors2$InstNear, levels = c("Far","Near","Local"))
+mndistsp$InstNear <- factor(mndistsp$InstNear, levels = c("Far","Near","Local"))
 
 
 
+```
+
+
+```{r}
+ggplot(mndistsp, aes(InstNear,log(distout+1),fill=DistanceGroup))+
+  geom_boxplot()+
+  theme_bw()
+
+ggplot(mndistsp, aes(InstNear, log(distout+1)))+
+  geom_boxplot()
+anova(lm(log(distout+1)~InstNear, data=mndistsp))
+
+
+ggplot(mndistsp, aes(InstNear, log(distout+1), colour=year))+
+  geom_point()
+summary(lm(log(distout+1)~InstNear*year, data=mndistsp))
+
+
+summary(lm(log(distout+1)~year, data=mndistsp))
 ```
 
 
