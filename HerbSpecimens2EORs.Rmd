@@ -115,6 +115,7 @@ coloradosps$specificEpithet <- multisub(fixcolonames$Species,
 write.csv(coloradosps, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/coloradosps_synonymsTPL.csv")
 ```
 
+Skip to here to keep name changes from above
 ```{r}
 coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/coloradosps_synonymsTPL.csv")
 
@@ -137,6 +138,7 @@ l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
               }))
 ```
 
+#Skip, don't seem to link any synonyms
 ```{r}
 #The Plant List
 sp43 <- TPL(intersect(speciesG1G2, species))
@@ -157,10 +159,12 @@ sort(intersect(species, speciesG1G2))
 Download all Colorado collections from SEINet (coloradosps) and limit to matching G1 G2 global names by CNHP. Will be missing synonyms
 ```{r}
 #Without synonym corrections
-coloG1G2 <- coloradosps[coloradosps$scientificName %in% 
-                          unique(l1eor$GNAME[l1eor$GRANK %in% c("G1","G2")]),]
+#coloG1G2 <- coloradosps[coloradosps$scientificName %in% 
+#                          unique(l1eor$GNAME[l1eor$GRANK %in% c("G1","G2")]),]
 
-write.csv(coloG1G2, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/occurrencesG1G2_nosynonyms.csv")
+#write.csv(coloG1G2, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/occurrencesG1G2_nosynonyms.csv")
+
+coloG1G2 <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/occurrencesG1G2_nosynonyms.csv")
 
 nrow(coloG1G2) #2125
 length(unique(coloG1G2$scientificName)) #59
@@ -217,7 +221,7 @@ mindistxsp <- lapply(nms, function(x){
 
 mndistsp <- do.call(rbind,lapply(mindistxsp,'[[',1))
 
-#This is in UTM!!! Want it! WANT!
+#Need UTM layer to match points
 colomap<-  shapefile("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties/counties.shp")
 
 for(i in 1:length(mindistxsp)){
@@ -233,36 +237,123 @@ for(i in 1:length(mindistxsp)){
 
 #A number of these points do line up, is this different by species or by herbarium or by year? 
 ```{r}
+cntycenters <- coordinates(gCentroid(colomap, byid=TRUE))
+str(gCentroid(colomap, byid=TRUE)@coords)
+
+#Fortifying a map makes the data to draw the outline
+colomap.fort <- fortify(colomap)
+countylist <- colomap@data$COUNTY
+
+#"coordinates" extracts the centroids
+centroids.colo <- as.data.frame(coordinates(colomap))
+data.frame(countylist,centroids.colo)
+
+
+#Polygons from CNHP
+mindistxsp[[1]][[3]]@data
+mindistxsp[[1]][[2]]@coords #now converted to UTM
+# all polygons
+mappolys <- do.call(rbind, lapply(1:length(mindistxsp), function(x){
+  out.fort <- data.frame(fortify(mindistxsp[[x]][[3]]),nms[x])
+  out.fort
+}))
+
+#all points
+mapdata <- do.call(rbind,lapply(1:length(mindistxsp), function(x){
+  out <- data.frame(mindistxsp[[x]][[2]]@coords,nms[x])
+  names(out) <- c("Easting","Northing","Species")
+  out
+}))
+
+extent(colomap)
+#class       : Extent 
+#xmin        : 139982.4 
+#xmax        : 763240.8 
+#ymin        : 4094070 
+#ymax        : 4546718 
+
+mapdata2 <- mapdata[mapdata$Northing<4546718&
+                      mapdata$Northing>4094070&
+                      mapdata$Easting>139982.4&
+                      mapdata$Easting<763240.8,]
+# Easting   Northing  Species
+# -4429510  6010981	  Draba grayana
+# 282427	  3040916	  Astragalus iodopetalus
+# -458653.4	4218252	  Packera mancosana
+
+#not working all together   
+#<https://stackoverflow.com/questions/22038640/labeling-center-of-map-polygons-in-r-ggplot> 
+ggplot()+
+  geom_point(data=mapdata2, aes(Easting,Northing,colour=Species))+
+  theme_bw()+
+  geom_polygon(data=mappolys, aes(long,lat,fill=id))+
+  theme(legend.position = "none")
+  
+
+```
+
+
+```{r}
 names(mndistsp)
 
-ggplot(mndistsp, aes(year,distout,colour=genus))+
+#Fair to remove points mapped outside of Colorado when supposed to be in Colorado
+distNout <- mndistsp[mndistsp$decimalLatitude<41&
+                       mndistsp$decimalLatitude>37&
+                       mndistsp$decimalLongitude<=-102&
+                       mndistsp$decimalLongitude>=-109,]
+
+#More are mapped but more are mapped farther away in later years
+ggplot(distNout, aes(year,distout,colour=genus))+
   geom_point()+
   theme_bw()
+```
 
-mndistsp$DistanceGroup <- cut(mndistsp$distout,
-                              breaks=c(-0.0001,lseq(1,(max(mndistsp$distout))+0.000001)),
+```{r}
+distNout$DistanceGroup <- cut(distNout$distout,
+                              breaks=c(-0.001,lseq(1,(max(distNout$distout))+0.001)),
                               labels= c(1:6))
   
 
 # Who has no order? 
-table(mndistsp$order)
-mndistsp[mndistsp$order == "",]
+table(distNout$order)
+distNout[distNout$order == "",]
 
 #From Plants USDA
 #Add factor levels
-levels(mndistsp$order)
-levels(mndistsp$order) <- c(levels(mndistsp$order),"Capparales")
+levels(distNout$order)
+levels(distNout$order) <- c(levels(distNout$order),"Capparales")
 
-mndistsp$order[mndistsp$order == ""] <- c("Asterales","Capparales")
+distNout$order[distNout$order == ""] <- c("Asterales","Capparales")
 
 # As you get older, more distant (should be function of infomration avaliable) not consistant among Orders. 
-ggplot(mndistsp, aes(DistanceGroup,year,colour=order))+
+ggplot(distNout, aes(DistanceGroup,year,colour=order))+
   geom_boxplot()+
   theme_bw()
+
+ggplot(distNout, aes(y=distout,x=institutionCode,fill=institutionCode))+
+  geom_boxplot()+
+  theme_bw()
+
+names(distNout)
 ```
 
 
+```{r}
+local <- c("COLO","CS","DBG","FLD","MESA","RM","RMBL","SEINet")
+Adjacent <- c("ARIZ","ASC","ASU","BRY","DES","MNA","NAVA","NMC","RM","SJNM",
+              "UNM","USUUB","UVSC","UT")
+far <- c("CHIC","CM","EIU","F","MARY","MISSA","MO","MWI","NY","RENO","SDSU",
+         "UCR")
 
+distNout$InstNear[distNout$institutio %in% local] <- "Local"???
+distNout$InstNear[distNout$institutio %in% Adjacent] <- "Near"
+distNout$InstNear[distNout$institutio %in% far] <- "Far"
+
+
+ggplot(distNout, aes(y=distout,x=InstNear,fill=institutionCode))+
+  geom_boxplot()+
+  theme_bw()
+```
 
 
 
