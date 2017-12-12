@@ -341,20 +341,58 @@ names(distNout)
 ```{r}
 local <- c("COLO","CS","DBG","FLD","MESA","RM","RMBL","SEINet")
 Adjacent <- c("ARIZ","ASC","ASU","BRY","DES","MNA","NAVA","NMC","RM","SJNM",
-              "UNM","USUUB","UVSC","UT")
+              "UNM","USUUB","USU","UVSC","UT") #USU doesn't exist, should be USUUB
 far <- c("CHIC","CM","EIU","F","MARY","MISSA","MO","MWI","NY","RENO","SDSU",
          "UCR")
 
-distNout$InstNear[distNout$institutio %in% local] <- "Local"???
+distNout$InstNear[distNout$institutio %in% local] <- "Local"
 distNout$InstNear[distNout$institutio %in% Adjacent] <- "Near"
 distNout$InstNear[distNout$institutio %in% far] <- "Far"
 
+distNout[is.na(distNout$InstNear),]
 
-ggplot(distNout, aes(y=distout,x=InstNear,fill=institutionCode))+
+ggplot(distNout, aes(y=distout,x=InstNear))+ #fill=institutionCode
   geom_boxplot()+
   theme_bw()
+
+anova(lm(distout~InstNear, data=distNout))
 ```
 
+##START HERE!
+```{r}
+#locality
+
+
+#verbatimCoordinates
+# That have Township
+nrow(distNout[grep("[T]{1}[0-9]{2}[NS]{1}",distNout$verbatimCoordinates),]) #462
+head(distNout[grep("[T]{1}[0-9]{2}[NS]{1}",distNout$verbatimCoordinates),])
+#Township and Range and Section
+nrow(distNout[grep("[S]{1}[0-9]*",distNout$verbatimCoordinates),]) #780
+head(distNout[grep("[S]{1}[0-9]*",distNout$verbatimCoordinates),])
+table(distNout$locality[grep("[S]{1}[0-9]*",distNout$verbatimCoordinates)])
+head(distNout$verbatimCoordinates[grep("[S]{1}[0-9]*",distNout$verbatimCoordinates)])
+
+#georeferenceRemarks: ie. "UTM used is gnis UTM for ..."
+
+
+# how they did it from georeferenceSources ie. "GPS Reading"
+
+
+#georeferenceProtocol i.e. "Mapstedi"
+
+
+# some say who did the georeferencing in georeferencedBy
+ggplot(distNout[distNout$georeferencedBy != "",], 
+       aes(y=distout,x=georeferencedBy))+
+  geom_boxplot()+
+  theme_bw()
+
+distNout$georeferencedBy[distNout$distout>50000] #Neil Snow, Ryan Allen, Michael Yost, David Newbury
+
+sort(table(distNout$georeferencedBy[distNout$distout==0])) #Ryan Allen, Leslie Johnson, Todd Fielder, Zorio, Stephanie D., Willimams, Charles F., Amanda Cook, Allison Smith, Robert L. Johnson, Rick Levy,  C.F. Williams , Charles F. Williams, David Newbury, Fertig, Leslie Johnson
+
+```
 
 
 
