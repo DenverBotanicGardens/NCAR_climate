@@ -119,6 +119,7 @@ Skip to here to keep name changes from above
 ```{r}
 coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/coloradosps_synonymsTPL.csv")
 
+coloradosps$institutionCode[coloradosps$institutionCode == "USU"] <- "USUUB"
 
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
 
@@ -196,7 +197,7 @@ proj4string(l1eor) <- "+proj=utm +zone=13 ellps=WGS84"
 #might be tooooo big!
 #PLSS <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/PLSS Geo Coordinates_2008")
 
-
+PLSS <- shapefile("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/PLSS Geo Coordinates_2008/gcdb_mm_2008_polygon.shp")
 
 ```
 
@@ -241,6 +242,9 @@ cntycenters <- coordinates(gCentroid(colomap, byid=TRUE))
 str(gCentroid(colomap, byid=TRUE)@coords)
 
 #Fortifying a map makes the data to draw the outline
+#Bet I want to disaggregate first then fortify??
+colomap.fort.pieces <- fortify(disaggregate(colomap))
+
 colomap.fort <- fortify(colomap)
 countylist <- colomap@data$COUNTY
 
@@ -250,13 +254,14 @@ data.frame(countylist,centroids.colo)
 
 
 #Polygons from CNHP
-mindistxsp[[1]][[3]]@data
+mindistxsp[[1]][[3]]@data #These are polygons split, disaggregate
 mindistxsp[[1]][[2]]@coords #now converted to UTM
 # all polygons
 mappolys <- do.call(rbind, lapply(1:length(mindistxsp), function(x){
   out.fort <- data.frame(fortify(mindistxsp[[x]][[3]]),nms[x])
   out.fort
 }))
+
 
 #all points
 mapdata <- do.call(rbind,lapply(1:length(mindistxsp), function(x){
@@ -286,16 +291,65 @@ mapdata2 <- mapdata[mapdata$Northing<4546718&
 ggplot()+
   geom_point(data=mapdata2, aes(Easting,Northing,colour=Species))+
   theme_bw()+
-  geom_polygon(data=mappolys, aes(long,lat,fill=id))+
+  geom_polygon(data=colomap.fort.pieces, aes(x=long,y=lat,group=order,colour=id))+
+#  coord_map()+
   theme(legend.position = "none")
   
 
 ```
 
-
+mndistsp is the distance from each herbarium point to the closest CHNP polygon of that speices; a dataframe of original data and distances. 
 ```{r}
 names(mndistsp)
 
+# 1) are they in the county they say they are in?
+cnts <- unique(mndistsp$county)
+
+class(mindistxsp[[1]][[2]]) #SpatialPoints
+mindistxsp[[1]][[2]]@coords
+seinet[seinet$scientificName == nms[1],]
+
+colocnts <- map("county","Colorado", fill=TRUE)
+
+IDs <- sapply(strsplit(colocnts$names, ","), function(x) x[2])
+colo <- map2SpatialPolygons(colocnts, IDs=IDs, 
+                            proj4string=CRS("+proj=longlat +datum=WGS84"))
+colo <- spTransform(colo,CRS("+proj=utm +zone=13 ellps=WGS84"))
+#colo row numbers to match
+IDcolocnts <- data.frame(ID=c(1:length(names(colo))), Cnt=names(colo))
+incounties <- over(mindistxsp[[1]][[2]],colo)
+
+names(incounties) #row of seinet
+seinet$IDrow <- as.numeric(row.names(seinet))
+
+#matching row numbers for counties and herbarium specimens
+incounty <- do.call(c,lapply(mindistxsp, function(sps){
+  incounty <- over(sps[[2]],colo)
+}))
+
+
+#Want to do this for everything
+seinet$pointincounty[as.numeric(names(incounties))] <- IDcolocnts$Cnt[incounties]
+
+
+```
+  1  51  52  53  85  86 145 153 187 188 483 629 655 
+ NA   4   4   4   4   4  34   4  28  28  27  27  27 
+
+              county 
+1           Hinsdale             
+51  Archuleta County             
+52         Archuleta             
+53         Archuleta             
+85  Archuleta County             
+86         Archuleta             
+145     La Plata Co.             
+153 Archuleta County             
+187         Hinsdale             
+188         Hinsdale             
+483         Gunnison  
+
+```{r}
 #Fair to remove points mapped outside of Colorado when supposed to be in Colorado
 distNout <- mndistsp[mndistsp$decimalLatitude<41&
                        mndistsp$decimalLatitude>37&
