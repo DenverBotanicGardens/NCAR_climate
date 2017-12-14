@@ -298,39 +298,64 @@ ggplot()+
 
 ```
 
-mndistsp is the distance from each herbarium point to the closest CHNP polygon of that speices; a dataframe of original data and distances. 
-```{r}
-names(mndistsp)
+mndistsp is the distance from each herbarium point to the closest CHNP polygon of that speices; a dataframe of original data and distances.            
+class(mindistxsp[[1]][[2]]) #SpatialPoints     
+
 
 # 1) are they in the county they say they are in?
+```{r}
+#One conversion must be a bit off, points that should be in (but near state boarder) are marked as out of county
+
 cnts <- unique(mndistsp$county)
 
-class(mindistxsp[[1]][[2]]) #SpatialPoints
-mindistxsp[[1]][[2]]@coords
-seinet[seinet$scientificName == nms[1],]
-
+#Maybe issues with 'map' map?
 colocnts <- map("county","Colorado", fill=TRUE)
-
 IDs <- sapply(strsplit(colocnts$names, ","), function(x) x[2])
 colo <- map2SpatialPolygons(colocnts, IDs=IDs, 
-                            proj4string=CRS("+proj=longlat +datum=WGS84"))
-colo <- spTransform(colo,CRS("+proj=utm +zone=13 ellps=WGS84"))
+                            proj4string=CRS("+proj=longlat +datum=WGS84")) 
+colo <- spTransform(colo,CRS("+proj=utm +zone=13 ellps=WGS84")) #same as mindistxsp[[]][[2]]
+
 #colo row numbers to match
 IDcolocnts <- data.frame(ID=c(1:length(names(colo))), Cnt=names(colo))
-incounties <- over(mindistxsp[[1]][[2]],colo)
-
-names(incounties) #row of seinet
 seinet$IDrow <- as.numeric(row.names(seinet))
+
+#map seinet points to match, not mindistxsp  
+pts.all <- SpatialPoints(seinet[,c("decimalLongitude","decimalLatitude")])
+proj4string(pts.all) <- CRS("+proj=longlat +datum=WGS84")
+pts.all <- spTransform(pts.all,CRS(" +proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0 "))
 
 #matching row numbers for counties and herbarium specimens
 incounty <- do.call(c,lapply(mindistxsp, function(sps){
   incounty <- over(sps[[2]],colo)
 }))
 
+incounty.colomap <- over(pts.all, colomap)
 
+#names of incounty is row of seinet
 #Want to do this for everything
-seinet$pointincounty[as.numeric(names(incounties))] <- IDcolocnts$Cnt[incounties]
+seinet$county <- as.character(seinet$county)
 
+seinet$pointincounty[as.numeric(names(incounty))] <- as.character(IDcolocnts$Cnt[incounty])
+#try matching with another map
+seinet$pointincountycolomap <- incounty.colomap$COUNTY
+
+head(seinet[,c("county","pointincounty","pointincountycolomap")],20)
+
+#now when is the county that the point is in match the county name in the $county
+for(i in 1:nrow(seinet)){
+  print(seinet$pointincounty[i])
+}
+
+head(seinet[is.na(seinet$pointincounty),])
+
+matched <- lapply(1:nrow(seinet), function(r){
+  matchinginfo <- seinet[r,][grep(seinet$pointincounty[r],seinet[r,])]
+  matchinginfo
+  })
+
+seinet[grep(seinet$pointincounty, seinet$county),]
+
+head(seinet[is.na(seinet$pointincounty),c("locality","county","decimalLatitude","decimalLongitude")])
 
 ```
   1  51  52  53  85  86 145 153 187 188 483 629 655 
