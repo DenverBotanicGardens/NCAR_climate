@@ -77,8 +77,8 @@ eors.tax <- TPL(unique(eors$scientific))
 table(eors.tax$Taxonomic.status)
 # 5 syn, 2 unresolved, 1 not in
 
-eors[eors$institutio=="USU",]
-eors[eors$institutio=="USUUB",]
+#eors[eors$institutio=="USU",]
+#eors[eors$institutio=="USUUB",]
 eors$institutio[eors$institutio=="USU"] <- "USUUB"
 
 ```
@@ -286,15 +286,22 @@ mapdata2 <- mapdata[mapdata$Northing<4546718&
 # 282427	  3040916	  Astragalus iodopetalus
 # -458653.4	4218252	  Packera mancosana
 
-#not working all together   
-#<https://stackoverflow.com/questions/22038640/labeling-center-of-map-polygons-in-r-ggplot> 
+```
+
+
+
+not working all together     
+<https://stackoverflow.com/questions/22038640/labeling-center-of-map-polygons-in-r-ggplot> 
+```{r}
 ggplot()+
-  geom_point(data=mapdata2, aes(Easting,Northing,colour=Species))+
+  geom_point(data=mapdata2, aes(Easting,Northing))+
   theme_bw()+
-  geom_polygon(data=colomap.fort.pieces, aes(x=long,y=lat,group=order,colour=id))+
-#  coord_map()+
+  geom_polygon(data=colomap, aes(x=long,y=lat,fill=as.factor(order)),
+               alpha=0.25)+
   theme(legend.position = "none")
-  
+
+#  geom_polygon(data=colomap.fort.pieces, aes(x=long,y=lat,group=id), alpha=0,colour=order)+
+#  coord_map()
 
 ```
 
@@ -304,26 +311,18 @@ class(mindistxsp[[1]][[2]]) #SpatialPoints
 
 # 1) are they in the county they say they are in?
 ```{r}
-#One conversion must be a bit off, points that should be in (but near state boarder) are marked as out of county
-
-cnts <- unique(mndistsp$county)
-
-#map seinet points to match, not mindistxsp  
+#map seinet points to match colo counties UTM projection 
 pts.all <- SpatialPoints(seinet[,c("decimalLongitude","decimalLatitude")])
 proj4string(pts.all) <- CRS("+proj=longlat +datum=WGS84")
 pts.all <- spTransform(pts.all,CRS(" +proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0 "))
 
 incounty.colomap <- over(pts.all, colomap)
-
-#names of incounty is row of seinet
-#Want to do this for everything
+#to do comparison later, find anywhere that correct county is mentioned
 seinet$county <- as.character(seinet$county)
 
-seinet$pointincounty[as.numeric(names(incounty))] <- as.character(IDcolocnts$Cnt[incounty])
-#try matching with another map
-seinet$pointincountycolomap <- incounty.colomap$COUNTY
+seinet <- data.frame(seinet,incounty.colomap)
 
-head(seinet[,c("county","pointincounty","pointincountycolomap")],20)
+head(seinet[,c("county","COUNTY","decimalLongitude","decimalLatitude","scientificName","G1G2_Speci")],20)
 
 #now when is the county that the point is in match the county name in the $county
 for(i in 1:nrow(seinet)){
@@ -331,15 +330,55 @@ for(i in 1:nrow(seinet)){
 }
 
 head(seinet[is.na(seinet$pointincounty),])
+#change all factor columns to character
+i <- sapply(seinet, is.factor)
+head(seinet[,i]) #recordNumber might be the only one needing to be numeric
+seinet[,i] <- lapply(seinet[,i], as.character)
 
-matched <- lapply(1:nrow(seinet), function(r){
-  matchinginfo <- seinet[r,][grep(seinet$pointincounty[r],seinet[r,])]
-  matchinginfo
-  })
+#pulls out matches and when the point wasn't in any county
+correctcounty <- lapply(1:nrow(seinet),function(x){
+  r<-seinet[x,]
+  if(!is.na(r$COUNTY)){
+    matches <- grep(r$COUNTY,r[-89],ignore.case=TRUE,value=TRUE)
+    if(length(matches)>0){
+      out <- list(seinet[x,],matches)
+      out
+    }
+  }})
 
-seinet[grep(seinet$pointincounty, seinet$county),]
+#subset out nulls
+#matchout <- correctcounty[!vapply(correctcounty, is.null, logical(1))]
+length(matchout) #1793
 
-head(seinet[is.na(seinet$pointincounty),c("locality","county","decimalLatitude","decimalLongitude")])
+
+correctcounty[[1]][1:20]
+
+matched <- do.call(rbind,lapply(1:nrow(seinet), function(row){
+   r<-seinet[row,]
+  if(!is.na(r$COUNTY)){
+    matches <- grep(r$COUNTY,r[-89],ignore.case=TRUE,value=TRUE)
+    if(length(matches)>0){
+      r
+    }
+  }}
+  ))
+
+head(matched[,c("county","COUNTY")],40)
+nrow(matched)/ #1793 out of the 1875 rows of seinet
+nrow(seinet[!is.na(seinet$decimalLatitude),]) #1875 have a point somewhere
+
+notmatched <- do.call(rbind,lapply(1:nrow(seinet), function(row){
+   r<-seinet[row,]
+  if(!is.na(r$COUNTY)){
+    matches <- grep(r$COUNTY,r[-89],ignore.case=TRUE,value=TRUE)
+    if(length(matches)==0){ #Want rows where no other column has correct county info
+      r
+    }
+  }}
+  ))
+
+head(notmatched[,c("county","COUNTY")],40)
+nrow(notmatched)
 
 ```
   1  51  52  53  85  86 145 153 187 188 483 629 655 
