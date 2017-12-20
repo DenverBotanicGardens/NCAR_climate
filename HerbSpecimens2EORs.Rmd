@@ -5,6 +5,39 @@ date: "December 4, 2017"
 output: html_document
 ---
 
+Rick says don't need quotes for table or column names
+
+MySQL query
+
+#There are only rows in the synonym_links table when the names are synonyms, if it's not in synonym_links, it's the accepted name; taxonomic_units is the main table, if it's a synonym it's linked by synonym_links
+SELECT `synonym_links`.*, `taxonomic_units`.* , `taxon_authors_lkp`.*, `geographic_div`.*
+FROM `taxonomic_units` 
+LEFT JOIN `synonym_links` ON `synonym_links`.`tsn` = `taxonomic_units`.`tsn` 
+LEFT JOIN `taxon_authors_lkp` ON `taxon_authors_lkp`.`taxon_author_id` = `taxonomic_units`.`taxon_author_id` 
+LEFT JOIN `geographic_div` ON `geographic_div`.`tsn` = `taxonomic_units`.`tsn`
+WHERE `taxonomic_units`.`kingdom_id` = 3 AND `taxonomic_units`.`rank_id` = 220 AND `geographic_div`.`geographic_value` IN ('North America')
+
+
+
+#The authorities are giving me trouble right now; can do NOT IN (0,3,9999) or whatever
+SELECT `synonym_links`.*, `taxonomic_units`.* , `taxon_authors_lkp`.*
+FROM `taxonomic_units` 
+JOIN `synonym_links` ON `synonym_links`.`tsn` = `taxonomic_units`.`tsn` 
+JOIN `taxon_authors_lkp` ON `taxon_authors_lkp`.`taxon_author_id` = `taxonomic_units`.`taxon_author_id` 
+WHERE `taxonomic_units`.`kingdom_id` = 3 AND `taxonomic_units`.`rank_id` = 220 AND `taxonomic_units`.`unaccept_reason` IS NULL AND `taxonomic_units`.`taxon_author_id` NOT IN (0) AND `taxonomic_units`.`name_usage` NOT IN ('invalid') AND `taxonomic_units`.`n_usage` IN ('accepted')
+
+
+
+#the taxon_authors_lkp.taxon_author_id isn't the tsn, it's the taxonomic_units.taxon_author_id!!!
+SELECT `synonym_links`.*, `taxon_authors_lkp`.*, `taxonomic_units`.* 
+FROM `taxonomic_units` 
+LEFT JOIN `synonym_links` ON `synonym_links`.`tsn` = `taxonomic_units`.`tsn`
+LEFT JOIN `taxon_authors_lkp` ON `taxon_authors_lkp`.`taxon_author_id` = `taxonomic_units`.`taxon_author_id` 
+WHERE `taxonomic_units`.`kingdom_id` = 3 AND `taxonomic_units`.`rank_id` = 220 
+
+
+
+
 ```{r}
 rm(list=ls())
 
