@@ -91,7 +91,8 @@ Mo Ewing:
 
 
 ```{r}
-seinet <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/seinet_colorado_with_coordinates_ALLG1G2.csv")
+seinet_Ewingdistances <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/Distance Tables/Vouchers_distance.csv")
+seinet <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/seinet_colorado_with_coordinates_ALLG1G2.csv") #I must have made this one sometime, need to check again that matched all names
 
 seinetMo <- TPL(unique(seinet$scientificName))
 sum(table(seinetMo$Taxonomic.status)) #93 names
@@ -202,6 +203,14 @@ length(unique(coloG1G2$scientificName)) #59
 length(species)
 
 
+#how many specimens give an uncertainty amount? seinet is the list that Mo made; coloradosps is the list I pulled from SEINet; After fixing synonomy with TPL or ITIS will want to link l1G1G2 (the disaggregated CNHP EOR shapefiles) and coloradosps to limit to just G1/G2 species 
+head(seinet)
+table(seinet$basisOfRecord) #4 HumanObservation, 1871 PreservedSpecimen
+
+head(seinet_Ewingdistances)
+table(seinet_Ewingdistances$Map.Method)
+#     GPS Locality       tr     trqs      trs 
+#      63      495        6      114      126
 ```
 
 
