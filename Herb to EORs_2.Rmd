@@ -1,0 +1,446 @@
+---
+title: "Herbarium Bias CNHP"
+author: "Michelle DePrenger-Levin"
+date: "December 4, 2017"
+output: html_document
+---
+Rick says don't need quotes for table or column names
+
+MySQL query
+
+#There are only rows in the synonym_links table when the names are synonyms, if it's not in synonym_links, it's the accepted name; taxonomic_units is the main table, if it's a synonym it's linked by synonym_links
+SELECT `synonym_links`.*, `taxonomic_units`.* , `taxon_authors_lkp`.*, `geographic_div`.*
+FROM `taxonomic_units` 
+LEFT JOIN `synonym_links` ON `synonym_links`.`tsn` = `taxonomic_units`.`tsn` 
+LEFT JOIN `taxon_authors_lkp` ON `taxon_authors_lkp`.`taxon_author_id` = `taxonomic_units`.`taxon_author_id` 
+LEFT JOIN `geographic_div` ON `geographic_div`.`tsn` = `taxonomic_units`.`tsn`
+WHERE `taxonomic_units`.`kingdom_id` = 3 AND `taxonomic_units`.`rank_id` = 220 AND `geographic_div`.`geographic_value` IN ('North America')
+
+
+
+#The authorities are giving me trouble right now; can do NOT IN (0,3,9999) or whatever
+SELECT `synonym_links`.*, `taxonomic_units`.* , `taxon_authors_lkp`.*
+FROM `taxonomic_units` 
+JOIN `synonym_links` ON `synonym_links`.`tsn` = `taxonomic_units`.`tsn` 
+JOIN `taxon_authors_lkp` ON `taxon_authors_lkp`.`taxon_author_id` = `taxonomic_units`.`taxon_author_id` 
+WHERE `taxonomic_units`.`kingdom_id` = 3 AND `taxonomic_units`.`rank_id` = 220 AND `taxonomic_units`.`unaccept_reason` IS NULL AND `taxonomic_units`.`taxon_author_id` NOT IN (0) AND `taxonomic_units`.`name_usage` NOT IN ('invalid') AND `taxonomic_units`.`n_usage` IN ('accepted')
+
+
+
+#the taxon_authors_lkp.taxon_author_id isn't the tsn, it's the taxonomic_units.taxon_author_id!!!
+SELECT `synonym_links`.*, `taxon_authors_lkp`.*, `taxonomic_units`.* 
+FROM `taxonomic_units` 
+LEFT JOIN `synonym_links` ON `synonym_links`.`tsn` = `taxonomic_units`.`tsn`
+LEFT JOIN `taxon_authors_lkp` ON `taxon_authors_lkp`.`taxon_author_id` = `taxonomic_units`.`taxon_author_id` 
+WHERE `taxonomic_units`.`kingdom_id` = 3 AND `taxonomic_units`.`rank_id` = 220 
+
+
+
+SELECT `synonym_links`.*, `taxon_authors_lkp`.*, `taxonomic_units`.* 
+FROM `taxonomic_units` 
+LEFT JOIN `synonym_links` ON `synonym_links`.`tsn` = `taxonomic_units`.`tsn`
+LEFT JOIN `taxon_authors_lkp` ON `taxon_authors_lkp`.`taxon_author_id` = `taxonomic_units`.`tsn` 
+WHERE `taxonomic_units`.`kingdom_id` = 3 AND `taxonomic_units`.`rank_id` = 220 
+
+
+
+cd /p/hackathon/Simulations/
+
+```{r}
+library(ggplot2)
+library(rgeos)
+library(sp)
+library(spdep)
+library(rgdal)
+library(maptools)
+library(raster)
+library(Taxonstand)
+
+# exact match multisub
+multisub <- function(pattern,replacement,x){
+  result <- x
+  for(i in 1:length(pattern)){
+    result <- gsub(paste("^",pattern[i],"$"), paste("^",replacement[i],"$"),result)
+  }
+  result
+}
+
+```
+
+Mo Ewing:    
+     1) split all polygons (from CNHP) with ArcGIS 'explosion' tool    
+     2) Copy the Feature_id field into the Parcel-num field and annotate each parcel: "a", "b" etc    
+     3) Import G1G2 Seinet Vouchers into ArcMap      
+     4) Create linking field: "Parcel_num"          
+     5) Go through each parcel, linking the Eos by duplicating the Parcel_num.    
+     6) determin the closest 'parcel' to each herabarium point using ArcMap 'near' tool Analyst Tools/Proximity/Near   *I assume to the nearest line of the polygon, nearest spot of the polygon, not to the center of the polygon          
+     7) Add Map Method informaiton     
+            i. "GPS" = indication that GPS was used, just GPS coordinates present    
+            ii. "tr" = township/range info only recorded to township and range     
+            iii. "trs" = township/Range info recorded to section, or indication that tr conversion tool used       
+            iv. "trqs" = Township/Range info recorded to quarter-section       
+            v. "Locality" = no verbatim data recorded, only written description recorded    
+                     or "Terrain nav" (terrain navigator used)    
+                     or "Nat. Geog. TOPO"    
+                     or "Mapstedi"     
+                     or "digital mape"     
+                     or "geoLocate"     
+                     or "GoogleEarth"      
+
+
+
+
+```{r}
+seinet <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/seinet_colorado_with_coordinates_ALLG1G2.csv")
+
+seinetMo <- TPL(unique(seinet$scientificName))
+sum(table(seinetMo$Taxonomic.status)) #93 names
+#Mo has 2 names not in TPL, 9 synonyms, 7 unresolved
+seinetMo[seinetMo$Taxonomic.status != "Accepted",]
+seinet[grep("rotundifo", seinet$scientificName),]
+
+length(table(seinet$scientificName[!is.na(seinet$decimalLatitude)])) #93 species with locaiton information
+
+eors <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/Distance Tables/Vouchers_distance.csv")
+
+length(unique(eors$scientific)) #53
+eors.tax <- TPL(unique(eors$scientific))
+table(eors.tax$Taxonomic.status)
+# 5 syn, 2 unresolved, 1 not in
+
+eors[eors$institutio=="USU",]
+eors[eors$institutio=="USUUB",]
+
+
+eors$institutio[eors$institutio=="USU"] <- "USUUB"
+
+#change all factor columns to character
+i <- sapply(seinet, is.factor)
+head(seinet[,i]) #recordNumber might be the only one needing to be numeric
+seinet[,i] <- lapply(seinet[,i], as.character)
+```
+
+
+#Michelle DePrenger-Levin      
+In ArcMap do this: <https://blogs.esri.com/esri/arcgis/2010/09/16/nearbygroup/>
+repeat distance analysis in R          
+"coloradosps" == SEINet collections from Colorado - downloaded 12/6/2017 from SEINet        
+Only G1G2 EORs (to limit range of species)
+"colonames" == TPL synonomy for all coloradosps names
+```{r}
+coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences.csv")
+
+#colonames <- TPL(unique(coloradosps$scientificName))
+#write.csv(colonames, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/AllcoloSEINet_TPL.csv")
+colonames <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/AllcoloSEINet_TPL.csv")
+
+sum(table(colonames$Taxonomic.status))
+# 1929 not in The Plant List, 6 misapplied??, lots of synonyms. 
+#             Accepted Misapplied    Synonym Unresolved 
+#      1929       9149          6       6083        682
+
+
+l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
+
+#Each polygon might be made of multiple disconnected polygons. Need to separate and label
+l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
+l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
+                                       function(x){
+              x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
+              x
+              }))
+
+
+# Want SEINet species that are G1G2s. Synonyms?
+species <- unique(seinet$scientificName)
+speciesG1G2 <- unique(l1G1G2$GNAME) #60 names from CNHP
+match(sort(intersect(species, speciesG1G2)), #Only have spatial data on 43 species
+sort(intersect(speciesG1G2, species))) #Only have spatial data on 43 species
+union(species, speciesG1G2) #110 species
+
+setdiff(species,speciesG1G2) #50 are in SEINet but not G1G2s
+setdiff(speciesG1G2,species) #17 are in G1G2 but not SEINet 
+
+#The Plant List
+length(species) #93
+length(intersect(speciesG1G2, species)) #43 species
+sp60 <- TPL(speciesG1G2)
+sp60[sp60$Taxonomic.status == "Synonym",]
+
+#Need to change CNHP's names to 
+seinet[grep("Phy",seinet$scientificName),] #none listed as Lesquerella
+TPL(unique(l1G1G2$GNAME[grep("Les",l1G1G2$GNAME)])) #Global name contains Lesquerella
+l1G1G2[grep("Les",l1G1G2$SNAME),] #State name does not contain Lesquerella
+unique(l1G1G2$GNAME[grep("Phys",l1G1G2$GNAME)]) #Global name also contains Physaria
+unique(l1G1G2$SNAME[grep("Phys",l1G1G2$SNAME)]) #Global name also contains Physaria
+
+
+sp90GNAME <- TPL(unique(l1G1G2$GNAME))
+sp90SNAME <- TPL(unique(l1G1G2$SNAME))
+
+# change all synonyms to accepted name (according to TPL)
+
+
+
+sp43 <- TPL(intersect(speciesG1G2, species))
+table(sp43$Taxonomic.status)
+syn <- sp43[sp43$Taxonomic.status == "Synonym",]
+
+seinet$genus <- multisub(syn$Genus, syn$New.Genus, seinet$genus) 
+seinet$specificEpithet <- multisub(syn$Species, syn$New.Species, seinet$specificEpithet) 
+
+species <- unique(seinet$scientificName)
+sort(intersect(species, speciesG1G2))
+
+#Without synonym corrections
+coloG1G2 <- coloradosps[coloradosps$scientificName %in% speciesG1G2,]
+
+#write.csv(coloG1G2, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/occurrencesG1G2_nosynonyms.csv")
+
+nrow(coloG1G2) #2125
+length(unique(coloG1G2$scientificName)) #59
+length(species)
+
+
+```
+
+
+All CNHP tracked species   
+```{r}
+#Each polygon might be made of multiple disconnected polygons. Need to separate and label
+l1eor.disaggregate <- disaggregate(l1eor)
+
+uniqueIDstring <- lapply(split(l1eor.disaggregate, l1eor.disaggregate$OBJECTID),
+                         function(x){
+                           x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],
+                                             sep="")
+                           x
+                         })
+
+polyid <- do.call(rbind, uniqueIDstring)
+polyrast <- polyid
+polyrast <- raster(polyrast)
+
+```
+
+
+```{r}
+nrow(seinet[!is.na(seinet$decimalLatitude),]) #1875 points
+
+#Get all points, transform to UTM
+pts <- SpatialPoints(seinet[,c("decimalLongitude","decimalLatitude")])
+proj4string(pts) <- CRS("+proj=longlat +datum=WGS84")
+
+#Project data into a planar coordinate system (UTM zone 13)
+UTMpts <- spTransform(pts, CRS("+proj=utm +zone=13 ellps=WGS84"))
+
+head(pts)
+head(UTMpts)
+
+plot(l1eor[l1eor$GRANK %in% c("G1","G2"),])
+points(UTMpts)
+names(l1eor)
+
+plot(l1eor[l1eor$GNAME == "Astragalus microcymbus",])
+
+#Does not read th .prj file so need to tell it that they're in UTM
+proj4string(l1eor) <- "+proj=utm +zone=13 ellps=WGS84"
+
+#might be tooooo big!
+#PLSS <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/PLSS Geo Coordinates_2008")
+
+
+
+```
+
+
+Try to do an apply and split by species, don't really care which EO, just which mapped occurance of a species is closest     
+```{r}
+
+mindistxsp <- lappply(unique(coloG1G2$scientificName), function(x){
+  distout <- apply(gDistance(UTMpts[UTMpts]))
+})
+
+```
+
+
+```{r}
+#Distance from points to nearest polygon - this is to all polygons for G1:G5
+mindist <- apply(gDistance(UTMpts, polyid, byid = TRUE),2,min)
+
+
+
+## For each point, find name of nearest polygon
+
+#name of the nearest polygon
+minname <- apply()
+
+
+```
+
+
+
+
+
+
+# How do the maping techniques change by time, herbarium, or collector (amount of informaiton given)?   
+```{r}
+eors2 <- eors[eors$Year.2>0,]
+
+
+methodxyear <- data.frame(table(eors2$Map.Method, eors2$Year.2))
+methodxyear$Var2 <- as.numeric(as.character(methodxyear$Var2))
+
+eors2$Map.Method <- factor(eors2$Map.Method, levels = c("Locality","GPS","trqs",
+                                                        "trs","tr"))
+
+ggplot(methodxyear, aes(Var2, Freq, colour=Var1))+
+  geom_point()+
+  stat_smooth(se=FALSE)+
+  theme_bw()+
+  xlab("Year")+
+  ylab("Herbarium collections")+
+  labs(color='Georeference Method')+
+  theme(legend.justification=c(0,1), legend.position=c(0,1),
+        legend.background = element_blank()) 
+```
+
+
+```{r}
+ggplot(eors[eors$Year.2>0,], aes( Year.2,NEAR_DIST,colour=institutio))+
+  geom_point()+
+  facet_wrap(~institutio)+
+  theme_bw()+
+  stat_smooth(method="lm", se=FALSE)
+
+ggplot(eors[eors$Year.2>0,], aes( Year.2,NEAR_DIST))+
+  geom_point()+
+  theme_bw()+
+  stat_smooth(method="lm", se=FALSE)
+
+summary(lm(NEAR_DIST~Year.2, data=eors[eors$Year.2>0,]))
+```
+
+How did the type of mapping method change over time?
+```{r}
+
+table(eors$Year.2)
+
+
+
+```
+
+Which method has the shortest distance?   
+```{r}
+
+
+ggplot(eors2, aes(x=Map.Method))+
+  geom_bar(aes(fill=institutio))
+
+
+ggplot(eors2, aes(Year.2,NEAR_DIST, colour=institutio))+
+  geom_point()+
+  theme_bw()
+
+ggplot(eors2, aes(x=Year.2, fill=Map.Method))+
+  geom_density(alpha=0.5)+
+  theme_bw()
+#+  facet_wrap(~Map.Method)
+
+ggplot(eors2, aes(x=Year.2, fill=Map.Method))+
+  geom_histogram(alpha=0.25)+
+  theme_bw()
+
+
+```
+
+Maybe regional collections are much better?   
+FLD = Fort Lewis College    
+DES = Dessert Arizona   
+MESA = Colorado Mesa University   
+MISSA = Miss State Univ   
+NMC = New Mexico State University    
+SJNM = San Juan College, New Mexico   
+UCR = University of California Riverside    
+USUUB = Utah STate University Uintah Basin (probably is USU)   
+UVSC = Utah Valley University	U.S.A. Utah. Orem.      
+```{r}
+
+local <- c("COLO","CS","DBG","FLD","MESA","RM","RMBL")
+Adjacent <- c("ASC","ASU","BRY","DES","NMC","RM","SJNM","UNM","USUUB","UVSC")
+far <- c("CM","F","MISSA","MO","NY","RENO","UCR")
+
+eors2$InstNear[eors2$institutio %in% local] <- "Local"
+eors2$InstNear[eors2$institutio %in% Adjacent] <- "Near"
+eors2$InstNear[eors2$institutio %in% far] <- "Far"
+
+eors2$InstNear <- factor(eors2$InstNear, levels = c("Far","Near","Local"))
+
+
+ggplot(eors, aes(x=institutio))+
+  geom_bar(aes(fill=Map.Method))
+
+
+ggplot(eors2, aes(x=InstNear))+
+  geom_bar(aes(fill=Map.Method))
+
+ggplot(eors2, aes(Year.2,NEAR_DIST, colour=InstNear))+
+  geom_point()+
+  theme_bw()+
+  stat_smooth(method="lm", se=FALSE)
+
+
+ggplot(eors2, aes(NEAR_DIST))+
+  geom_density(aes(fill=InstNear))
+```
+
+Would assume that Locality method would be best for local institutions, worse for far
+```{r}
+
+
+ggplot(eors2, aes(Map.Method, NEAR_DIST, colour=Map.Method))+
+  geom_boxplot()+
+  facet_wrap(~InstNear)+
+  theme_bw()+
+  xlab("Mapping method")+
+  ylab("Distance to closest mapped occurence")
+```
+
+Assuming CNHP has accurate and complete data, then Distance to a known mapped location 
+```{r}
+table(eors2$Map.Method, eors2$InstNear)
+
+length(table(eors2$scientific)) #53
+
+#species are the names collected from SEINet
+match(sort(unique(eors2$scientific)),sort(species))
+
+InEOR <- do.call(rbind,lapply(split(eors2, eors2$scientific), function(x){
+  out <- x[x$NEAR_DIST ==0,]
+  out
+})
+)
+
+head(InEOR)
+table(InEOR$recordedBy)
+
+# $georeferen is the only place to know who did the georeferencing, that would be very helpful to know
+```
+
+
+The Weber example of an out of state person mapping a collection to Gray's Peak from Chicago Lake that should be Mount Evans.     
+- <https://conps.org/wp-content/uploads/2015/05/Mount_Evans_Summit_Lake_4-24-2011.pdf>    
+```{r}
+
+
+```
+
+
+```{r}
+ITISlist <- read.csv("C:/Users/deprengm/Dropbox/Biological Collections_concerns&needs/ITIS_sqlsynonyms.csv")
+
+```
+
+
+
+
