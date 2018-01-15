@@ -47,6 +47,8 @@ WHERE `taxonomic_units`.`kingdom_id` = 3 AND `taxonomic_units`.`rank_id` = 220
 cd /p/hackathon/Simulations/
 
 ```{r}
+rm(list=ls())
+
 library(ggplot2)
 library(rgeos)
 library(sp)
@@ -92,6 +94,7 @@ Mo Ewing:
 
 ```{r}
 seinet_Ewingdistances <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/Distance Tables/Vouchers_distance.csv")
+
 seinet <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/seinet_colorado_with_coordinates_ALLG1G2.csv") #I must have made this one sometime, need to check again that matched all names
 
 seinetMo <- TPL(unique(seinet$scientificName))
@@ -211,6 +214,9 @@ head(seinet_Ewingdistances)
 table(seinet_Ewingdistances$Map.Method)
 #     GPS Locality       tr     trqs      trs 
 #      63      495        6      114      126
+
+head(coloG1G2)
+
 ```
 
 
@@ -445,9 +451,33 @@ The Weber example of an out of state person mapping a collection to Gray's Peak 
 ```
 
 
+"coloradosps" == SEINet collections from Colorado - downloaded 12/6/2017 from SEINet      
+"coloG1G2" == species matching names in L1 EORs but without any synonym corrections     
+"seinet" == Mo worked on this, made distances from nearest EOR and looked at posted informaiton to figure out what might have been used to pick point on map        
+      
+ITISlist is synonmy pulled from ITIS into SQL    
+TPL is pulling from synonym from the plant list   "colo"   
+      "seinetMo"is synonymy with TPL for Mo's list of 53 species (that are G1/G2s)   
+      "colonames" is synonym with TPL for all colorado specimens from SEINet   
 ```{r}
 ITISlist <- read.csv("C:/Users/deprengm/Dropbox/Biological Collections_concerns&needs/ITIS_sqlsynonyms.csv")
+length(unique(ITISlist$tsn[ITISlist$tsn != "NULL"])) #2528 are synonyms
+length(unique(ITISlist$tsn_accepted[ITISlist$tsn_accepted != "NULL"])) #2277, 251 combined with synonmy
+nrow(ITISlist[ITISlist$tsn != "NULL",]) #2530 are not synonyms 
+nrow(ITISlist) #22570, huh. 
 
+head(ITISlist[ITISlist$tsn != "NULL",])
+ITISlist[ITISlist$tsn.1 == 897847,] #Want Equisetum giganteum
+#Probably could have done this in SQL for the download.....
+ITISsynonyms <- merge(ITISlist[,c("tsn","tsn_accepted","unit_name1","unit_name2")], 
+                   ITISlist[,c("tsn.1","unit_name1","unit_name2")], by.x = "tsn_accepted", by.y = "tsn.1")
+
+ITISsynonyms[ITISsynonyms$tsn_accepted == 897847,]
+length(unique(ITISsynonyms$tsn_accepted)) #1777 --hummm... So these are the number of taxa (the accepted names) from ones that have some synonomy. There are still others that are just accepted. 
+head(ITISsynonyms)
+
+ITIScoloradosps <- coloradosps
+ITIScoloradosps$genus
 ```
 
 
