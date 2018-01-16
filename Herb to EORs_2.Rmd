@@ -140,9 +140,10 @@ colonames <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa
 
 sum(table(colonames$Taxonomic.status))
 # 1929 not in The Plant List, 6 misapplied??, lots of synonyms. 
+# Some are just Genus. 
 #             Accepted Misapplied    Synonym Unresolved 
 #      1929       9149          6       6083        682
-
+head(unique(colonames$Taxon[colonames$Taxonomic.status == ""]),30)
 
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
 
@@ -154,22 +155,32 @@ l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
               x
               }))
 
+# Could take all the synonyms and names of l1G1G2 to make the list of names to pull from SEINet big list
+namesg1g2 <- table(l1G1G2$GNAME)
+length(namesg1g2[namesg1g2 > 0]) #60 species
+g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
+table(g1g2names$Taxonomic.status) #2 not in there, "Gutierrezia elegans" "Oonopsis sp. 1", 10 synonyms, 3 unresolved
+g1g2names$Taxon
+g1g2names$Taxon[g1g2names$Taxonomic.status == ""]
+g1g2names$Taxon[g1g2names$Taxonomic.status == "Synonym"]
 
-# Want SEINet species that are G1G2s. Synonyms?
-species <- unique(seinet$scientificName)
-speciesG1G2 <- unique(l1G1G2$GNAME) #60 names from CNHP
-match(sort(intersect(species, speciesG1G2)), #Only have spatial data on 43 species
-sort(intersect(speciesG1G2, species))) #Only have spatial data on 43 species
-union(species, speciesG1G2) #110 species
+# All names to look for in SEINet, both the stated and the corrected by TPL
+allnames <- c(g1g2names$Taxon, 
+              paste(g1g2names$New.Genus,g1g2names$New.Species,sep=" "))
+length(unique(allnames)) #71
 
-setdiff(species,speciesG1G2) #50 are in SEINet but not G1G2s
-setdiff(speciesG1G2,species) #17 are in G1G2 but not SEINet 
+```
 
-#The Plant List
-length(species) #93
-length(intersect(speciesG1G2, species)) #43 species
-sp60 <- TPL(speciesG1G2)
-sp60[sp60$Taxonomic.status == "Synonym",]
+
+```{r}
+
+# Want SEINet species that are G1G2s. Synonyms are in "allnames"
+species <- unique(coloradosps$scientificName)
+match(sort(intersect(species, allnames)), 
+      sort(intersect(allnames, species))) 
+
+length(setdiff(allnames,species)) #3 are in G1G2 but not SEINet;  "Oonopsis sp. 1"      "Nuttallia rhizomata" "Oonopsis sp."  
+#N. rhizomata --> Mentzelia rhizomata Reveal
 
 #Need to change CNHP's names to 
 seinet[grep("Phy",seinet$scientificName),] #none listed as Lesquerella
