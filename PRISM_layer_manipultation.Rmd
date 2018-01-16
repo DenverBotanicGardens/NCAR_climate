@@ -82,7 +82,6 @@ df <- df[with(df, order(df[,1])),]
 
 yearsLate <- apply(df,1,FUN =  function(x) paste(x[1],x[2],sep="")) 
 
-## Need one year at a time, then can average maybe? 
 precLate <- stack(paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Prism_Climate_Data/Recent_Data_1981-2016/PRISM_ppt_stable_4kmM3_198101_201611_bil/PRISM_ppt_stable_4kmM3_",yearsLate,"_bil.bil",sep=""))
 
 tminLate <- stack(paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Prism_Climate_Data/Recent_Data_1981-2016/PRISM_tmin_stable_4kmM2_198101_201611_bil/PRISM_tmin_stable_4kmM2_",yearsLate,"_bil.bil",sep=""))
@@ -98,7 +97,6 @@ tmaxLate <- stack(paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/
 cl <- makeCluster(6)
 registerDoParallel(cl)
 xannual_late <- foreach(x = seq(1,(12*30),by = 12),
-#                        .combine = "list",
                         .packages = "dismo") %dopar% 
   {
     x <- biovars(prec=precLate[[x:(x+11)]],

@@ -1,0 +1,532 @@
+---
+title: "MetaPopGen_testing"
+author: "Michelle DePrenger-Levin"
+date: "February 14, 2017"
+output: html_document
+---
+```{r}
+install.packages("Q:/Research/Stats & Software/R CODE/MetaPopGen.0.0.4.tar.gz",
+                 type = "source", repos=NULL)
+```
+
+```{r setup, include=FALSE}
+install.packages("BiasedUrn")
+
+install.packages("C:/Users/deprengm/Downloads/MetaPopGen.0.0.4.tar.gz",type="source",repos=NULL)
+library(MetaPopGen)
+```
+
+Initial genetic composition
+Nijxt =  number of individuals     
+genotype j (1 < j < m)    
+age x (1 < x < z),    
+deme i (1 < i < n)     
+time t (1 < t < tmax)     
+maximum age = z     
+number of demes = n    
+number of simulated time steps = tmax     
+maximum number of possible genotypes = m [given by the number of alleles l: m = l(l + 1)/2]    
+
+User enters number of inital individuals of each genotype for all demes and ages at time t = 1   
+
+Then iterates N ijxt over time describing survival, reporduction, dispersal an drecruitment, demographic and genetic paramenters (survival probabilities, fecundities, mutation probabiliites, dispersal probabilitites, juvenile carrying capacity) defined by the user.
+
+Output is N ijxt at each time step. 
+
+Defined by the user:    
+Sigma ijxt (i = deme, j = genotype, x = age, t = time) are survival probabilities   
+Phi Fijxt and Phi Mijxt (Female age, deme, genotype, and time specific fecundities) - number of per capita produced embryo sacs (F for plants) and pollen grains (M for plants) - large numbers, not a limit on simulator. Ok to have very large and unknown    
+Delta irt (from deme r to deme i) time-specific dispersal probabilities    
+Mu uv from allele v to allele u mutation probabiliy   
+K Oit the deme and time specific juvenile carrying capacity 
+
+survival -> reproduction -> dispersal -> recruitment     
+
+Island model example   
+```{r}
+n <- 20 #20 demes, metapopulation
+Sii <- 0.9 # offspring stay in deme of origin
+Sij <- 0.1/(n-1) # disperse to one of the other demes (hence the n-1)
+Pf <- 2 #female fecundity set to 2 to maintain populaiton size 
+#modeled without selection 
+Ni <- 1000 #initial population size per deme and genotypes, ie. 3000 individuals per deme
+# go for 200 years to reach quasi-equilibrium for Fst using fst.global.monoecious function - a ratio of heterozygosities
+
+```
+
+
+# Simple island model with no age-structure.
+#Expectation: 
+#FST = 1/(1+4Nm),
+#where N is the deme population size.
+
+
+# Part 1: Creating the initial dataset
+
+# Clear the workspace
+rm(list=ls())
+
+# Load the MetaPopGen package
+library(MetaPopGen)
+
+```{r}
+nind <- 1000		# Initial number of individuals per age-class and genotype
+n <- 20		# Number of demes
+z <- 1		# Number of age classes
+l <- 2		# Number of alleles
+m <- 3		# Number of genotypes
+tmax <- 200		# Number of years of simulation
+
+
+
+	# Initializes variables
+	# This initialises the variables using the correct sizes for each dimension
+		sigma <- array(NA,dim=c(m,n,z,tmax))
+		phi_M <- array(0,dim=c(m,n,z,tmax))
+		phi_F <- array(0,dim=c(m,n,z,tmax))
+
+	# This assigns values to the variables
+		sigma[,,,] <- 1
+		phi_M[,,,] <- 1
+		phi_F[,,,] <- 2
+
+	# Dispersal matrix
+	m.m <- 0.1
+	delta <- matrix(rep(m.m/(n-1),n^2),nrow=n,ncol=n)
+	diag(delta)<-rep((1-m.m),n)
+
+	# Initial population structure
+	# Genotypes number are assigned at random, by drawing the number of individuals of each genotype from a uniform distribution between [0,nind/m]
+		N1 <- array(NA,dim=c(m,n,z))		# Initial number of individuals
+
+		for (deme in 1 : n){
+			for (age in 1 : z) {
+				for (genotype in 1 : m) {
+					N1[genotype,deme,age] <- nind
+				}
+			}
+		}
+
+	# Mutation matrix
+		mu <- array(1e-6,dim=c(l,l))
+		mu[1,1] <- 1 - mu[2,1]
+		mu[2,2] <- 1 - mu[1,2]
+
+
+	# Maximum recruitment
+		kappa0 <- array(Inf,c(n,tmax))
+
+	# Save dataset
+		save(sigma,N1,phi_M,phi_F,mu,delta,kappa0,tmax,
+		     file="P:/hackathon/Simulations/Data.Island.model.RData")
+```
+
+#############################################################################################
+# Perform the simulation
+#############################################################################################
+
+	library(MetaPopGen)
+```{r}
+	# Clear the workspace
+		rm(list=ls())
+
+	# Load dataset (created in Part 1)
+		load("P:/hackathon/Simulations/Data.Island.model.RData")
+
+	# Simulation
+		nrepl <- 20
+
+
+	# Create the array for fst
+		fst <- array(NA,dim=c(nrepl,tmax))
+	
+	# Run the simulations
+	for (i in 1 : nrepl) {
+	  
+	  cat("Replicate",i,"\n") # Just to print on screen the advancement of the simulation
+	  
+	  N<-sim.metapopgen.monoecious(
+		input.type="array",
+		N1 = N1, sigma = sigma,
+		phi_M = phi_M, phi_F = phi_F,
+		mu = mu, delta = delta, kappa0 = kappa0,
+		T_max = tmax,
+		save.res = F)
+		
+		flush.console()
+		
+		# Calculate Fst
+		print("Calculating fst...")
+		for (t in 1 : tmax){
+			fst[i,t] <- fst.global.monoecious(N,t)
+		}
+		
+
+	}
+
+		
+
+# Meand and standard deviation of FST
+mean(fst[,100:tmax]) # because reached stable Fst after ca 50 generations?
+sd(fst[,100:tmax])
+
+# Expected value for FST
+Ne <- 3000
+m.m <- 0.1
+fst.exp <- 1/(1 + 4 * Ne * (m.m))
+```
+
+
+# Simulate population genetics in a metapopulation of 115 demes, corresponding to Mediterranean MPAs
+# In this file you will find all what you need to perform the calculations presented in the manuscript
+# This file is divided into three parts
+# 1) Creating the initial dataset
+# 2) Performing the simulation
+# 3) Analysing the results
+
+```{r}
+# Clear the workspace
+rm(list=ls())
+
+# Load the MetaPopGen package
+library(MetaPopGen)
+```
+																				#
+# Part 1: Creating the initial dataset	#
+```{r}
+	# General parameters
+		n <- 115	# Number of demes
+		l <- 2		# Number of alleles
+		m <- 3		# Nmber of genotypes
+		z <- 5		# Number of age-classes
+		tmax <- 200	# Number of years of simulation
+
+
+	# Initializes variables
+	# This initialises the variables using the correct sizes for each dimension
+		sigma_M <- array(NA,dim=c(m,n,z,tmax))
+		sigma_F <- array(NA,dim=c(m,n,z,tmax))
+		phi_M <- array(0,dim=c(m,n,z,tmax))
+		phi_F <- array(0,dim=c(m,n,z,tmax))
+
+
+	# This assigns values to the variables
+		sigma_M[,,,] <- 0.8
+		sigma_F[,,,] <- 0.8
+		phi_M[,,3:5,] <- 1000000
+		phi_F[,,3:5,] <- 200000
+
+
+	# Load dispersal matrix
+	# This file contains a (115*115) matrix of dispersal probabilities
+	# issued from the biophysical simulations of Andrello et al. (2013, Plos One)
+		load("P:/hackathon/Simulations/MetaPopGen_mediterraneanMPA/Simulation Mediterranean MPAs/Dispersal.RData")
+								
+	# Here the dispersal matrix is repeated for each year of simulation
+	# i.e. we use the same dispersal matrix for each year
+		delta <- array(dispersal,dim=c(n,n,tmax)) 
+								
+
+
+	# Initial population structure
+	# Genotypes number are assigned at random, by drawing the number of individuals of each genotype from a uniform distribution between [0,300]
+		N1_M <- array(NA,dim=c(m,n,z))		# Initial number of male individuals
+		N1_F <- array(NA,dim=c(m,n,z))		# Initial number of female individuals
+		for (deme in 1 : n){
+			for (age in 1 : z) {
+				for (genotype in 1 : m) {
+					N1_M[genotype,deme,age] <- round(runif(1)*300)
+					N1_F[genotype,deme,age] <- round(runif(1)*300)
+				}
+			}
+		}
+
+
+	# Mutation matrix
+		mu <- array(1e-6,dim=c(l,l))
+		mu[1,1] <- 1 - mu[2,1]
+		mu[2,2] <- 1 - mu[1,2]
+
+
+	# Maximum recruitment
+		kappa0 <- array(1000,c(n,tmax))
+
+
+	# Save dataset
+		save(sigma_M,sigma_F,N1_M,N1_F,phi_M,phi_F,mu,delta,kappa0,file="Dataset.Mediterranean.MPAs.RData")
+```
+     
+     
+# Part 2: Performing the simulation			#
+
+```{r}
+	# Clear the workspace
+		rm(list=ls())
+
+	# Load dataset (created in Part 1)
+		load("Dataset.Mediterranean.MPAs.RData")
+
+	# Simulation
+	# We run 30 replicates 
+	# The simulation results will be saved on disk, there will be one directory for each replicate, named with date-time
+		nrepl <- 30
+		
+		tmax <- 200	# Number of years of simulation
+		
+	# Create the directory for the results and set it as working directory
+		dir.create(paste(getwd(),"/Simulation",sep=""))
+		setwd(paste(getwd(),"/Simulation",sep=""))
+	
+	# Run the simulations
+	for (i in 1 : nrepl) {
+	  
+	  cat("Replicate",i,"\n") # Just to prnt on screen the advancement of the simulation
+	  
+	  sim.metapopgen.dioecious(
+		input.type="array",
+		N1_M = N1_M, N1_F = N1_F,
+		sigma_M = sigma_M, sigma_F = sigma_F,
+		phi_M = phi_M, phi_F = phi_F,
+		mu = mu, delta = delta, kappa0 = kappa0,
+		T_max = tmax,
+		save.res = T)
+	}
+
+```
+
+
+# Part 3: Analysing the results					#
+```{r}
+	# Be sure that the working directory is the one where the results were saved; if you are running Part 3 just after Part 2, you are automatically in the right directory
+
+	# Clear the workspace
+		rm(list=ls())
+
+	# General parameters
+		n     <- 115	# Number of demes
+		nrepl <- 30   # Number of replicates
+		tmax <- 200   # Number of years of simulation
+
+	# Part 3.1 : ####################################################
+	# Calculate global FST for each replicate at each time step
+	#################################################################
+
+setwd("P:/hackathon/Simulations/Simulation")		
+		
+		# The female population is considered
+		# Get the list of simulation directories (one directory per replicate, named after the date and time of simulation)
+			list.dir <- dir()
+
+		# Create the array for fst
+			fst <- array(NA,dim=c(nrepl,tmax))
+		
+		# Calculate Fst
+			for (i in 1 : nrepl) {
+			  
+			  dir.name <- list.dir[i]
+			  
+			  # Show the advancement of the calculation
+			  print(dir.name)
+			  flush.console()
+			  
+			  for (t in 1 : tmax){
+				fst[i,t] <- fst.global.dioecious(dir.name,"F",t)
+			  }
+			}
+
+		# Save fst array
+			save(fst,file="Global.fst.in.time.RData")
+
+
+		# Plot fst
+
+			#tiff(filename = "Figure 4.tiff",
+			#     width = 160, height = 160, units = "mm",
+			#     compression = "lzw", res = 300)
+
+			plot(fst[1,],ylim=c(0,0.02),type="l",xlab="Time",ylab="Global FST")
+			for(i in 2: 30){
+			  matplot(fst[i,],add=T,type="l")
+			}
+			matplot(colMeans(fst),add=T,type="l",col="red",lwd=2)
+			#dev.off()
+
+
+		# Calculate the final mean fst
+			colMeans(fst)[tmax]
+
+		# Calculate the trend in mean FST with time
+			(colMeans(fst)[tmax] - colMeans(fst)[20]) / (tmax-20)
+
+		# Calculate the variance among replicates and its increase with time
+			plot(apply(fst,2,var),xlab="Time",ylab="Variance in FST among replicates")
+			summary(lm(apply(fst,2,var)~seq(1,tmax)))
+
+
+
+	# Part 3.2 : ####################################################
+	# Calculate pairwise FST at the end of the simulation (t = 200)
+	#################################################################
+
+
+		# Create a big array that will contain the 30 pairwise fst matrices (one matrix per replicate)
+		# Each matrix is a 115*115 matrix
+			fst.matrices <- array(NA,dim=c(n,n,nrepl))
+		
+		# Calculate pairwise fst
+			for (k in 1 : nrepl) {
+			  
+			  dir.name <- list.dir[k]
+			  
+			  # Show the advancement of the calculation
+			  print(dir.name)
+			  flush.console()
+			  
+			  # Create a pairwise fst matrix
+			  fst.matrix <- array(NA,dim=c(n,n))
+			  
+			  for (i in 1 : n) {
+				for (j in 1 : n) {
+				  
+				  # This calculates pairwise fst between the selected demes for age class one at the end of the simulation, between females
+				  fst.matrix[i,j] <- fst.pairwise.dioecious(dir.name,i,j,1,1,tmax,tmax,"F","F")    
+				  
+				}
+			  }
+			  fst.matrices[,,k] <- fst.matrix
+			}
+
+
+		# Calculate the mean pairwise fst matrix
+			fst.matrix <- array(NA,dim=c(n,n))
+			for (i in 1 : n){
+			  for (j in 1 : n){
+				fst.matrix[i,j] <- mean(fst.matrices[i,j,])
+			  }
+			}
+
+		# Plot the mean pairwise fst matrix
+			#tiff(filename = "Figure 5.tiff",
+			#     width = 160, height = 160, units = "mm",
+			#     compression = "lzw", res = 300)
+			library(fields)
+			colors <- tim.colors(100)
+			levelplot(fst.matrix,col.regions=colors,xlab="Deme",ylab="Deme",main="FST")
+			#dev.off()
+
+		# Statistics on pairwise fst
+			quantile(fst.matrix,na.rm=T)
+
+
+
+	# Part 3.3 : ####################################################
+	# Test relationship between pairwise FST and a) spatial distance and b) probability of dispersal
+	#################################################################
+
+		setwd(paste(getwd(),"..",sep="/"))
+		library(ape)
+
+
+		# Load pairwise distances between demes
+			load("Spatial.distance.RData")
+
+		# Remove NaN from the fst matrix and the corresponding demes in the distance matrix
+			fst.no.NaN      <- fst.matrix[-c(6,75,78),-c(6,75,78)] 
+			sp.dist.no.NaN  <- sp.dist.matrix[-c(6,75,78),-c(6,75,78)]
+
+		# Test hypothesis: fst increases with spatial distance using Mantel test
+			mantel.test(sp.dist.no.NaN, fst.no.NaN,nperm=9999, alternative="greater",graph=T)
+
+
+		# Load dispersal probabilities
+			load("Dispersal.RData")
+
+		# Remove the demes corresponding to NaN in the dispersal matrix
+			dispersal.no.NaN  <- dispersal[-c(6,75,78),-c(6,75,78)]
+
+		# Test hypothesis: fst decreases with increasing dispersal probability using Mantel test
+			mantel.test(dispersal.no.NaN, fst.no.NaN,nperm=9999, alternative="less",graph=T)
+
+```
+
+
+NEMO file:
+## NEMO CONFIG FILE
+
+#/ (starting a block comment)
+20 demes of 3000 individuals
+island model
+order of events: survival, reproduction, dispersal and aging (recruitment), as in MetaPopGen
+1 locus with two alleles
+/# 
+
+## SIMULATION ##
+
+logfile logfile.log
+
+run_mode overwrite
+
+random_seed 486532
+
+root_dir test
+
+replicates          20
+generations        200
+
+filename Island.model
+
+## POPULATION ##   
+patch_number 20
+patch_capacity 	6000	# Because only females are simulated and sex-ratio is even, we need at least 6000 individuals to have 3000 females
+
+
+## LIFE CYCLE EVENTS ##
+breed      	1
+disperse    2   
+aging                3
+save_stats           4
+save_files           5
+
+
+## MATING SYSTEM ##/
+  1 = promiscuity 
+  2 = polygyny 
+  3 = monogyny 
+  4 = selfing
+  5 = cloning
+  6 = random mating with sefing: This corresponds to what is called the Wright-Fisher model  
+/#
+mating_system 6
+mean_fecundity 2
+mating_proportion 0
+
+## DISPERSAL LCE ##
+## dispersal models:
+## 1 = Island Model Migrant Pool
+## 2 = Island Model Propagule Pool
+## 3 = Stepping Stone Model 1D
+## 4 = Lattice Model
+dispersal_model 1
+dispersal_rate 0.1
+
+
+## OUTPUT ##
+# the parameters for the save_stats LCE #
+stat demography fstat  
+stat_log_time 1
+stat_dir data
+
+
+## NEUTRAL MARKERS ##
+ntrl_loci 1
+ntrl_all 2
+ntrl_mutation_rate 0.000001
+ntrl_recombination_rate 0.5
+ntrl_mutation_model 2
+# output #
+ntrl_save_genotype 0
+ntrl_save_freq vcomp
+ntrl_output_dir fstat
+ntrl_output_logtime 1
+
+

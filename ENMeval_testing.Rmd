@@ -1,0 +1,38 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+install.packages("ggplot2")
+install.packages("ggmap")
+install.packages("spocc")
+install.packages("ENMeval")
+install.packages("rJava")
+```
+
+```{r}
+library(spocc)
+library(ENMeval)
+library(ggplot2)
+library(ggmap)
+```
+
+Occurence data
+```{r}
+cami <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/VisTrails_Field_Data/Castilleja_miniata.csv")
+
+mapCO <- get_map(location = c(lon=mean(c(-109,-102)),
+                              lat=mean(c(37,41))),
+                 zoom=4, maptype="satellite", scale=2)
+head(cami)
+
+ggmap(mapCO)+
+  geom_point(data = cami, aes(decimalLongitude,decimalLatitude,fill="red",
+                              alpha=0.7),
+             size=5)+
+  guides(fill=FALSE, alpha=FALSE, size=FALSE)
+
+
+```
+

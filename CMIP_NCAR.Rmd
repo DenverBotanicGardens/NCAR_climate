@@ -179,6 +179,37 @@ load("P:/hackathon/Simulations/PRISMseason.RData")
 
 ```
 
+#8/3/2017   
+Assume random sampling over modeled area - MaxEnt Merow et al 2013   
+```{r}
+AlPh384 <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/FieldData_AlPh_over80.csv")
+
+library(ggplot2)
+library(ggmap)
+
+colorado <- get_map(location = c(lon = -105.5,lat = 39), zoom = 7)
+ggmap(colorado) +
+  geom_point(data = AlPh384[AlPh384$decimalLongitude > -110 & 
+                              AlPh384$decimalLongitude < -101 &
+                              AlPh384$decimalLatitude < 42 &
+                              AlPh384$decimalLatitude > 36 &
+                              AlPh384$minimumElevationInMeters < 4402 &
+                              AlPh384$minimumElevationInMeters > 1010,], 
+             aes(x = decimalLongitude, y = decimalLatitude, 
+                 colour = minimumElevationInMeters), shape = 21)+
+  labs(colour = "Elevation (meters)")
+  
+
+ggmap(colorado)+
+  geom_point(data = AlPh384[AlPh384$decimalLongitude > -110 & 
+                              AlPh384$decimalLongitude < -101 &
+                              AlPh384$decimalLatitude < 42 &
+                              AlPh384$decimalLatitude > 36,], 
+             aes(x = decimalLongitude, y = decimalLatitude), alpha=0.5, shape = 21) +
+  geom_vline(xintercept=seq(-109.06, -102.04, length.out = 842),size = 0.5, alpha = 0.5)+
+  geom_hline(yintercept = seq(36.9951,41.0034,length.out = 481),size = 0.5, alpha = 0.5) # From Template_AlPh.tif properties in QGIS
+
+```
 
 8/2/2017   
 Determine which GeoTiffs from VisTrails made bin_map.tif with information  
@@ -215,8 +246,25 @@ r_all <- lapply(dirs2, function(x){
   }
 })
 
-r_all[!is.na(r_all)]
+rstack <- do.call(stack,r_all[!is.na(r_all)])
+
+r_all[!is.na(r_all)][[1]]@file@name
+unlist(strsplit(rstack[[1]]@file@name,"[\\\\]"))[9] # Get the layer from the path file name
+
+class(rstack)
+rstack  #Only 8 from three models for 10 different species
+
+layrs <- lapply(r_all[!is.na(r_all)], function(stk){
+  unlist(strsplit(stk@file@name,"[\\\\]"))[9]
+})
+
+layrs #so only ID 22 with 195 points and ID 24 with 590 points and 27 with 218 points have data
 ```
+
+
+
+
+
 
 
 Function to get rasters of models
