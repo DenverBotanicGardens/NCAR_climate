@@ -57,6 +57,8 @@ library(rgdal)
 library(maptools)
 library(raster)
 library(Taxonstand)
+library(RCurl)
+library(taxize)
 
 # exact match multisub
 multisub <- function(pattern,replacement,x){
@@ -97,7 +99,9 @@ seinet_Ewingdistances <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapef
 
 seinet <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/seinet_colorado_with_coordinates_ALLG1G2.csv") #I must have made this one sometime, need to check again that matched all names
 
-seinetMo <- TPL(unique(seinet$scientificName))
+#seinetMo <- TPL(unique(seinet$scientificName))
+#write.csv(seinetMo,"Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/Distance Tables/TPLseinetMo.csv")
+seinetMo <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/Distance Tables/TPLseinetMo.csv")
 sum(table(seinetMo$Taxonomic.status)) #93 names
 #Mo has 2 names not in TPL, 9 synonyms, 7 unresolved
 seinetMo[seinetMo$Taxonomic.status != "Accepted",]
@@ -107,7 +111,7 @@ length(table(seinet$scientificName[!is.na(seinet$decimalLatitude)])) #93 species
 
 eors <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/Distance Tables/Vouchers_distance.csv")
 
-length(unique(eors$scientific)) #53
+length(unique(eors$scientific)) #53 - Mo going through 1 by 1 getting SEINet data for G1G2 species ended up with 53
 eors.tax <- TPL(unique(eors$scientific))
 table(eors.tax$Taxonomic.status)
 # 5 syn, 2 unresolved, 1 not in
@@ -155,11 +159,30 @@ l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
               x
               }))
 
+#How many names in 
+length(unique(l1G1G2$GNAME)) #60
+
 # Could take all the synonyms and names of l1G1G2 to make the list of names to pull from SEINet big list
 namesg1g2 <- table(l1G1G2$GNAME)
 length(namesg1g2[namesg1g2 > 0]) #60 species
 g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
 table(g1g2names$Taxonomic.status) #2 not in there, "Gutierrezia elegans" "Oonopsis sp. 1", 10 synonyms, 3 unresolved
+
+#Are both synonyms and accepted in as GNAME?
+notaccepted <- l1G1G2$GNAME[!is.na(match(l1G1G2$GNAME,
+      g1g2names$Taxon[g1g2names$Taxonomic.status != "Accepted"]))]
+unique(notaccepted)
+g1g2names[g1g2names$Taxonomic.status != "Accepted",]
+
+unique(l1G1G2$GNAME[grep("Boechera",l1G1G2$GNAME)])
+
+#Are any accepted names also in the list?
+l1G1G2$GNAME[l1G1G2$GNAME %in% 
+               g1g2names$New.Genus[g1g2names$Taxonomic.status
+                                   != "Accepted"]]
+
+g1g2names[g1g2names$Taxonomic.status == "",] #Gutierrezia elegans; Arabis crandallii --> Boechera crandallii
+
 g1g2names$Taxon
 g1g2names$Taxon[g1g2names$Taxonomic.status == ""]
 g1g2names$Taxon[g1g2names$Taxonomic.status == "Synonym"]
@@ -171,29 +194,44 @@ length(unique(allnames)) #71
 
 ```
 
-
+Taxonomy 
 ```{r}
+#1 change all G1G2 eor names to accepted - will need to deal with Gutierrezia elegans and Oonopsis sp. 1 by hand. 
+#Level 1 EORs imported as l1G1G2 keeping only G1 G2 species
+# l1G1G2$GNAME
+g1g2names$toaccepted <- paste(g1g2names$New.Genus,
+                    g1g2names$New.Species,
+                    sep=" ")
+l1G1G2$GNAME <- multisub(g1g2names$Taxon[g1g2names$Taxonomic.status=="Synonym"],
+                         g1g2names$toaccepted[g1g2names$Taxonomic.status=="Synonym"],
+                         l1G1G2$GNAME)
 
-# Want SEINet species that are G1G2s. Synonyms are in "allnames"
-species <- unique(coloradosps$scientificName)
-match(sort(intersect(species, allnames)), 
-      sort(intersect(allnames, species))) 
+
+#2 change all SEINet names to accepted, go by TPL for simplicity 
+colonames$toaccepted <- paste(colonames$New.Genus,colonames$New.Species,
+                              sep =" ")
+#coloradosps$scientificName <-
+#  multisub(colonames$Taxon[colonames$Taxonomic.status=="Synonym"],
+#           colonames$toaccepted[colonames$Taxonomic.status=="Synonym"],
+#           coloradosps$scientificName)
+#write.csv(coloradosps, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences_accepted.csv")
+coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences_accepted.csv")
+
+#3 how many synonyms by institution or by year?
+head(coloradosps)
+
+
+```
+
+
 
 length(setdiff(allnames,species)) #3 are in G1G2 but not SEINet;  "Oonopsis sp. 1"      "Nuttallia rhizomata" "Oonopsis sp."  
 #N. rhizomata --> Mentzelia rhizomata Reveal
 
-#Need to change CNHP's names to 
-seinet[grep("Phy",seinet$scientificName),] #none listed as Lesquerella
-TPL(unique(l1G1G2$GNAME[grep("Les",l1G1G2$GNAME)])) #Global name contains Lesquerella
-l1G1G2[grep("Les",l1G1G2$SNAME),] #State name does not contain Lesquerella
-unique(l1G1G2$GNAME[grep("Phys",l1G1G2$GNAME)]) #Global name also contains Physaria
-unique(l1G1G2$SNAME[grep("Phys",l1G1G2$SNAME)]) #Global name also contains Physaria
+#Need to link G1G2s to all names within SEINet
+#Use TPL to make a list of names and there synonyms - but need the full list, so need usda?
 
-
-sp90GNAME <- TPL(unique(l1G1G2$GNAME))
-sp90SNAME <- TPL(unique(l1G1G2$SNAME))
-
-# change all synonyms to accepted name (according to TPL)
+synonyms <- read.csv(text = getURL("https://raw.githubusercontent.com/DenverBotanicGardens/alpine-phenology/master/datasets/synonym_list_byhand2.txt")) # from DBG database taken from USDA (got from Rick)
 
 
 
