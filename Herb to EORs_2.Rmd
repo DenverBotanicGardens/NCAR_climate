@@ -194,6 +194,11 @@ length(unique(allnames)) #71
 
 ```
 
+```{r}
+plot(l1G1G2)
+
+```
+
 Taxonomy 
 ```{r}
 #1 change all G1G2 eor names to accepted - will need to deal with Gutierrezia elegans and Oonopsis sp. 1 by hand. 
@@ -215,46 +220,26 @@ colonames$toaccepted <- paste(colonames$New.Genus,colonames$New.Species,
 #           colonames$toaccepted[colonames$Taxonomic.status=="Synonym"],
 #           coloradosps$scientificName)
 #write.csv(coloradosps, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences_accepted.csv")
-coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences_accepted.csv")
+coloradosps_accpt <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences_accepted.csv")
 
 #3 how many synonyms by institution or by year?
-head(coloradosps)
+head(coloradosps) #has institution and now has accepted name, 
+head(colonames) # has taxonomic status
+#get coloradosps again with synonyms
+#poop, have names alone, not with institution....
+
+table(coloradosps$institutionCode[coloradosps])
 
 
 ```
 
-
-
-length(setdiff(allnames,species)) #3 are in G1G2 but not SEINet;  "Oonopsis sp. 1"      "Nuttallia rhizomata" "Oonopsis sp."  
+I think ignore this chunk
+```{r}
+#length(setdiff(allnames,species)) #3 are in G1G2 but not SEINet;  "Oonopsis sp. 1"      "Nuttallia rhizomata" "Oonopsis sp."  
 #N. rhizomata --> Mentzelia rhizomata Reveal
 
 #Need to link G1G2s to all names within SEINet
-#Use TPL to make a list of names and there synonyms - but need the full list, so need usda?
-
-synonyms <- read.csv(text = getURL("https://raw.githubusercontent.com/DenverBotanicGardens/alpine-phenology/master/datasets/synonym_list_byhand2.txt")) # from DBG database taken from USDA (got from Rick)
-
-
-
-sp43 <- TPL(intersect(speciesG1G2, species))
-table(sp43$Taxonomic.status)
-syn <- sp43[sp43$Taxonomic.status == "Synonym",]
-
-seinet$genus <- multisub(syn$Genus, syn$New.Genus, seinet$genus) 
-seinet$specificEpithet <- multisub(syn$Species, syn$New.Species, seinet$specificEpithet) 
-
-species <- unique(seinet$scientificName)
-sort(intersect(species, speciesG1G2))
-
-#Without synonym corrections
-coloG1G2 <- coloradosps[coloradosps$scientificName %in% speciesG1G2,]
-
-#write.csv(coloG1G2, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/occurrencesG1G2_nosynonyms.csv")
-
-nrow(coloG1G2) #2125
-length(unique(coloG1G2$scientificName)) #59
-length(species)
-
-
+#Use TPL to make a list of names and there synonyms 
 #how many specimens give an uncertainty amount? seinet is the list that Mo made; coloradosps is the list I pulled from SEINet; After fixing synonomy with TPL or ITIS will want to link l1G1G2 (the disaggregated CNHP EOR shapefiles) and coloradosps to limit to just G1/G2 species 
 head(seinet)
 table(seinet$basisOfRecord) #4 HumanObservation, 1871 PreservedSpecimen
