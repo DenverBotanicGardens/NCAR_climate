@@ -223,10 +223,17 @@ colorado <- get_map(location = c(lon = -105.6,lat = 39.35),
                     maptype = "satellite", zoom = 6)
 counties <- map_data("county")
 co_county <- subset(counties, region == 'colorado')
+<<<<<<< HEAD
 
 #l1G1G2 are in UTM zone 13
 l1G1G2@proj4string <- CRS("+proj=utm +zone=13 ellps=NAD83")
 
+=======
+
+#l1G1G2 are in UTM zone 13
+l1G1G2@proj4string <- CRS("+proj=utm +zone=13 ellps=NAD83")
+
+>>>>>>> d0b29990b003805f937bfe88e766f541ede26521
 str(colorado)
 str(co_county)
 
@@ -251,6 +258,7 @@ l1G1G2$GNAME <- multisub(g1g2names$Taxon[g1g2names$Taxonomic.status=="Synonym"],
 colonames$toaccepted <- paste(colonames$New.Genus,colonames$New.Species,
                               sep =" ")
 # If I've already linked, I don't need to do a multisub, I can just take the name given in New 
+<<<<<<< HEAD
 head(coloradospsnames[coloradospsnames$Taxonomic.status == "Accepted",])
 coloradospsnames$toaccepted <- paste(coloradospsnames$genus,
                                      coloradospsnames$specificEpithet,
@@ -258,6 +266,8 @@ coloradospsnames$toaccepted <- paste(coloradospsnames$genus,
                                      coloradospsnames$infraspecificEpithet,
                                      sep=" ")
 
+=======
+>>>>>>> d0b29990b003805f937bfe88e766f541ede26521
 ```
 
 ```{r}
