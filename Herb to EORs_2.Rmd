@@ -136,11 +136,33 @@ repeat distance analysis in R
 Only G1G2 EORs (to limit range of species)
 "colonames" == TPL synonomy for all coloradosps names
 ```{r}
-coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences.csv")
+#coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences.csv")
+
+#save(coloradosps, file= "P:/hackathon/Simulations/coloradosps.Rda")
+load("P:/hackathon/Simulations/coloradosps.Rda")
 
 #colonames <- TPL(unique(coloradosps$scientificName))
 #write.csv(colonames, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/AllcoloSEINet_TPL.csv")
-colonames <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/AllcoloSEINet_TPL.csv")
+#colonames <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/AllcoloSEINet_TPL.csv")
+#save(colonames,file="P:/hackathon/Simulations/colonames.Rda")
+load("P:/hackathon/Simulations/colonames.Rda")
+
+colonames <- colonames[-grep("Middle Park",colonames$Taxon),] #get rid of offset record
+colonames <- colonames[!(colonames$Taxon %in% ""),] #get rid of row with no name
+
+#merge taxon from colonames (with TPL categorization of name) with coloradosps$scientificName
+coloradosps$scientificName <- as.character(coloradosps$scientificName)
+colonames$Taxon <- as.character(colonames$Taxon)
+
+coloradosps$Taxon <- paste(coloradosps$genus,coloradosps$specificEpithet,
+                           coloradosps$taxonRank,coloradosps$infraspecificEpithet,
+                           sep=" ")
+
+#remove any leading or trailing white spaces around both names
+coloradosps$Taxon <- gsub("\\s+$","",coloradosps$Taxon)
+#colonames$Taxon <- gsub("\\s+","",colonames$Taxon) # There are 390 repeated names, why?
+coloradospsnames <- merge(coloradosps,colonames,by="Taxon")
+
 
 sum(table(colonames$Taxonomic.status))
 # 1929 not in The Plant List, 6 misapplied??, lots of synonyms. 
@@ -148,6 +170,8 @@ sum(table(colonames$Taxonomic.status))
 #             Accepted Misapplied    Synonym Unresolved 
 #      1929       9149          6       6083        682
 head(unique(colonames$Taxon[colonames$Taxonomic.status == ""]),30)
+table(coloradospsnames$Taxonomic.status)
+
 
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
 
@@ -195,8 +219,19 @@ length(unique(allnames)) #71
 ```
 
 ```{r}
-plot(l1G1G2)
+colorado <- get_map(location = c(lon = -105.6,lat = 39.35), 
+                    maptype = "satellite", zoom = 6)
+counties <- map_data("county")
+co_county <- subset(counties, region == 'colorado')
 
+#l1G1G2 are in UTM zone 13
+l1G1G2@proj4string <- CRS("+proj=utm +zone=13 ellps=NAD83")
+
+str(colorado)
+str(co_county)
+
+# Do these need to be projected? And to 
+plot(l1G1G2)
 ```
 
 Taxonomy 
@@ -212,23 +247,33 @@ l1G1G2$GNAME <- multisub(g1g2names$Taxon[g1g2names$Taxonomic.status=="Synonym"],
                          l1G1G2$GNAME)
 
 
-#2 change all SEINet names to accepted, go by TPL for simplicity 
+#2 change all SEINet names to accepted, go by TPL for simplicity, use coloradospsnames to keep old and who was wrong by herbarium
 colonames$toaccepted <- paste(colonames$New.Genus,colonames$New.Species,
                               sep =" ")
-#coloradosps$scientificName <-
-#  multisub(colonames$Taxon[colonames$Taxonomic.status=="Synonym"],
-#           colonames$toaccepted[colonames$Taxonomic.status=="Synonym"],
-#           coloradosps$scientificName)
-#write.csv(coloradosps, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences_accepted.csv")
-coloradosps_accpt <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences_accepted.csv")
+# If I've already linked, I don't need to do a multisub, I can just take the name given in New 
+
+
+```
+
+```{r}
+coloradospsnames$scientificName <-
+  multisub(colonames$Taxon[colonames$Taxonomic.status=="Synonym"],
+           colonames$toaccepted[colonames$Taxonomic.status=="Synonym"],
+           coloradospsnames$scientificName)
+write.csv(coloradospsnames, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences_accepted.csv")
+coloradospsnames_accpt <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences_accepted.csv")
+
+head(coloradospsnames_accpt)
 
 #3 how many synonyms by institution or by year?
 head(coloradosps) #has institution and now has accepted name, 
+head(coloradospsnames_accpt) #with institution, yay!
 head(colonames) # has taxonomic status
 #get coloradosps again with synonyms
 #poop, have names alone, not with institution....
 
 table(coloradosps$institutionCode[coloradosps])
+
 
 
 ```
