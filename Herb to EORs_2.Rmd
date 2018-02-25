@@ -251,7 +251,12 @@ l1G1G2$GNAME <- multisub(g1g2names$Taxon[g1g2names$Taxonomic.status=="Synonym"],
 colonames$toaccepted <- paste(colonames$New.Genus,colonames$New.Species,
                               sep =" ")
 # If I've already linked, I don't need to do a multisub, I can just take the name given in New 
-
+head(coloradospsnames[coloradospsnames$Taxonomic.status == "Accepted",])
+coloradospsnames$toaccepted <- paste(coloradospsnames$genus,
+                                     coloradospsnames$specificEpithet,
+                                     coloradospsnames$taxonRank,
+                                     coloradospsnames$infraspecificEpithet,
+                                     sep=" ")
 
 ```
 
