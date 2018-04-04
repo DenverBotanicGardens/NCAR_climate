@@ -260,6 +260,7 @@ coloradospsnames$toaccepted <- paste(coloradospsnames$genus,
 head(coloradospsnames)
 ```
 
+Deleting this: 
 ```{r,eval=FALSE}
 coloradospsnames$scientificName <-
   multisub(colonames$Taxon[colonames$Taxonomic.status=="Synonym"],
