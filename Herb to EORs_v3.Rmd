@@ -4,6 +4,8 @@ author: "Michelle DePrenger-Levin"
 date: "December 4, 2017"
 output: html_document
 ---
+Use Jessie's cool mapping code: "Q:\Research\All_Herbaria\KHD\Projects\exploring_herbarium_with_maps" 
+
 Rick says don't need quotes for table or column names
 
 MySQL query
@@ -49,6 +51,7 @@ cd /p/hackathon/Simulations/
 ```{r}
 rm(list=ls())
 
+# install.packages("NicheMapR") based on animal needs anyway, mechanistic
 library(ggplot2)
 library(rgeos)
 library(sp)
@@ -59,6 +62,8 @@ library(raster)
 library(Taxonstand)
 library(RCurl)
 library(taxize)
+library(ggmap)
+
 
 # exact match multisub
 multisub <- function(pattern,replacement,x){
@@ -171,9 +176,29 @@ sum(table(colonames$Taxonomic.status))
 #      1929       9149          6       6083        682
 head(unique(colonames$Taxon[colonames$Taxonomic.status == ""]),30)
 table(coloradospsnames$Taxonomic.status)
+table(coloradospsnames$Family) #4887 with no Family
+head(coloradospsnames[grep("Observation",coloradospsnames$basisOfRecord),])
+unique(coloradospsnames$geodeticDatum[grep("NAD ",coloradospsnames$geodeticDatum)])
+#NAD 83       NAD 27       NAD 84       NAD 27 CONUS NAD 85 
+unique(coloradospsnames$geodeticDatum[grep("WGS",coloradospsnames$geodeticDatum)])
+```
+       [1] WGS84                     WGS 84                    WGS 1984                      
+       [4] WGS96                     WGS 72                    WGS-84                     
+       [7] WGS 1984.                 WGS83                     WGS84 (UTM Datum: NAD83)   
+      [10] WGS84  (UTM Datum: NAD83) WGS84, Google Earth       WGS 1983                   
+      [13] WGS 1984,                 WGS98                     WGS85                       
+      [16] WGS86                     WGS89                     WGS95                       
+      [19] WGS87                     WGS88                     WGS97                       
+      [22] WGS92                     WGS 83                    WGS93                       
+      [25] WGS94                     WGS84/NAD83               WGS90                        
+      [28] WGS 19                    WGS99                     WGS91      
+      
+      "The latest revision is WGS 84 (also known as WGS 1984, EPSG:4326), established in 1984 and last revised in 2004.[1] Earlier schemes included WGS 72, WGS 66, and WGS 60. WGS 84 is the reference coordinate system used by the Global Positioning System."
 
-
+```{r}
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
+
+colorelief <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
 
 #Each polygon might be made of multiple disconnected polygons. Need to separate and label
 l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
@@ -230,18 +255,43 @@ l1G1G2@proj4string <- CRS("+proj=utm +zone=13 ellps=NAD83")
 str(colorado)
 str(co_county)
 
-# Do these need to be projected? And to 
-plot(l1G1G2)
+
+plot(l1G1G2, border="blue", lwd=4)
+plot(colorelief, add=TRUE)
+
+latlongG1G2 <- spTransform(l1G1G2, CRS("+proj=longlat +datum=WGS84"))
+
+
 ```
 
-Taxonomy 
+Taxonomy  - Wait, first multisub, then merge?    
+Try this: 
+```{r}
+#60 accepted names
+g1g2names$toaccepted <- paste(g1g2names$New.Genus,
+                    g1g2names$New.Species,
+                    sep=" ")
+
+sum(table(g1g2names$Taxon))
+
+names(table(c(g1g2names$Taxon,g1g2names$toaccepted))) #71 names to pull from coloradospsnames
+
+
+colodf1 <- coloradospsnames[coloradospsnames$Taxon %in%
+                              names(table(c(g1g2names$Taxon,g1g2names$toaccepted))),]
+
+head(colodf1)
+write.csv(colodf1, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/colodf_g1g2.csv", row.names = FALSE)
+```
+4/6/2018 - Danielle Gualtieri working on Colton Gaines protocol for mapping and adding uncertainty protocol (similar to Mo's work)
+
+
+Or this:
 ```{r}
 #1 change all G1G2 eor names to accepted - will need to deal with Gutierrezia elegans and Oonopsis sp. 1 by hand. 
 #Level 1 EORs imported as l1G1G2 keeping only G1 G2 species
 # l1G1G2$GNAME
-g1g2names$toaccepted <- paste(g1g2names$New.Genus,
-                    g1g2names$New.Species,
-                    sep=" ")
+
 l1G1G2$GNAME <- multisub(g1g2names$Taxon[g1g2names$Taxonomic.status=="Synonym"],
                          g1g2names$toaccepted[g1g2names$Taxonomic.status=="Synonym"],
                          l1G1G2$GNAME)
@@ -260,15 +310,7 @@ coloradospsnames$toaccepted <- paste(coloradospsnames$genus,
 head(coloradospsnames)
 ```
 
-Deleting this: 
-```{r,eval=FALSE}
-coloradospsnames$scientificName <-
-  multisub(colonames$Taxon[colonames$Taxonomic.status=="Synonym"],
-           colonames$toaccepted[colonames$Taxonomic.status=="Synonym"],
-           coloradospsnames$scientificName)
-write.csv(coloradospsnames, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences_accepted.csv")
-#coloradospsnames_accpt <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences_accepted.csv")
-```
+
 
 ```{r}
 #3 how many synonyms by institution or by year?
@@ -317,6 +359,7 @@ polyrast <- raster(polyrast)
 
 
 ```{r}
+#From Mo's work: So possible there are some errors
 nrow(seinet[!is.na(seinet$decimalLatitude),]) #1875 points
 
 #Get all points, transform to UTM
@@ -328,6 +371,13 @@ UTMpts <- spTransform(pts, CRS("+proj=utm +zone=13 ellps=WGS84"))
 
 head(pts)
 head(UTMpts)
+
+#use my points from download and connection to names from CNHP's L1/L2 
+#make all numeric
+pts.me <- SpatialPoints(collectionsg1g2[collectionsg1g2$decimalLatitude!="",
+                                        c("decimalLongitude","decimalLatitude")])
+
+str(as.numeric(collectionsg1g2$decimalLatitude))
 
 plot(l1eor[l1eor$GRANK %in% c("G1","G2"),])
 points(UTMpts)
@@ -346,10 +396,15 @@ proj4string(l1eor) <- "+proj=utm +zone=13 ellps=WGS84"
 ```
 
 
-Try to do an apply and split by species, don't really care which EO, just which mapped occurance of a species is closest     
+Try to do an apply and split by species, don't really care which EO, just which mapped occurance of a species is closest      
+"coloG1G2" Was made after multisub of names to match. 
+Contains 2125 rows, 59 species
 ```{r}
+#mindistxsp <- lapply(unique(coloG1G2$scientificName), function(x){
+#  distout <- apply(gDistance(UTMpts[UTMpts]))
+#})
 
-mindistxsp <- lappply(unique(coloG1G2$scientificName), function(x){
+mindistxsp <- lapply(unique(l1eor$scientificName), function(x){
   distout <- apply(gDistance(UTMpts[UTMpts]))
 })
 
@@ -372,6 +427,14 @@ minname <- apply()
 
 
 
+#Mechanistic models based on matrix models growth rates and fecundity correlative, use some model selection? for best prediction by species  
+```{r}
+load("Q:/Research/Stats & Software/COMPADRE_PlantMAtrixDatabase/COMPADRE_v.4.0.1.RData")
+
+
+
+```
+
 
 
 
@@ -386,7 +449,7 @@ methodxyear$Var2 <- as.numeric(as.character(methodxyear$Var2))
 eors2$Map.Method <- factor(eors2$Map.Method, levels = c("Locality","GPS","trqs",
                                                         "trs","tr"))
 
-ggplot(methodxyear, aes(Var2, Freq, colour=Var1))+
+ggplot(methodxyear, aes(Var2, Freq, colour=Var1, shape=Var1))+
   geom_point()+
   stat_smooth(se=FALSE)+
   theme_bw()+
