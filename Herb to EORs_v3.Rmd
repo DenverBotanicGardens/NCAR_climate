@@ -100,10 +100,36 @@ Mo Ewing:
 
 
 ```{r}
+# Mo Ewing's work to pull SEINet colorado specimens of G1G2 species so not sure he got all 
+# also did eors <- 
 seinet_Ewingdistances <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/Distance Tables/Vouchers_distance.csv")
 
-seinet <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/seinet_colorado_with_coordinates_ALLG1G2.csv") #I must have made this one sometime, need to check again that matched all names
+table(seinet_Ewingdistances$basisOfRec) #all PreservedSpecimen, 804
+names <- names(table(seinet_Ewingdistances$scientific)) #54 names
+mo_names <- TPL(names)
+table(mo_names$Taxonomic.status) 
+seinet_Ewingdistances[seinet_Ewingdistances$scientific %in%
+                        mo_names$Taxon[mo_names$Taxonomic.status != "Accepted"],]
 
+#I must have made this one sometime, need to check again that matched all names
+seinet <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/seinet_colorado_with_coordinates_ALLG1G2.csv")
+
+table(seinet$basisOfRec) #PreservedSpecimen: 1871 and HumanObservation: 4
+seinet <- seinet[seinet$basisOfRecord != "HumanObservation",]
+namesSEINet <- names(table(seinet$scientificName)) #93 names
+SEINet_names <- TPL(namesSEINet)
+table(SEINet_names$Taxonomic.status) #
+#             Accepted    Synonym Unresolved 
+#         2         75          9          7 
+seinet[seinet$scientificName %in%
+                        SEINet_names$Taxon[SEINet_names$Taxonomic.status != "Accepted"],]
+
+seinet_TPL <- merge(seinet, SEINet_names, by.x = "scientificName", by.y = "Taxon")
+```
+
+Would need to set eors <- seinet_Ewingdistances
+```{r, eval=FALSE}
+eors <- seinet_Ewingdistances
 #seinetMo <- TPL(unique(seinet$scientificName))
 #write.csv(seinetMo,"Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/Distance Tables/TPLseinetMo.csv")
 seinetMo <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/Distance Tables/TPLseinetMo.csv")
@@ -114,7 +140,6 @@ seinet[grep("rotundifo", seinet$scientificName),]
 
 length(table(seinet$scientificName[!is.na(seinet$decimalLatitude)])) #93 species with locaiton information
 
-eors <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/Distance Tables/Vouchers_distance.csv")
 
 length(unique(eors$scientific)) #53 - Mo going through 1 by 1 getting SEINet data for G1G2 species ended up with 53
 eors.tax <- TPL(unique(eors$scientific))
@@ -131,6 +156,13 @@ eors$institutio[eors$institutio=="USU"] <- "USUUB"
 i <- sapply(seinet, is.factor)
 head(seinet[,i]) #recordNumber might be the only one needing to be numeric
 seinet[,i] <- lapply(seinet[,i], as.character)
+```
+
+Cite MODIS data: <https://lpdaac.usgs.gov/citing_our_data>   
+<https://lpdaac.usgs.gov/data_access/data_pool>  - need to get data but weeky mainenance is every wednesday until noon
+```{r}
+
+
 ```
 
 
@@ -442,7 +474,7 @@ load("Q:/Research/Stats & Software/COMPADRE_PlantMAtrixDatabase/COMPADRE_v.4.0.1
 ```{r}
 eors2 <- eors[eors$Year.2>0,]
 
-
+similar.listw()
 methodxyear <- data.frame(table(eors2$Map.Method, eors2$Year.2))
 methodxyear$Var2 <- as.numeric(as.character(methodxyear$Var2))
 
