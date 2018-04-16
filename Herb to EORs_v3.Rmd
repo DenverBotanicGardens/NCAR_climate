@@ -178,6 +178,33 @@ Only G1G2 EORs (to limit range of species)
 #save(coloradosps, file= "P:/hackathon/Simulations/coloradosps.Rda")
 load("P:/hackathon/Simulations/coloradosps.Rda")
 
+howlongrecordedby <- nchar(as.character(coloradosps$recordedBy))
+head(howlongrecordedby<20)
+recordedby <- unique(coloradosps$recordedBy[howlongrecordedby < 100])
+
+
+table(coloradosps$basisOfRecord) # PreservedSpecimen: 566067; preservedspecimen: 55; Preserved specimen: 143; Photograph: 1; Observation: 124; Native and Naturalized Flora of; HumanObservation; many just wrong column info in this
+
+# both of these from OBI: California Polytechnic State University
+coloradosps[coloradosps$basisOfRecord == "Plants of Jefferson County Open",] #68 plus 1 more with some other typo
+coloradosps[coloradosps$basisOfRecord == "Plants of Colorado",] #68 plus 1 more with some other typo
+
+#Subset by just preserved specimens  
+coloradosps$basisOfRecord <- as.character(coloradosps$basisOfRecord)
+coloradosps.specimens <- coloradosps[grep("specimen",coloradosps$basisOfRecord,
+                                          ignore.case=TRUE),]
+table(coloradosps.specimens$basisOfRecord)
+
+coloradosps.specimens <- coloradosps.specimens[nchar(coloradosps.specimens$basisOfRecord)<50,]
+table(coloradosps.specimens$basisOfRecord)
+
+#Now only preserved specimens
+coloradosps <- coloradosps.specimens
+nrow(coloradosps)
+
+
+coloradosps[grep("bluffs above tributary",coloradosps$basisOfRecord) ,] #there are all messed up
+
 #colonames <- TPL(unique(coloradosps$scientificName))
 #write.csv(colonames, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/AllcoloSEINet_TPL.csv")
 #colonames <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/AllcoloSEINet_TPL.csv")
@@ -289,7 +316,8 @@ str(co_county)
 
 
 plot(l1G1G2, border="blue", lwd=4)
-plot(colorelief, add=TRUE)
+plot(co_county, add=TRUE)
+
 
 latlongG1G2 <- spTransform(l1G1G2, CRS("+proj=longlat +datum=WGS84"))
 
@@ -406,16 +434,22 @@ head(UTMpts)
 
 #use my points from download and connection to names from CNHP's L1/L2 
 #make all numeric
+collectionsg1g2$decimalLatitude <- as.numeric(collectionsg1g2$decimalLatitude)
+collectionsg1g2$decimalLongitude <- as.numeric(collectionsg1g2$decimalLongitude)
+collectionsg1g2 <- collectionsg1g2[!is.na(collectionsg1g2$decimalLatitude),]
 pts.me <- SpatialPoints(collectionsg1g2[collectionsg1g2$decimalLatitude!="",
                                         c("decimalLongitude","decimalLatitude")])
 
-str(as.numeric(collectionsg1g2$decimalLatitude))
 
-plot(l1eor[l1eor$GRANK %in% c("G1","G2"),])
-points(UTMpts)
+plot(l1eor[l1eor$GRANK %in% c("G1","G2"),], border="blue", lwd=4)
+plot(colorado, add=TRUE)
+points(UTMpts, pch=16, cex=0.25)
+
 names(l1eor)
 
+#Where can I get myself points by species, I must have split that somewhere!?
 plot(l1eor[l1eor$GNAME == "Astragalus microcymbus",])
+points(UTMpts)
 
 #Does not read th .prj file so need to tell it that they're in UTM
 proj4string(l1eor) <- "+proj=utm +zone=13 ellps=WGS84"
@@ -423,6 +457,8 @@ proj4string(l1eor) <- "+proj=utm +zone=13 ellps=WGS84"
 #might be tooooo big!
 #PLSS <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/PLSS Geo Coordinates_2008")
 
+plot(co_county)
+plot(l1eor[l1eor$GRANK %in% c("G1","G2"),], border="blue", lwd=4, add=TRUE)
 
 
 ```
