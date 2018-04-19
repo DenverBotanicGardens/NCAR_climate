@@ -76,6 +76,58 @@ multisub <- function(pattern,replacement,x){
 
 ```
 
+
+```{r}
+l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
+
+colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
+
+plot(colocounties)
+
+#Each polygon might be made of multiple disconnected polygons. Need to separate and label
+l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
+l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
+                                       function(x){
+              x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
+              x
+              }))
+
+#How many names in 
+length(unique(l1G1G2$GNAME)) #60
+
+# Could take all the synonyms and names of l1G1G2 to make the list of names to pull from SEINet big list
+namesg1g2 <- table(l1G1G2$GNAME)
+length(namesg1g2[namesg1g2 > 0]) #60 species
+g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
+table(g1g2names$Taxonomic.status) #2 not in there, "Gutierrezia elegans" "Oonopsis sp. 1", 10 synonyms, 3 unresolved
+
+#Are both synonyms and accepted in as GNAME?
+notaccepted <- l1G1G2$GNAME[!is.na(match(l1G1G2$GNAME,
+      g1g2names$Taxon[g1g2names$Taxonomic.status != "Accepted"]))]
+unique(notaccepted)
+g1g2names[g1g2names$Taxonomic.status != "Accepted",]
+
+unique(l1G1G2$GNAME[grep("Boechera",l1G1G2$GNAME)])
+
+#Are any accepted names also in the list?
+l1G1G2$GNAME[l1G1G2$GNAME %in% 
+               g1g2names$New.Genus[g1g2names$Taxonomic.status
+                                   != "Accepted"]]
+
+g1g2names[g1g2names$Taxonomic.status == "",] #Gutierrezia elegans; Arabis crandallii --> Boechera crandallii
+
+g1g2names$Taxon
+g1g2names$Taxon[g1g2names$Taxonomic.status == ""]
+g1g2names$Taxon[g1g2names$Taxonomic.status == "Synonym"]
+
+# All names to look for in SEINet, both the stated and the corrected by TPL
+allnames <- c(g1g2names$Taxon, 
+              paste(g1g2names$New.Genus,g1g2names$New.Species,sep=" "))
+length(unique(allnames)) #71
+
+```
+
+
 Mo Ewing:    
      1) split all polygons (from CNHP) with ArcGIS 'explosion' tool    
      2) Copy the Feature_id field into the Parcel-num field and annotate each parcel: "a", "b" etc    
@@ -99,20 +151,29 @@ Mo Ewing:
 
 
 
+
+# Mo Ewing's work to pull SEINet colorado specimens of G1G2 species so not sure he got all   
+ also did eors <- 
 ```{r}
-# Mo Ewing's work to pull SEINet colorado specimens of G1G2 species so not sure he got all 
-# also did eors <- 
 seinet_Ewingdistances <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/Distance Tables/Vouchers_distance.csv")
 
 table(seinet_Ewingdistances$basisOfRec) #all PreservedSpecimen, 804
 names <- names(table(seinet_Ewingdistances$scientific)) #54 names
 mo_names <- TPL(names)
-table(mo_names$Taxonomic.status) 
+table(mo_names$Taxonomic.status)  
+#             Accepted    Synonym Unresolved 
+#         1         45          5          2 
 seinet_Ewingdistances[seinet_Ewingdistances$scientific %in%
                         mo_names$Taxon[mo_names$Taxonomic.status != "Accepted"],]
+```
 
-#I must have made this one sometime, need to check again that matched all names
+#I must have made this one sometime, need to check again that matched all names   
+I think I decided that 54 names was not all the G1/G2 so I went to get the rest one by one from SEINet instead of all Colorado specimens which then has name issues:    
+coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences.csv")
+```{r}
 seinet <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/seinet_colorado_with_coordinates_ALLG1G2.csv")
+
+seinet <- seinet[seinet$genus != "",]
 
 table(seinet$basisOfRec) #PreservedSpecimen: 1871 and HumanObservation: 4
 seinet <- seinet[seinet$basisOfRecord != "HumanObservation",]
@@ -121,11 +182,55 @@ SEINet_names <- TPL(namesSEINet)
 table(SEINet_names$Taxonomic.status) #
 #             Accepted    Synonym Unresolved 
 #         2         75          9          7 
-seinet[seinet$scientificName %in%
-                        SEINet_names$Taxon[SEINet_names$Taxonomic.status != "Accepted"],]
+SEINet_names$scientificNameAccpt <-paste(SEINet_names$New.Genus, SEINet_names$New.Species)
+write.table(SEINet_names[SEINet_names$Taxonomic.status != "Accepted",c(1,14,16,12)], "clipboard", sep="\t", row.names=FALSE)
+SEINet_names[SEINet_names$Taxonomic.status != "Accepted",c(1,14,16,12)]
 
 seinet_TPL <- merge(seinet, SEINet_names, by.x = "scientificName", by.y = "Taxon")
+head(seinet_TPL) # all the information from herbarium collections and if they're accepted names or not
+
+seinet_TPL$family <- toupper(seinet_TPL$family)
+
+seinet_TPL[seinet_TPL$institutionCode=="USU",]
+seinet_TPL$institutionCode[seinet_TPL$institutionCode=="USU"] <- "USUUB"
+
 ```
+
+# Check when names are good or not from herbarium specimens
+```{r}
+namesbyyear <- table(seinet_TPL$Taxonomic.status,seinet_TPL$year)
+plot(as.numeric(dimnames(namesbyyear)[[2]]),namesbyyear[2,],col="blue", type="l",
+     xlab="Year",ylab="Specimens", ylim=c(0,max(namesbyyear))) #accepted
+lines(as.numeric(dimnames(namesbyyear)[[2]]),namesbyyear[3,],col="green") #synonym
+lines(as.numeric(dimnames(namesbyyear)[[2]]),namesbyyear[4,],col="orange") #Unresolved
+lines(as.numeric(dimnames(namesbyyear)[[2]]),namesbyyear[1,],col="pink") #not in TPL
+```
+#Families collected over time
+```{r}
+familyxyear <- data.frame(table(seinet_TPL$year,seinet_TPL$family)) #now changed toupper lowercase $family has 44 levels, inconsistent capitals and lowercase..
+familyxyear$Var1 <- as.numeric(as.character(familyxyear$Var1))
+
+familyxyear[familyxyear$Freq>0,]
+
+
+library(lattice)
+xyplot(Freq ~ Var1|Var2, familyxyear[familyxyear$Freq>0,],
+       type = c("g","p","r"),
+       index = function(x,y) coef(lm(y ~ x))[1],
+       xlab = "Year of Collection",
+       ylab = "Number of Collections", aspect = "xy")
+
+
+herbariumxyear <- data.frame(table(seinet_TPL$year,seinet_TPL$institutionCode)) 
+ggplot(herbariumxyear[herbariumxyear$Freq>0,],aes(Var1, Freq, colour=Var2 ))+
+  geom_point()+
+  theme_bw()
+
+
+unique(seinet_TPL$geodeticDatum)
+seinet_TPL[seinet_TPL$geodeticDatum == "27",]
+```
+
 
 Would need to set eors <- seinet_Ewingdistances
 ```{r, eval=FALSE}
@@ -254,53 +359,6 @@ unique(coloradospsnames$geodeticDatum[grep("WGS",coloradospsnames$geodeticDatum)
       
       "The latest revision is WGS 84 (also known as WGS 1984, EPSG:4326), established in 1984 and last revised in 2004.[1] Earlier schemes included WGS 72, WGS 66, and WGS 60. WGS 84 is the reference coordinate system used by the Global Positioning System."
 
-```{r}
-l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
-
-colorelief <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
-
-#Each polygon might be made of multiple disconnected polygons. Need to separate and label
-l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
-l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
-                                       function(x){
-              x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
-              x
-              }))
-
-#How many names in 
-length(unique(l1G1G2$GNAME)) #60
-
-# Could take all the synonyms and names of l1G1G2 to make the list of names to pull from SEINet big list
-namesg1g2 <- table(l1G1G2$GNAME)
-length(namesg1g2[namesg1g2 > 0]) #60 species
-g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
-table(g1g2names$Taxonomic.status) #2 not in there, "Gutierrezia elegans" "Oonopsis sp. 1", 10 synonyms, 3 unresolved
-
-#Are both synonyms and accepted in as GNAME?
-notaccepted <- l1G1G2$GNAME[!is.na(match(l1G1G2$GNAME,
-      g1g2names$Taxon[g1g2names$Taxonomic.status != "Accepted"]))]
-unique(notaccepted)
-g1g2names[g1g2names$Taxonomic.status != "Accepted",]
-
-unique(l1G1G2$GNAME[grep("Boechera",l1G1G2$GNAME)])
-
-#Are any accepted names also in the list?
-l1G1G2$GNAME[l1G1G2$GNAME %in% 
-               g1g2names$New.Genus[g1g2names$Taxonomic.status
-                                   != "Accepted"]]
-
-g1g2names[g1g2names$Taxonomic.status == "",] #Gutierrezia elegans; Arabis crandallii --> Boechera crandallii
-
-g1g2names$Taxon
-g1g2names$Taxon[g1g2names$Taxonomic.status == ""]
-g1g2names$Taxon[g1g2names$Taxonomic.status == "Synonym"]
-
-# All names to look for in SEINet, both the stated and the corrected by TPL
-allnames <- c(g1g2names$Taxon, 
-              paste(g1g2names$New.Genus,g1g2names$New.Species,sep=" "))
-length(unique(allnames)) #71
-
-```
 
 ```{r}
 colorado <- get_map(location = c(lon = -105.6,lat = 39.35), 
@@ -446,10 +504,11 @@ plot(colorado, add=TRUE)
 points(UTMpts, pch=16, cex=0.25)
 
 names(l1eor)
+head(seinet_TPL)
 
 #Where can I get myself points by species, I must have split that somewhere!?
-plot(l1eor[l1eor$GNAME == "Astragalus microcymbus",])
-points(UTMpts)
+plot(l1eor[l1eor$GNAME == "Astragalus microcymbus",], border = "blue")
+points(UTMpts, pch=16, cex=0.5)
 
 #Does not read th .prj file so need to tell it that they're in UTM
 proj4string(l1eor) <- "+proj=utm +zone=13 ellps=WGS84"
