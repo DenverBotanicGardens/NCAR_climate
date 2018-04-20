@@ -328,10 +328,13 @@ rowstomatch <- lapply(c("Taxon","AcceptedName"), function(x){
    coloradosps[,"scientificName"] %in%  g1g2names[,x]
 })
 
+#######do I need this or just take matches for coloradosps? 
+
 #The rows to keep that match either an accepted or synonym or unresolved name for a G1G2 species
 #coloradosps.specimens was intermediate to get rid of none specimen records
 coloradosps.g1g2 <- unique(rbind(coloradosps[rowstomatch[[1]],],coloradosps[rowstomatch[[2]],]))
 nrow(coloradosps.g1g2)
+hist(as.numeric(as.character(coloradosps.g1g2$decimalLatitude)))
 write.table(sort(unique(coloradosps.g1g2$scientificName)), "clipboard", sep="\t", row.names=FALSE)
 
 setdiff(sort(unique(coloradosps.g1g2$scientificName)),sort(unique(l1G1G2$GNAME))) #species from the SEINet specimens that isn't in the names given for G1G2
@@ -411,33 +414,100 @@ ScaleBar <- function(reference_raster_utm, round_to_nearest_km, width_percent, y
 #transform to UTM to match l1G1G2
 #60 names with the listed name and the accepted name acording to TPL
 
-coloradosps.dist <- lapply(1:nrow(g1g2names), function(i){
+coloradosps.dist <- coloradosps.g1g2
+coloradosps.dist$distNearEOR <- NA
+
+distXsp <- lapply(1:nrow(g1g2names), function(i){
   g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in% c(g1g2names$Taxon[i],
                                                                    g1g2names$AcceptedName[i]),]
+
   g1g2now$decimalLatitude <- as.numeric(as.character(g1g2now$decimalLatitude))
   g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
   g1g2now <- g1g2now[!is.na(g1g2now$decimalLatitude),]
-  #turn into spatialpointsdataframe for individual species
-  coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
-  proj4string(g1g2now) <- CRS("+proj=longlat +datum=WGS84") 
-  g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 ellps=NAD83"))
-  distnow <- apply(gDistance(g1g2now,
-                             l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-                                                        g1g2names$Taxon[i]),], byid=TRUE),
-                   2,min)
+  g1g2now <- g1g2now[!is.na(g1g2now$decimalLongitude),]
+  if(nrow(g1g2now)>0){
+    #turn into spatialpointsdataframe for individual species
+    coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
+    proj4string(g1g2now) <- CRS("+proj=longlat +datum=WGS84") 
+    g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 ellps=NAD83"))
+    distnow <- apply(gDistance(g1g2now,
+                               l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                                          g1g2names$Taxon[i]),], byid=TRUE),
+                     2,min)
+    out <- list(g1g2now, distnow)
+  } else {
+      out <- list(NA,NA)
+    }
+  out
   })
 
+str(distXsp)
+
+distXspbind <- do.call(c,mapply('[[', distXsp, 2))
+ 
+length(distXspbind[is.na(distXspbind)]) #14 don't have any data
+distXspbind <- distXspbind[is.na(distXspbind)]
+#compare colo.test$distNearEOR with coloradosps.dist$distNearEOR
+colo.test <- coloradosps.dist
+colo.test$distNearEOR[which(rownames(colo.test) %in%
+                                         names(distXspbind))] <-unname(distXspbind)
+  
+
+
+
+for(i in 1:nrow(g1g2names)){
+  g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in% c(g1g2names$Taxon[i],
+                                                                   g1g2names$AcceptedName[i]),]
+
+  g1g2now$decimalLatitude <- as.numeric(as.character(g1g2now$decimalLatitude))
+  g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
+  g1g2now <- g1g2now[!is.na(g1g2now$decimalLatitude),]
+  g1g2now <- g1g2now[!is.na(g1g2now$decimalLongitude),]
+  if(nrow(g1g2now)>0){
+    #turn into spatialpointsdataframe for individual species
+    coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
+    proj4string(g1g2now) <- CRS("+proj=longlat +datum=WGS84") 
+    g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 ellps=NAD83"))
+    distnow <- apply(gDistance(g1g2now,
+                               l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                                          g1g2names$Taxon[i]),], byid=TRUE),
+                     2,min)
+    coloradosps.dist$distNearEOR[which(rownames(coloradosps.dist) %in%
+                                         names(distnow))] <-unname(distnow)
+    rm(distnow)
+  }
+  rm(g1g2now)
+}
 
 ```
 
 ```{r}
-g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in% c(g1g2names$Taxon[1],
-                                                                   g1g2names$AcceptedName[1]),]
+ggplot(coloradosps.dist, aes(scientificName,distNearEOR))+
+  geom_boxplot()
+
+plot(distNearEOR~as.factor(scientificName), coloradosps.dist[coloradosps.dist$distNearEOR<500000,], las=2)
+
+colo.merged <- merge(coloradosps.dist, g1g2names, by.x = "scientificName", by.y="AcceptedName", all.x=TRUE)
+
+plot(distNearEOR~Family, colo.merged[colo.merged$distNearEOR<500000,], las=2)
+
+length(table(colo.merged$Taxon)) #58 species with some data
+
+identical(colo.test,coloradosps.dist)
+
+```
+
+Code to figure out how to iterate over all 60 species for which I have EOR data from CNHP
+```{r}
+g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in% c(g1g2names$Taxon[7],
+                                                                   g1g2names$AcceptedName[7]),]
+nrow(g1g2now)
 
 g1g2now$decimalLatitude <- as.numeric(as.character(g1g2now$decimalLatitude))
 g1g2now <- g1g2now[!is.na(g1g2now$decimalLatitude),]
-hist(g1g2now$decimalLatitude)
+nrow(g1g2now)
 g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
+
 
 coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
 proj4string(g1g2now) <- CRS("+proj=longlat +datum=WGS84") #should go line by line and change randomly to see effect of different projections since don't know for sure. 
