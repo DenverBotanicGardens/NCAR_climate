@@ -81,6 +81,8 @@ multisub <- function(pattern,replacement,x){
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
 
 colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
+colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
+
 
 plot(colocounties)
 
@@ -94,12 +96,17 @@ l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
 
 #How many names in 
 length(unique(l1G1G2$GNAME)) #60
+write.table(unique(l1G1G2$GNAME), "clipboard", sep="\t", row.names=FALSE)
+
 
 # Could take all the synonyms and names of l1G1G2 to make the list of names to pull from SEINet big list
 namesg1g2 <- table(l1G1G2$GNAME)
 length(namesg1g2[namesg1g2 > 0]) #60 species
 g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
 table(g1g2names$Taxonomic.status) #2 not in there, "Gutierrezia elegans" "Oonopsis sp. 1", 10 synonyms, 3 unresolved
+
+
+
 
 #Are both synonyms and accepted in as GNAME?
 notaccepted <- l1G1G2$GNAME[!is.na(match(l1G1G2$GNAME,
@@ -310,41 +317,34 @@ nrow(coloradosps)
 
 coloradosps[grep("bluffs above tributary",coloradosps$basisOfRecord) ,] #there are all messed up
 
-#colonames <- TPL(unique(coloradosps$scientificName))
-#write.csv(colonames, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/AllcoloSEINet_TPL.csv")
-#colonames <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/AllcoloSEINet_TPL.csv")
-#save(colonames,file="P:/hackathon/Simulations/colonames.Rda")
-load("P:/hackathon/Simulations/colonames.Rda")
-
-colonames <- colonames[-grep("Middle Park",colonames$Taxon),] #get rid of offset record
-colonames <- colonames[!(colonames$Taxon %in% ""),] #get rid of row with no name
-
-#merge taxon from colonames (with TPL categorization of name) with coloradosps$scientificName
-coloradosps$scientificName <- as.character(coloradosps$scientificName)
-colonames$Taxon <- as.character(colonames$Taxon)
-
-coloradosps$Taxon <- paste(coloradosps$genus,coloradosps$specificEpithet,
-                           coloradosps$taxonRank,coloradosps$infraspecificEpithet,
-                           sep=" ")
-
-#remove any leading or trailing white spaces around both names
-coloradosps$Taxon <- gsub("\\s+$","",coloradosps$Taxon)
-#colonames$Taxon <- gsub("\\s+","",colonames$Taxon) # There are 390 repeated names, why?
-coloradospsnames <- merge(coloradosps,colonames,by="Taxon")
+g1g2names$AcceptedName <- paste(g1g2names$New.Genus,g1g2names$New.Species)
+#match SEINet names to either the given or accepted names from G1/G2s
+length(unique(g1g2names$Taxon))
+length(unique(g1g2names$AcceptedName))
+length(unique(c(g1g2names$Taxon,g1g2names$AcceptedName))) #71 
 
 
-sum(table(colonames$Taxonomic.status))
-# 1929 not in The Plant List, 6 misapplied??, lots of synonyms. 
-# Some are just Genus. 
-#             Accepted Misapplied    Synonym Unresolved 
-#      1929       9149          6       6083        682
-head(unique(colonames$Taxon[colonames$Taxonomic.status == ""]),30)
-table(coloradospsnames$Taxonomic.status)
-table(coloradospsnames$Family) #4887 with no Family
-head(coloradospsnames[grep("Observation",coloradospsnames$basisOfRecord),])
-unique(coloradospsnames$geodeticDatum[grep("NAD ",coloradospsnames$geodeticDatum)])
-#NAD 83       NAD 27       NAD 84       NAD 27 CONUS NAD 85 
-unique(coloradospsnames$geodeticDatum[grep("WGS",coloradospsnames$geodeticDatum)])
+rowstomatch <- lapply(c("Taxon","AcceptedName"), function(x){
+   coloradosps[,"scientificName"] %in%  g1g2names[,x]
+})
+
+#The rows to keep that match either an accepted or synonym or unresolved name for a G1G2 species
+#coloradosps.specimens was intermediate to get rid of none specimen records
+coloradosps.g1g2 <- unique(rbind(coloradosps[rowstomatch[[1]],],coloradosps[rowstomatch[[2]],]))
+nrow(coloradosps.g1g2)
+write.table(sort(unique(coloradosps.g1g2$scientificName)), "clipboard", sep="\t", row.names=FALSE)
+
+setdiff(sort(unique(coloradosps.g1g2$scientificName)),sort(unique(l1G1G2$GNAME))) #species from the SEINet specimens that isn't in the names given for G1G2
+setdiff(sort(unique(l1G1G2$GNAME)),sort(unique(coloradosps.g1g2$scientificName))) #the first list that's not in the second
+
+head(g1g2names)
+unique(l1G1G2$PolyID$GNAME)
+plot(colocounties.UTM) #colocounties is in WGS84, not in same datum as l1G1G2
+plot(l1G1G2, add=TRUE)
+plot(l1G1G2[grep( "Astragalus",l1G1G2$GNAME),], border = "red", add=TRUE)
+plot(l1G1G2[grep( "Penstemon",l1G1G2$GNAME),], border = "blue", add=TRUE)
+
+
 ```
        [1] WGS84                     WGS 84                    WGS 1984                      
        [4] WGS96                     WGS 72                    WGS-84                     
@@ -359,75 +359,116 @@ unique(coloradospsnames$geodeticDatum[grep("WGS",coloradospsnames$geodeticDatum)
       
       "The latest revision is WGS 84 (also known as WGS 1984, EPSG:4326), established in 1984 and last revised in 2004.[1] Earlier schemes included WGS 72, WGS 66, and WGS 60. WGS 84 is the reference coordinate system used by the Global Positioning System."
 
-
+Scale bar attempts
 ```{r}
-colorado <- get_map(location = c(lon = -105.6,lat = 39.35), 
-                    maptype = "satellite", zoom = 6)
-counties <- map_data("county")
-co_county <- subset(counties, region == 'colorado')
+myScalebar = function(units_label, yadj=1.5) {
 
+  # Get plot coordinates
+  pc = par("usr") 
+
+  # Position scale line between last two major x-axis tick marks
+  # and 1/10th of the total y-range above the lower y-axis coordinate
+  lines(c(floor(pc[2]-100),floor(pc[2])),     
+        rep(pc[3] + 0.1*(pc[4] - pc[3]), 2))
+
+  # Place the units label at the midpoint of and just below the scale line
+  text(x=mean(c(floor(pc[2]-100), floor(pc[2]))), 
+       y=pc[3] + 0.1*(pc[4] - pc[3]),
+       label=units_label, adj=c(0.5, yadj))
+}
+
+ScaleBar <- function(reference_raster_utm, round_to_nearest_km, width_percent, y_percent_from_bottom, x_percent_from_left, y_text_percent_from_bottom, ...) {
+    # Round by max to nearest... e.g. 5 km 
+    mround <- function(x,base){ 
+        base*round(x/base) 
+    }   
+    # scale bar size adjustment to avoid decimals
+        scale_size <- ((xmax(reference_raster_utm)-xmin(reference_raster_utm))*width_percent)/1000
+        scale_size_adj <- mround(scale_size, round_to_nearest_km)
+        scale_size_adj_plot <- (scale_size_adj*1000)/2
+    # Horizontal percent position (x) for scale bar
+        x_position <- ((xmax(reference_raster_utm)-xmin(reference_raster_utm))*x_percent_from_left)+xmin(reference_raster_utm)
+    # Vertical percent position y for scale bar
+        y_position <- ((ymax(reference_raster_utm)-ymin(reference_raster_utm))*y_percent_from_bottom)+ymin(reference_raster_utm)
+        y_position_text <- ((ymax(reference_raster_utm)-ymin(reference_raster_utm))*y_text_percent_from_bottom)+ymin(reference_raster_utm)
+    # Draw line on plot
+        library(sp)
+        x_ends <- c((x_position-scale_size_adj_plot), (x_position+scale_size_adj_plot))
+        y_ends <- c((y_position), (y_position))
+        scale_bar_line <- SpatialLines(list(Lines(Line(cbind(x_ends, y_ends)), ID="length")))
+        projection(scale_bar_line) <- projection(reference_raster_utm)
+        plot(scale_bar_line, add=TRUE, ...)
+        text(x_position, y_position_text, paste0(scale_size_adj, "km"))
+}
+
+```
+
+#map each species, map each EOR, check distance from points to nearest EORs
+```{r}
 #l1G1G2 are in UTM zone 13
-l1G1G2@proj4string <- CRS("+proj=utm +zone=13 ellps=NAD83")
+#l1G1G2@proj4string <- CRS("+proj=utm +zone=13 ellps=NAD83") 
+# says  projargs: chr "+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84
+#transform to UTM to match l1G1G2
+#60 names with the listed name and the accepted name acording to TPL
 
-str(colorado)
-str(co_county)
+coloradosps.dist <- lapply(1:nrow(g1g2names), function(i){
+  g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in% c(g1g2names$Taxon[i],
+                                                                   g1g2names$AcceptedName[i]),]
+  g1g2now$decimalLatitude <- as.numeric(as.character(g1g2now$decimalLatitude))
+  g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
+  g1g2now <- g1g2now[!is.na(g1g2now$decimalLatitude),]
+  #turn into spatialpointsdataframe for individual species
+  coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
+  proj4string(g1g2now) <- CRS("+proj=longlat +datum=WGS84")  
+g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 ellps=NAD83"))
 
-
-plot(l1G1G2, border="blue", lwd=4)
-plot(co_county, add=TRUE)
-
-
-latlongG1G2 <- spTransform(l1G1G2, CRS("+proj=longlat +datum=WGS84"))
-
+distnow <- apply(gDistance(g1g2now,
+          l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[1],g1g2names$Taxon[1]),], byid=TRUE),
+          2,min)
+})
 
 ```
 
-Taxonomy  - Wait, first multisub, then merge?    
-Try this: 
 ```{r}
-#60 accepted names
-g1g2names$toaccepted <- paste(g1g2names$New.Genus,
-                    g1g2names$New.Species,
-                    sep=" ")
+g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in% c(g1g2names$Taxon[1],
+                                                                   g1g2names$AcceptedName[1]),]
 
-sum(table(g1g2names$Taxon))
+g1g2now$decimalLatitude <- as.numeric(as.character(g1g2now$decimalLatitude))
+g1g2now <- g1g2now[!is.na(g1g2now$decimalLatitude),]
+hist(g1g2now$decimalLatitude)
+g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
 
-names(table(c(g1g2names$Taxon,g1g2names$toaccepted))) #71 names to pull from coloradospsnames
+coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
+proj4string(g1g2now) <- CRS("+proj=longlat +datum=WGS84") #should go line by line and change randomly to see effect of different projections since don't know for sure. 
 
+unique(coloradosps.g1g2$geodeticDatum)
+sim.proj4string <- c(CRS("+proj=longlat +datum=WGS84"), CRS("+proj=longlat +datum=WGS84"),
+                     CRS("+proj=longlat +datum=WGS84"),CRS("+proj=longlat +datum=WGS84"))
 
-colodf1 <- coloradospsnames[coloradospsnames$Taxon %in%
-                              names(table(c(g1g2names$Taxon,g1g2names$toaccepted))),]
+g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 ellps=NAD83"))
 
-head(colodf1)
-write.csv(colodf1, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/colodf_g1g2.csv", row.names = FALSE)
+distnow <- apply(gDistance(g1g2now,
+          l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[1],g1g2names$Taxon[1]),], byid=TRUE),
+          2,min)
+
+length(g1g2now)
+hist(as.numeric(distnow)/1000, main = "Distance (km) from points to nearest EOR")
 ```
+
+```{r}
+
+plot(colocounties.UTM, border="grey80")
+plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[1],g1g2names$Taxon[1]),],
+     border = "red", add=TRUE, lwd=4)
+points(g1g2now, pch=16, cex=0.25)
+#scalebar(1000, xy = c(extent(raster(colocounties.UTM))[c(2,4)]-100000), type = "bar", divs = 4, 
+#         below = "km", lwd = 2) #label = c(0,50,100),adj=c(0.5, -0.5),lonlat = NULL, 
+#myScalebar("1 km")
+ScaleBar(raster(colocounties.UTM), 100, .20, .10, .75, .07, lwd=2)
+
+```
+
 4/6/2018 - Danielle Gualtieri working on Colton Gaines protocol for mapping and adding uncertainty protocol (similar to Mo's work)
-
-
-Or this:
-```{r}
-#1 change all G1G2 eor names to accepted - will need to deal with Gutierrezia elegans and Oonopsis sp. 1 by hand. 
-#Level 1 EORs imported as l1G1G2 keeping only G1 G2 species
-# l1G1G2$GNAME
-
-l1G1G2$GNAME <- multisub(g1g2names$Taxon[g1g2names$Taxonomic.status=="Synonym"],
-                         g1g2names$toaccepted[g1g2names$Taxonomic.status=="Synonym"],
-                         l1G1G2$GNAME)
-
-
-#2 change all SEINet names to accepted, go by TPL for simplicity, use coloradospsnames to keep old and who was wrong by herbarium
-colonames$toaccepted <- paste(colonames$New.Genus,colonames$New.Species,
-                              sep =" ")
-# If I've already linked, I don't need to do a multisub, I can just take the name given in New 
-head(coloradospsnames[coloradospsnames$Taxonomic.status == "Accepted",])
-coloradospsnames$toaccepted <- paste(coloradospsnames$genus,
-                                     coloradospsnames$specificEpithet,
-                                     coloradospsnames$taxonRank,
-                                     coloradospsnames$infraspecificEpithet,
-                                     sep=" ")
-head(coloradospsnames)
-```
-
 
 
 ```{r}
@@ -472,6 +513,8 @@ uniqueIDstring <- lapply(split(l1eor.disaggregate, l1eor.disaggregate$OBJECTID),
 polyid <- do.call(rbind, uniqueIDstring)
 polyrast <- polyid
 polyrast <- raster(polyrast)
+
+class(polyid)
 
 ```
 
