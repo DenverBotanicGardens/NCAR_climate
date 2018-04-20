@@ -419,13 +419,14 @@ coloradosps.dist <- lapply(1:nrow(g1g2names), function(i){
   g1g2now <- g1g2now[!is.na(g1g2now$decimalLatitude),]
   #turn into spatialpointsdataframe for individual species
   coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
-  proj4string(g1g2now) <- CRS("+proj=longlat +datum=WGS84")  
-g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 ellps=NAD83"))
+  proj4string(g1g2now) <- CRS("+proj=longlat +datum=WGS84") 
+  g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 ellps=NAD83"))
+  distnow <- apply(gDistance(g1g2now,
+                             l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                                        g1g2names$Taxon[i]),], byid=TRUE),
+                   2,min)
+  })
 
-distnow <- apply(gDistance(g1g2now,
-          l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[1],g1g2names$Taxon[1]),], byid=TRUE),
-          2,min)
-})
 
 ```
 
@@ -440,16 +441,31 @@ g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
 
 coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
 proj4string(g1g2now) <- CRS("+proj=longlat +datum=WGS84") #should go line by line and change randomly to see effect of different projections since don't know for sure. 
+ #next define random, or based on reported, would have to sample rows randomly and assign or group by reported and assign and then transform and rbind(spdf1,spdf2), might need to spChFIDs(spdf2, paste("name", row.names(spdf2), sep="."))
 
 unique(coloradosps.g1g2$geodeticDatum)
-sim.proj4string <- c(CRS("+proj=longlat +datum=WGS84"), CRS("+proj=longlat +datum=WGS84"),
-                     CRS("+proj=longlat +datum=WGS84"),CRS("+proj=longlat +datum=WGS84"))
+sim.proj4string <- c(CRS("+init=epsg:4326"), #WGS84
+                     CRS("+init=epsg:4269"), #NAD83 but without zone?!
+                     CRS("+init=epsg:4267"), #NAD27 but without zone?!
+                     CRS("+proj=utm +zone=13 +datum=NAD83"),
+                     CRS("+proj=utm +zone=13 +datum=NAD27")) 
+
+
+sample(sim.proj4string,20, replace=TRUE)
 
 g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 ellps=NAD83"))
 
 distnow <- apply(gDistance(g1g2now,
           l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[1],g1g2names$Taxon[1]),], byid=TRUE),
           2,min)
+
+#Row Names!
+unique(coloradosps.g1g2$scientificName[which(rownames(coloradosps.g1g2) %in% names(distnow))])
+foo <- coloradosps.g1g2
+foo$distNearEOR <- NA
+length(foo$distNearEOR[which(rownames(coloradosps.g1g2) %in% names(distnow))]) #120, that's right
+#Oh, row names, not row numbers, row numbers from coloradosps, but kept row numbers to coloradosps.g1g2
+foo$distNearEOR[which(rownames(foo) %in% names(distnow))] <-unname(distnow)
 
 length(g1g2now)
 hist(as.numeric(distnow)/1000, main = "Distance (km) from points to nearest EOR")
