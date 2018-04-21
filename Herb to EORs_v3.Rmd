@@ -64,6 +64,8 @@ library(RCurl)
 library(taxize)
 library(ggmap)
 
+library(gganimate)
+
 
 # exact match multisub
 multisub <- function(pattern,replacement,x){
@@ -446,59 +448,40 @@ str(distXsp)
 distXspbind <- do.call(c,mapply('[[', distXsp, 2))
  
 length(distXspbind[is.na(distXspbind)]) #14 don't have any data
-distXspbind <- distXspbind[is.na(distXspbind)]
+distXspbind <- distXspbind[!is.na(distXspbind)]
 #compare colo.test$distNearEOR with coloradosps.dist$distNearEOR
-colo.test <- coloradosps.dist
-colo.test$distNearEOR[which(rownames(colo.test) %in%
+coloradosps.dist$distNearEOR[which(rownames(coloradosps.dist) %in%
                                          names(distXspbind))] <-unname(distXspbind)
   
 
-
-
-for(i in 1:nrow(g1g2names)){
-  g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in% c(g1g2names$Taxon[i],
-                                                                   g1g2names$AcceptedName[i]),]
-
-  g1g2now$decimalLatitude <- as.numeric(as.character(g1g2now$decimalLatitude))
-  g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
-  g1g2now <- g1g2now[!is.na(g1g2now$decimalLatitude),]
-  g1g2now <- g1g2now[!is.na(g1g2now$decimalLongitude),]
-  if(nrow(g1g2now)>0){
-    #turn into spatialpointsdataframe for individual species
-    coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
-    proj4string(g1g2now) <- CRS("+proj=longlat +datum=WGS84") 
-    g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 ellps=NAD83"))
-    distnow <- apply(gDistance(g1g2now,
-                               l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-                                                          g1g2names$Taxon[i]),], byid=TRUE),
-                     2,min)
-    coloradosps.dist$distNearEOR[which(rownames(coloradosps.dist) %in%
-                                         names(distnow))] <-unname(distnow)
-    rm(distnow)
-  }
-  rm(g1g2now)
-}
-
 ```
 
 ```{r}
-ggplot(coloradosps.dist, aes(scientificName,distNearEOR))+
-  geom_boxplot()
 
 plot(distNearEOR~as.factor(scientificName), coloradosps.dist[coloradosps.dist$distNearEOR<500000,], las=2)
 
-colo.merged <- merge(coloradosps.dist, g1g2names, by.x = "scientificName", by.y="AcceptedName", all.x=TRUE)
+nrow(coloradosps.dist) #2451
+colo.merged <- merge(coloradosps.dist, g1g2names, by.x = "scientificName", by.y="AcceptedName")
+nrow(colo.merged) #2251
+colo.merged.taxon <- merge(coloradosps.dist, g1g2names, by.x = "scientificName", by.y="Taxon")
+nrow(colo.merged.taxon) #2121
+## Want the ones that are only in the first and only the second and one copy of the middle ones... 
+colo.all <- unique(rbind(colo.merged[,-grep("^Taxon$", names(colo.merged))], 
+                         colo.merged.taxon[,-grep("^AcceptedName$",names(colo.merged.taxon))]))
+nrow(colo.all) #2451
+#Names that aren't in TPL
+unique(colo.all$scientificName[colo.all$Family==""]) #"Gutierrezia elegans"
+colo.all$Family[colo.all$Family==""] <- "Asteraceae"
 
-plot(distNearEOR~Family, colo.merged[colo.merged$distNearEOR<500000,], las=2)
+par(mai=c(7,3,.1,.1))
+plot(distNearEOR~as.factor(Family), colo.all[colo.all$distNearEOR<500000,], las=2,
+     xlab="",ylab="")
 
 length(table(colo.merged$Taxon)) #58 species with some data
-
-identical(colo.test,coloradosps.dist)
-
 ```
 
 Code to figure out how to iterate over all 60 species for which I have EOR data from CNHP
-```{r}
+```{r, eval=FALSE}
 g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in% c(g1g2names$Taxon[7],
                                                                    g1g2names$AcceptedName[7]),]
 nrow(g1g2now)
@@ -541,16 +524,68 @@ length(g1g2now)
 hist(as.numeric(distnow)/1000, main = "Distance (km) from points to nearest EOR")
 ```
 
+#Animate maps over each species with points and polygons
 ```{r}
+all.g1g2now <- do.call(c,mapply('[[', distXsp, 1)) #all the transformed to UTM species points
+all.g1g2now <- all.g1g2now[!is.na(all.g1g2now)]
+all.g1g2now.joined <- lapply(all.g1g2now, function(x) {
+  out <- x@coords
+  out[,3] <- })
+g1g2.stack <- stack(all.g1g2now) #or could it be points? needs to be a raster
+g1g2.df <- as.data.frame(g1g2.stack)
+
+ggplot()
 
 plot(colocounties.UTM, border="grey80")
 plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[1],g1g2names$Taxon[1]),],
      border = "red", add=TRUE, lwd=4)
-points(g1g2now, pch=16, cex=0.25)
+points(distXsp[[1]][[1]], pch=16, cex=0.25)
 #scalebar(1000, xy = c(extent(raster(colocounties.UTM))[c(2,4)]-100000), type = "bar", divs = 4, 
 #         below = "km", lwd = 2) #label = c(0,50,100),adj=c(0.5, -0.5),lonlat = NULL, 
 #myScalebar("1 km")
 ScaleBar(raster(colocounties.UTM), 100, .20, .10, .75, .07, lwd=2)
+```
+
+
+```{r}
+
+#distXsp[[i]][[1]] are the herbarium points
+speciesNoHerb <- do.call(c,mapply('[[', distXsp, 1))
+want <- which(do.call(c,lapply(speciesNoHerb, function(x) !is.na(x))))
+
+l1G1G2@bbox[l1G1G2$GNAME %in%
+                           c(g1g2names$AcceptedName[i],g1g2names$Taxon[i])]
+
+l1G1G2@polygons[[1]]@Polygons[[1]]@coords
+
+
+l1G1G2@polygons[[l1G1G2$GNAME %in%
+                           c(g1g2names$AcceptedName[i],g1g2names$Taxon[i])]]@Polygons[[1]]@coords
+```
+
+
+```{r}
+for(i in want){
+  plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),],
+       border = rgb(1,0,0,0.5),  main=g1g2names$AcceptedName[i], lwd=3,
+       xlim=c(min(distXsp[[i]][[1]]@coords[,1]),max(distXsp[[i]][[1]]@coords[,1])),
+       ylim=c(min(distXsp[[i]][[1]]@coords[,2]),max(distXsp[[i]][[1]]@coords[,2])))
+  points(distXsp[[i]][[1]], pch=16, cex=0.5, col=rgb(0,0,0,0.75))
+  ScaleBar(raster(l1G1G2[l1G1G2$GNAME %in%
+                           c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),]), 
+           1, .20, .90, .15, .87, lwd=2)
+}
+
+```
+
+```{r}
+for(i in 1:nrow(g1g2names)){
+  plot(colocounties.UTM, border="grey80", main=g1g2names$AcceptedName[i])
+  plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),],
+       border = rgb(1,0,0,0.5), add=TRUE, lwd=10)
+  points(distXsp[[i]][[1]], pch=16, cex=0.5, col=rgb(0,0,0,0.75))
+  ScaleBar(raster(colocounties.UTM), 100, .20, .10, .75, .07, lwd=2)
+}
 
 ```
 
@@ -584,105 +619,6 @@ save(collectionsg1g2, file="P:/hackathon/Simulations/collectionsg1g2.Rda")
 ```
 
 
-All CNHP tracked species   
-```{r}
-#Each polygon might be made of multiple disconnected polygons. Need to separate and label
-l1eor.disaggregate <- disaggregate(l1eor)
-
-uniqueIDstring <- lapply(split(l1eor.disaggregate, l1eor.disaggregate$OBJECTID),
-                         function(x){
-                           x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],
-                                             sep="")
-                           x
-                         })
-
-polyid <- do.call(rbind, uniqueIDstring)
-polyrast <- polyid
-polyrast <- raster(polyrast)
-
-class(polyid)
-
-```
-
-
-```{r}
-#From Mo's work: So possible there are some errors
-nrow(seinet[!is.na(seinet$decimalLatitude),]) #1875 points
-
-#Get all points, transform to UTM
-pts <- SpatialPoints(seinet[,c("decimalLongitude","decimalLatitude")])
-proj4string(pts) <- CRS("+proj=longlat +datum=WGS84")
-
-#Project data into a planar coordinate system (UTM zone 13)
-UTMpts <- spTransform(pts, CRS("+proj=utm +zone=13 ellps=WGS84"))
-
-head(pts)
-head(UTMpts)
-
-#use my points from download and connection to names from CNHP's L1/L2 
-#make all numeric
-collectionsg1g2$decimalLatitude <- as.numeric(collectionsg1g2$decimalLatitude)
-collectionsg1g2$decimalLongitude <- as.numeric(collectionsg1g2$decimalLongitude)
-collectionsg1g2 <- collectionsg1g2[!is.na(collectionsg1g2$decimalLatitude),]
-pts.me <- SpatialPoints(collectionsg1g2[collectionsg1g2$decimalLatitude!="",
-                                        c("decimalLongitude","decimalLatitude")])
-
-
-plot(l1eor[l1eor$GRANK %in% c("G1","G2"),], border="blue", lwd=4)
-plot(colorado, add=TRUE)
-points(UTMpts, pch=16, cex=0.25)
-
-names(l1eor)
-head(seinet_TPL)
-
-#Where can I get myself points by species, I must have split that somewhere!?
-plot(l1eor[l1eor$GNAME == "Astragalus microcymbus",], border = "blue")
-points(UTMpts, pch=16, cex=0.5)
-
-#Does not read th .prj file so need to tell it that they're in UTM
-proj4string(l1eor) <- "+proj=utm +zone=13 ellps=WGS84"
-
-#might be tooooo big!
-#PLSS <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/PLSS Geo Coordinates_2008")
-
-plot(co_county)
-plot(l1eor[l1eor$GRANK %in% c("G1","G2"),], border="blue", lwd=4, add=TRUE)
-
-
-```
-
-
-Try to do an apply and split by species, don't really care which EO, just which mapped occurance of a species is closest      
-"coloG1G2" Was made after multisub of names to match. 
-Contains 2125 rows, 59 species
-```{r}
-#mindistxsp <- lapply(unique(coloG1G2$scientificName), function(x){
-#  distout <- apply(gDistance(UTMpts[UTMpts]))
-#})
-
-mindistxsp <- lapply(unique(l1eor$scientificName), function(x){
-  distout <- apply(gDistance(UTMpts[UTMpts]))
-})
-
-```
-
-
-```{r}
-#Distance from points to nearest polygon - this is to all polygons for G1:G5
-mindist <- apply(gDistance(UTMpts, polyid, byid = TRUE),2,min)
-
-
-
-## For each point, find name of nearest polygon
-
-#name of the nearest polygon
-minname <- apply()
-
-
-```
-
-
-
 #Mechanistic models based on matrix models growth rates and fecundity correlative, use some model selection? for best prediction by species  
 ```{r}
 load("Q:/Research/Stats & Software/COMPADRE_PlantMAtrixDatabase/COMPADRE_v.4.0.1.RData")
@@ -690,7 +626,6 @@ load("Q:/Research/Stats & Software/COMPADRE_PlantMAtrixDatabase/COMPADRE_v.4.0.1
 
 
 ```
-
 
 
 
