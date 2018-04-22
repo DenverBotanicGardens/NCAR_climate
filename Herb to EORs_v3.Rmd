@@ -420,8 +420,12 @@ coloradosps.dist <- coloradosps.g1g2
 coloradosps.dist$distNearEOR <- NA
 
 distXsp <- lapply(1:nrow(g1g2names), function(i){
-  g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in% c(g1g2names$Taxon[i],
-                                                                   g1g2names$AcceptedName[i]),]
+  g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in%
+                                c(g1g2names$Taxon[i],g1g2names$AcceptedName[i]),]
+  
+  areanow <- sapply(slot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                         g1g2names$Taxon[i]),], "polygons"), 
+         slot, "area")
 
   g1g2now$decimalLatitude <- as.numeric(as.character(g1g2now$decimalLatitude))
   g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
@@ -436,14 +440,12 @@ distXsp <- lapply(1:nrow(g1g2names), function(i){
                                l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
                                                           g1g2names$Taxon[i]),], byid=TRUE),
                      2,min)
-    out <- list(g1g2now, distnow)
+    out <- list(g1g2now, distnow, areanow)
   } else {
       out <- list(NA,NA)
     }
   out
   })
-
-str(distXsp)
 
 distXspbind <- do.call(c,mapply('[[', distXsp, 2))
  
@@ -626,49 +628,74 @@ length(colo.all$coordinateUncertaintyInMeters[!is.na(colo.all$coordinateUncertai
 colo.all[is.na(colo.all$coordinateUncertaintyInMeters),]
 
 colo.all[colo.all$distNearEOR>50000 & !is.na(colo.all$distNearEOR),c(56,57,83,61,63,66,67)] #611551meters is width of colorado about
-farawayones <- colo.all[colo.all$distNearEOR>50000 & !is.na(colo.all$distNearEOR),]
-coordinates(farawayones) <-~decimalLongitude+decimalLatitude
-proj4string(farawayones) <- CRS("+proj=longlat +datum=WGS84") 
-farawayones <- spTransform(farawayones, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
 
-far.county <- over(farawayones, colocounties.UTM[,"COUNTY"])
-farawayones$InCounty <- far.county[,1]
+#Can't have missing data
+colo.all.ll <- colo.all[!is.na(colo.all$decimalLatitude)&
+                       !is.na(colo.all$decimalLongitude),]
+coordinates(colo.all.ll) <-~decimalLongitude+decimalLatitude
+proj4string(colo.all.ll) <- CRS("+proj=longlat +datum=WGS84") 
+colo.all.ll <- spTransform(colo.all.ll, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+
+all.county <- over(colo.all.ll, colocounties.UTM[,"COUNTY"])
+colo.all.ll$InCounty <- all.county[,1]
 
 
-table(farawayones$county[farawayones$county != farawayones$InCounty])
-farawayones@data[farawayones$county != farawayones$InCounty &
-              !is.na(farawayones$county),c("scientificName","institutionCode","county","InCounty","georeferencedBy")]
+table(colo.all.ll$county[colo.all.ll$county != colo.all.ll$InCounty])
+colo.all.ll@data[colo.all.ll$county != colo.all.ll$InCounty &
+              !is.na(colo.all.ll$county),c("scientificName","institutionCode","county","InCounty","georeferencedBy")]
 
 #Which county are the points really in
 colocounties.UTM.df <- as.data.frame(colocounties.UTM)
 colocounties.UTM.df$id <- as.numeric(rownames(colocounties.UTM.df))
 
 plot(colocounties.UTM, border="grey80")
-plot(farawayones, add=TRUE, pch=16, cex=0.5)
-
-table(colo.all$county[colo.all$distNearEOR>50000 & !is.na(colo.all$distNearEOR)])
-
-farawayones@data[!is.na(farawayones@data$county)&
-                                              farawayones@data$county!="",]
+plot(colo.all.ll, add=TRUE, pch=16, cex=0.5)
 
 #Make a Levenshtein distance matric between names (like that paper!)
-countymatch<- adist(farawayones@data$county[!is.na(farawayones@data$county)&
-                                              farawayones@data$county!=""],
-                    farawayones@data$InCounty[!is.na(farawayones@data$county)&
-                                              farawayones@data$county!=""],
+countymatch<- adist(colo.all.ll@data$county[!is.na(colo.all.ll@data$county)&
+                                              colo.all.ll@data$county!=""],
+                    colo.all.ll@data$InCounty[!is.na(colo.all.ll@data$county)&
+                                              colo.all.ll@data$county!=""],
                     partial=TRUE,ignore.case = TRUE)
 #Single linkage method
 hcfar <- hclust(as.dist(countymatch), method='single')
 
 
 #errors so try clean up county column
-farawayones$countyclean <- gsub("Co.*","",farawayones$county)
+colo.all.ll$countyclean <- gsub("Co.*","",colo.all.ll$county)
 #trim trailing white space
-farawayones$countyclean <- sub("\\s+$", "", farawayones$countyclean)
-farawayones$countyclean <- toupper(farawayones$countyclean)
+colo.all.ll$countyclean <- sub("\\s+$", "", colo.all.ll$countyclean)
+colo.all.ll$countyclean <- toupper(colo.all.ll$countyclean)
 
-farawayones@data[!(farawayones$countyclean %in%farawayones$InCounty),]
+colo.all.ll@data[!(colo.all.ll$countyclean %in%colo.all.ll$InCounty),]
 
+nrow(colo.all.ll@data[!(colo.all.ll$countyclean %in%colo.all.ll$InCounty),])/
+       nrow(colo.all.ll)
+
+colo.all.ll@data[!(colo.all.ll$countyclean %in%colo.all.ll$InCounty),]
+
+```
+
+
+Assuming CNHP is nearly correct 
+```{r}
+colo.all[colo.all$recordNumber%in%
+           colo.all.ll@data$recordNumber[colo.all.ll$distNearEOR>5000000],
+         c("decimalLatitude","decimalLongitude","county","verbatimCoordinates",
+           "habitat","locality")] ##Location would be correct but decimalLongitude goes to -160.4; The easting has an extra zero: -105.7131, 38.1374; 3972 m
+
+colo.all$locality
+
+ggplot(colo.all.ll@data[colo.all.ll$distNearEOR<5000000,], aes(year, distNearEOR/1000))+
+  geom_point()+
+  theme_bw()+
+  ylab("Distance (km) to nearest EOR")
+
+```
+
+
+
+```{r}
 #install.packages("biogeo")
 library(biogeo)
 
@@ -677,11 +704,11 @@ library(biogeo)
 #Elevation check based on digital elevation model
 data("dem")
 
-biogeofarawayones <- data.frame(farawayones,ID=NA, 
+biogeocolo.all.ll <- data.frame(colo.all.ll,ID=NA, 
                                 x=NA, y=NA, Species=NA, 
                                 x_original=NA, y_original=NA, 
                                 Correction=NA, Modified=NA, Reason=NA, Exclude=NA )
-elevcheck1 <- elevcheck(biogeofarawayones, 
+elevcheck1 <- elevcheck(biogeocolo.all.ll, 
                         dem=raster(dem,xmn=-109, xmx=103, ymn=37, ymx=41),
                                    elevc = "minimumElevationInMeters",
                                    50)
@@ -689,7 +716,28 @@ elevcheck1 <- elevcheck(biogeofarawayones,
 
 ```
 
+Choroplethr from Jessie's code
+```{r}
+library(devtools)
+install_github("choroplethr", "trulia")
+ 
+library(choroplethr)
 
+```
+
+#This will just make each state different color, But I want the thing that makes points bigger when closer together. 
+```{r}
+tab <- table(colo.all.ll$InCounty)
+choro.in<- data.frame(region = names(tab), value = tab  )
+choro.in$value.Var1 <- NULL 
+choro.in$value <- choro.in$value.Freq
+choro.in$value.Freq <- NULL
+choro.in$region <- sapply(choro.in$region, function(x) {tolower(x)})
+
+state_choropleth(choro.in)#
+ggsave(filename="Q:/Research/Presentations/External Conference presentations/Natural Areas Conference 2018/NAC_DePrenger-Levin_BDAversion.pptx/HerbPoints.pdf")
+
+```
 
 #how many are in the county they say they should be in? Check Jessie's code for help
 ```{r}
