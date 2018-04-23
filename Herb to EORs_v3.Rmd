@@ -680,64 +680,70 @@ colo.all.ll@data[!(colo.all.ll$countyclean %in%colo.all.ll$InCounty),]
 Assuming CNHP is nearly correct 
 ```{r}
 colo.all[colo.all$recordNumber%in%
-           colo.all.ll@data$recordNumber[colo.all.ll$distNearEOR>5000000],
-         c("decimalLatitude","decimalLongitude","county","verbatimCoordinates",
-           "habitat","locality")] ##Location would be correct but decimalLongitude goes to -160.4; The easting has an extra zero: -105.7131, 38.1374; 3972 m
+           colo.all.ll@data$recordNumber[colo.all.ll$distNearEOR>50000] & !is.na(colo.all$decimalLatitude),
+         c("scientificName","decimalLatitude","decimalLongitude","county","verbatimCoordinates",
+           "habitat","locality","recordNumber")] ##Location would be correct but decimalLongitude goes to -160.4; The easting has an extra zero: -105.7131, 38.1374; 3972 m
 
-colo.all$locality
+colo.all$scientificName
 
-ggplot(colo.all.ll@data[colo.all.ll$distNearEOR<5000000,], aes(year, distNearEOR/1000))+
+#row 99: 21864 entered 27.47444 lat, probably meant 37.47
+#Row 753 21864 again with an extra trailing 0 for the easting got to -160 for long
+#row 1382 5733 zone 12 and NAD27, SEINet couldnt' figure that out maybe?
+#row 1393 5733 seems correct! **keep this one, lose the rest 5733; the other two are duplicates!
+#row 1394 5733 This time missing a digit in the easting so it put it in Nevada
+
+colo.all.ll@data[rownames(colo.all.ll@data) == 99,]
+```
+
+
+
+```{r}
+colo.all.ll$AcceptedName <- paste(colo.all.ll$New.Genus,colo.all.ll$New.Species)
+```
+
+
+```{r}
+ggplot(colo.all.ll@data[colo.all.ll$distNearEOR<500000,], aes(year, distNearEOR/1000))+
   geom_point()+
   theme_bw()+
+#  geom_hline(yintercept=(57936.4/1000), col="red")+ #if off by 36 miles
+#  geom_hline(yintercept=(666), col="blue")+ #if off by 1 zone, 111km wide at equator
+  stat_smooth(method="lm")+
   ylab("Distance (km) to nearest EOR")
-
 ```
-
 
 
 ```{r}
-#install.packages("biogeo")
-library(biogeo)
+speciesNoEOR <- lapply(1:60, function(x){
+  out <- NA
+  out <- sum(distXsp[[x]][[3]])
+  out
+})
 
-?biogeo
+areaxsp <- do.call(rbind,lapply(want, function(x) sum(distXsp[[x]][[3]])))
+areaxsp <- data.frame(Area = areaxsp[,1], AccName = g1g2names$AcceptedName[want])
 
-#Elevation check based on digital elevation model
-data("dem")
+#One is factor, but they are the same!
+identical(sort(unique(colo.all.ll$AcceptedName)),
+          sort(unique(as.character(areaxsp$AccName))))
+areaxsp$AccName <- as.character(areaxsp$AccName)
 
-biogeocolo.all.ll <- data.frame(colo.all.ll,ID=NA, 
-                                x=NA, y=NA, Species=NA, 
-                                x_original=NA, y_original=NA, 
-                                Correction=NA, Modified=NA, Reason=NA, Exclude=NA )
-elevcheck1 <- elevcheck(biogeocolo.all.ll, 
-                        dem=raster(dem,xmn=-109, xmx=103, ymn=37, ymx=41),
-                                   elevc = "minimumElevationInMeters",
-                                   50)
+colo.all.ll@data <- merge(colo.all.ll@data,areaxsp, 
+                          by.x ="AcceptedName", by.y="AccName")
 
 
-```
-
-Choroplethr from Jessie's code
-```{r}
-library(devtools)
-install_github("choroplethr", "trulia")
- 
-library(choroplethr)
-
-```
-
-#This will just make each state different color, But I want the thing that makes points bigger when closer together. 
-```{r}
-tab <- table(colo.all.ll$InCounty)
-choro.in<- data.frame(region = names(tab), value = tab  )
-choro.in$value.Var1 <- NULL 
-choro.in$value <- choro.in$value.Freq
-choro.in$value.Freq <- NULL
-choro.in$region <- sapply(choro.in$region, function(x) {tolower(x)})
-
-state_choropleth(choro.in)#
-ggsave(filename="Q:/Research/Presentations/External Conference presentations/Natural Areas Conference 2018/NAC_DePrenger-Levin_BDAversion.pptx/HerbPoints.pdf")
+ggplot(colo.all.ll@data[colo.all.ll$distNearEOR<5000000,], 
+       aes(Area, distNearEOR/1000))+
+  geom_point()+
+  theme_bw()+
+  stat_smooth(method="lm")+
+  ylab("Distance (km) to nearest EOR")+
+  xlab("Total EOR area")
 
 ```
+
+
+
 
 #how many are in the county they say they should be in? Check Jessie's code for help
 ```{r}
@@ -752,54 +758,8 @@ ggplot(colo.all[colo.all$distNearEOR<50000,], aes(as.numeric(year), distNearEOR)
 ```
 
 
-```{r}
-ggplot(colo.test[eors$Year.2>0,], aes( Year.2,NEAR_DIST,colour=institutio))+
-  geom_point()+
-  facet_wrap(~institutio)+
-  theme_bw()+
-  stat_smooth(method="lm", se=FALSE)
 
-ggplot(eors[eors$Year.2>0,], aes( Year.2,NEAR_DIST))+
-  geom_point()+
-  theme_bw()+
-  stat_smooth(method="lm", se=FALSE)
-
-summary(lm(NEAR_DIST~Year.2, data=eors[eors$Year.2>0,]))
-```
-
-How did the type of mapping method change over time?
-```{r}
-
-table(eors$Year.2)
-
-
-
-```
-
-Which method has the shortest distance?   
-```{r}
-
-
-ggplot(eors2, aes(x=Map.Method))+
-  geom_bar(aes(fill=institutio))
-
-
-ggplot(eors2, aes(Year.2,NEAR_DIST, colour=institutio))+
-  geom_point()+
-  theme_bw()
-
-ggplot(eors2, aes(x=Year.2, fill=Map.Method))+
-  geom_density(alpha=0.5)+
-  theme_bw()
-#+  facet_wrap(~Map.Method)
-
-ggplot(eors2, aes(x=Year.2, fill=Map.Method))+
-  geom_histogram(alpha=0.25)+
-  theme_bw()
-
-
-```
-
+#By herbarium 
 Maybe regional collections are much better?   
 FLD = Fort Lewis College    
 DES = Dessert Arizona   
@@ -810,77 +770,128 @@ SJNM = San Juan College, New Mexico
 UCR = University of California Riverside    
 USUUB = Utah STate University Uintah Basin (probably is USU)   
 UVSC = Utah Valley University	U.S.A. Utah. Orem.      
+
+
+
+
 ```{r}
 
 local <- c("COLO","CS","DBG","FLD","MESA","RM","RMBL")
 Adjacent <- c("ASC","ASU","BRY","DES","NMC","RM","SJNM","UNM","USUUB","UVSC")
 far <- c("CM","F","MISSA","MO","NY","RENO","UCR")
 
-eors2$InstNear[eors2$institutio %in% local] <- "Local"
-eors2$InstNear[eors2$institutio %in% Adjacent] <- "Near"
-eors2$InstNear[eors2$institutio %in% far] <- "Far"
+colo.all.ll@data$InstNear[colo.all.ll@data$institutionCode %in% local] <- "Local"
+colo.all.ll@data$InstNear[colo.all.ll@data$institutionCode %in% Adjacent] <- "Near"
+colo.all.ll@data$InstNear[colo.all.ll@data$institutionCode %in% far] <- "Far"
 
-eors2$InstNear <- factor(eors2$InstNear, levels = c("Far","Near","Local"))
+colo.all.ll@data$InstNear <- factor(colo.all.ll@data$InstNear, levels = c("Far","Near","Local"))
 
-
-ggplot(eors, aes(x=institutio))+
-  geom_bar(aes(fill=Map.Method))
-
-
-ggplot(eors2, aes(x=InstNear))+
-  geom_bar(aes(fill=Map.Method))
-
-ggplot(eors2, aes(Year.2,NEAR_DIST, colour=InstNear))+
-  geom_point()+
+ggplot(colo.all.ll@data[colo.all.ll$distNearEOR<500000,], 
+       aes(InstNear, distNearEOR/1000))+
+  geom_jitter()+
+  stat_summary(fun.y=mean, geom="point", shape=18,
+                 size=3, color="red")+ 
+  geom_violin(trim = FALSE)+
   theme_bw()+
-  stat_smooth(method="lm", se=FALSE)
+  ylab("Distance (km) to nearest EOR")+
+  xlab("Total EOR area")
 
-
-ggplot(eors2, aes(NEAR_DIST))+
-  geom_density(aes(fill=InstNear))
 ```
 
-Would assume that Locality method would be best for local institutions, worse for far
 ```{r}
+colo.all.ll@data$verbatimCoordinates[colo.all.ll$distNearEOR>100]
+
+#How many gave 1/4 section
+colo.all.ll@data[grep("1/4", colo.all.ll$verbatimCoordinates),]
+mean(colo.all.ll@data$distNearEOR[grep("1/4", colo.all.ll$verbatimCoordinates)])
+sd(colo.all.ll@data$distNearEOR[grep("1/4", colo.all.ll$verbatimCoordinates)])
 
 
-ggplot(eors2, aes(Map.Method, NEAR_DIST, colour=Map.Method))+
-  geom_boxplot()+
-  facet_wrap(~InstNear)+
-  theme_bw()+
-  xlab("Mapping method")+
-  ylab("Distance to closest mapped occurence")
+mean(colo.all.ll@data$distNearEOR[grep("", colo.all.ll$verbatimCoordinates)])
+sd(colo.all.ll@data$distNearEOR[grep("1/4", colo.all.ll$verbatimCoordinates)])
 ```
 
-Assuming CNHP has accurate and complete data, then Distance to a known mapped location 
+
 ```{r}
-table(eors2$Map.Method, eors2$InstNear)
+sp.df <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),]
 
-length(table(eors2$scientific)) #53
+length(sp.df)
+sp.df@polygons[[30]]@Polygons[[1]]@coords
 
-#species are the names collected from SEINet
-match(sort(unique(eors2$scientific)),sort(species))
+for(j in 1:length(sp.df)){
+  print(length(sp.df@polygons[[j]]@Polygons[[1]]@coords))
+}
 
-InEOR <- do.call(rbind,lapply(split(eors2, eors2$scientific), function(x){
-  out <- x[x$NEAR_DIST ==0,]
+extractCoords(sp.df)
+
+
+for(j in 1:10){
+  for(i in 1:3){
+    foo[[i]] <- rnorm(floo)
+  }
+}
+
+extractCoords <- function(sp.df)
+{
+    results <- list()
+    for(j in 1:length(sp.df)){
+       for(i in 1:length(sp.df@polygons[[j]]@Polygons))
+      {
+          results[[i]] <- sp.df@polygons[[j]]@Polygons[[i]]@coords
+      }
+    results[[j]] <- Reduce(rbind, results)
+    }
+    results <- Reduce(rbind, results[[j]])
+}
+
+
+```
+
+#Convext hull or tiny circles around eors vs herbarium vs. both together, how much change?    
+Yarggg, not all the polygons, just one
+```{r}
+library(dismo)
+?convHull
+
+circlesXsp <- lapply(1:nrow(g1g2names), function(i){
+  g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in%
+                                c(g1g2names$Taxon[i],g1g2names$AcceptedName[i]),]
+
+  polysout <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),]
+  l1G1G2hull <- convHull(extractCoords(polysout))
+  
+
+
+  g1g2now$decimalLatitude <- as.numeric(as.character(g1g2now$decimalLatitude))
+  g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
+  g1g2now <- g1g2now[!is.na(g1g2now$decimalLatitude),]
+  g1g2now <- g1g2now[!is.na(g1g2now$decimalLongitude),]
+  if(nrow(g1g2now)>0){
+    #turn into spatialpointsdataframe for individual species
+    coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
+    proj4string(g1g2now) <- CRS("+proj=longlat +datum=WGS84") 
+    g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+    convg1g2now <- convHull(g1g2now)
+    areag1g2now <- slot(convg1g2now)
+    out <- list(l1G1G2hull, convg1g2now, areanow)
+  } else {
+      out <- list(NA,NA)
+    }
   out
-})
-)
+  })
 
-head(InEOR)
-table(InEOR$recordedBy)
+length(l1G1G2[l1G1G2$GNAME == "Arabis crandallii",])
+plot(l1G1G2[l1G1G2$GNAME == "Arabis crandallii",],border="red", lwd=1)
+plot(l1G1G2hull, add=TRUE) #one tiny box around one 
 
-# $georeferen is the only place to know who did the georeferencing, that would be very helpful to know
+plot(colocounties.UTM, main=g1g2names$Taxon[i])
+plot(l1G1G2[l1G1G2$GNAME == "Arabis crandallii",],add=TRUE, border="red", lwd=1)
+plot(convg1g2now, add= TRUE,col=rgb(0,0,1,0.25))
+plot(l1G1G2hull, add=TRUE, border=rgb(1,0,0,0.25),lwd=10)
 ```
-
 
 The Weber example of an out of state person mapping a collection to Gray's Peak from Chicago Lake that should be Mount Evans.     
 - <https://conps.org/wp-content/uploads/2015/05/Mount_Evans_Summit_Lake_4-24-2011.pdf>    
-```{r}
-
-
-```
-
 
 "coloradosps" == SEINet collections from Colorado - downloaded 12/6/2017 from SEINet      
 "coloG1G2" == species matching names in L1 EORs but without any synonym corrections     
@@ -890,27 +901,6 @@ ITISlist is synonmy pulled from ITIS into SQL
 TPL is pulling from synonym from the plant list   "colo"   
       "seinetMo"is synonymy with TPL for Mo's list of 53 species (that are G1/G2s)   
       "colonames" is synonym with TPL for all colorado specimens from SEINet   
-```{r}
-ITISlist <- read.csv("C:/Users/deprengm/Dropbox/Biological Collections_concerns&needs/ITIS_sqlsynonyms.csv")
-length(unique(ITISlist$tsn[ITISlist$tsn != "NULL"])) #2528 are synonyms
-length(unique(ITISlist$tsn_accepted[ITISlist$tsn_accepted != "NULL"])) #2277, 251 combined with synonmy
-nrow(ITISlist[ITISlist$tsn != "NULL",]) #2530 are not synonyms 
-nrow(ITISlist) #22570, huh. 
-
-head(ITISlist[ITISlist$tsn != "NULL",])
-ITISlist[ITISlist$tsn.1 == 897847,] #Want Equisetum giganteum
-#Probably could have done this in SQL for the download.....
-ITISsynonyms <- merge(ITISlist[,c("tsn","tsn_accepted","unit_name1","unit_name2")], 
-                   ITISlist[,c("tsn.1","unit_name1","unit_name2")], by.x = "tsn_accepted", by.y = "tsn.1")
-
-ITISsynonyms[ITISsynonyms$tsn_accepted == 897847,]
-length(unique(ITISsynonyms$tsn_accepted)) #1777 --hummm... So these are the number of taxa (the accepted names) from ones that have some synonomy. There are still others that are just accepted. 
-head(ITISsynonyms)
-
-ITIScoloradosps <- coloradosps
-ITIScoloradosps$genus
-```
-
 
 
 
