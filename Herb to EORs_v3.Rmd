@@ -66,16 +66,6 @@ library(ggmap)
 
 library(gganimate)
 
-
-# exact match multisub
-multisub <- function(pattern,replacement,x){
-  result <- x
-  for(i in 1:length(pattern)){
-    result <- gsub(paste("^",pattern[i],"$"), paste("^",replacement[i],"$"),result)
-  }
-  result
-}
-
 ```
 
 
@@ -98,7 +88,7 @@ l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
 
 #How many names in 
 length(unique(l1G1G2$GNAME)) #60
-write.table(unique(l1G1G2$GNAME), "clipboard", sep="\t", row.names=FALSE)
+#write.table(unique(l1G1G2$GNAME), "clipboard", sep="\t", row.names=FALSE)
 
 
 # Could take all the synonyms and names of l1G1G2 to make the list of names to pull from SEINet big list
@@ -240,44 +230,202 @@ unique(seinet_TPL$geodeticDatum)
 seinet_TPL[seinet_TPL$geodeticDatum == "27",]
 ```
 
+Cite MODIS data: <https://lpdaac.usgs.gov/citing_our_data>   
+<https://lpdaac.usgs.gov/data_access/data_pool>  - need to get data but weeky mainenance is every wednesday until noon   
+Got snow data https://search.earthdata.nasa.gov/data/retrieve/5396545932 can compare to NCAR's data.   
+got some veg data or getting https://search.earthdata.nasa.gov/data/retrieve/2536564325  
+```{r}
+library(ncdf4)
+#library(maptools)
+#library(extRemes)
+library(fields)
+library(parallel)
+library(doParallel)
+library(foreach)
+library(abind)
+library(prism)
 
-Would need to set eors <- seinet_Ewingdistances
-```{r, eval=FALSE}
-eors <- seinet_Ewingdistances
-#seinetMo <- TPL(unique(seinet$scientificName))
-#write.csv(seinetMo,"Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/Distance Tables/TPLseinetMo.csv")
-seinetMo <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/Distance Tables/TPLseinetMo.csv")
-sum(table(seinetMo$Taxonomic.status)) #93 names
-#Mo has 2 names not in TPL, 9 synonyms, 7 unresolved
-seinetMo[seinetMo$Taxonomic.status != "Accepted",]
-seinet[grep("rotundifo", seinet$scientificName),]
+library(raster)
+library(rasterVis)
+#library(measurements)
+library(ENMeval)
+library(RCurl)
+library(dismo)
 
-length(table(seinet$scientificName[!is.na(seinet$decimalLatitude)])) #93 species with locaiton information
+#install.packages("digest")
+library(devtools)
+#install_github('hadley/rvest')
+library(rvest)
 
+# add the command to bind along the 3rd dimension
+abind3 <- function(...) { abind(along = 3, ...) }
 
-length(unique(eors$scientific)) #53 - Mo going through 1 by 1 getting SEINet data for G1G2 species ended up with 53
-eors.tax <- TPL(unique(eors$scientific))
-table(eors.tax$Taxonomic.status)
-# 5 syn, 2 unresolved, 1 not in
-
-eors[eors$institutio=="USU",]
-eors[eors$institutio=="USUUB",]
-
-
-eors$institutio[eors$institutio=="USU"] <- "USUUB"
-
-#change all factor columns to character
-i <- sapply(seinet, is.factor)
-head(seinet[,i]) #recordNumber might be the only one needing to be numeric
-seinet[,i] <- lapply(seinet[,i], as.character)
 ```
 
-Cite MODIS data: <https://lpdaac.usgs.gov/citing_our_data>   
-<https://lpdaac.usgs.gov/data_access/data_pool>  - need to get data but weeky mainenance is every wednesday until noon
+#Can't get the layers again... skip for now. 
+```{r}
+NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, SimulationStartName,
+                          SimulationEndName, SimulationEndName2, 
+                          variablename,variablename2, precip = TRUE){
+  sims <- sprintf('%0.3d', simulationmin:simulationmax)
+  
+  varyears <- lapply(sims, function(sims){
+    nc_open(paste(SimulationStartName,sims,SimulationEndName,sep=""))
+    })
+   #Precip needs to add together CC and CL
+  if(precip){
+  varyears2 <- lapply(sims, function(sims){
+    nc_open(paste(SimulationStartName,sims,SimulationEndName2,sep=""))
+  })
+  }
+  
+  #Sum 12 months for annual 
+  varannual <- lapply(1:length(varyears), function(model){
+    precc1 <- ncvar_get(varyears[[model]], variablename)
+    cl <- makeCluster(6)
+    registerDoParallel(cl)
+    precc <- foreach(timeindex = seq(1,(Yearmax-Yearmin)*12,12),
+                     .combine = "abind3") %dopar% 
+      {
+        apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), 
+              if(precip){
+                sum
+                } else {
+                  mean
+                })
+        }
+    stopCluster(cl)
+    gc()
+    rm(precc1)
+    precc
+    })
+  
+  if(precip){
+  #Sum 12 months for annual 
+  varannual2 <- lapply(1:length(varyears2), function(model){
+    precc1 <- ncvar_get(varyears2[[model]], variablename2)
+    cl <- makeCluster(6)
+    registerDoParallel(cl)
+    precc <- foreach(timeindex = seq(1,(Yearmax-Yearmin)*12,12),
+                     .combine = "abind3") %dopar% 
+      {
+        apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), sum)
+        }
+    stopCluster(cl)
+    gc()
+    rm(precc1)
+    precc
+    })
+  
+  varannual_sum <- lapply(1:length(varyears), function(model){
+    Ycc <- varannual[[model]]
+    Ycl <- varannual2[[model]]
+    cl <- makeCluster(6)
+    registerDoParallel(cl)
+    total <- foreach(timeindex = 1:(Yearmax-Yearmin),
+                     .combine = "abind3") %dopar% 
+      {
+        Ycc[,,timeindex]+Ycl[,,timeindex]
+        }
+    stopCluster(cl)
+    gc()
+    rm(Ycc,Ycl)
+    total
+  })
+  }
+  
+  # Avreage over the models over years
+  cl <- makeCluster(6)
+  registerDoParallel(cl)
+  avg_annual <- foreach(timeindex = 1:(Yearmax-Yearmin),
+                        .packages = "abind") %dopar%
+    {
+      byyearmodel <- lapply(if(precip){
+        varannual_sum
+        } else {
+          varannual
+        }, function(model1){
+      model1[,,timeindex]
+    })
+    oneyear <- abind(byyearmodel, along=3)
+    abind(apply(oneyear, MARGIN = c(1,2), mean), along=3)
+    }
+  stopCluster(cl)
+  
+  save(list="avg_annual", file=paste("P:/hackathon/Simulations/",variablename,"modelavg_annual.RData",
+                                     sep=""))
+  dims <- dim(avg_annual [[1]])
+  
+  #make rasters
+  var.raster <- lapply(avg_annual, function(model1){
+  e <- extent(c(0,360,-90,90))
+  mean.raster <- flip(raster(t(as.matrix(model1[,,1], nrow=dims[2]))),
+                      direction = "y")
+  extent(mean.raster) <- e
+  proj4string(mean.raster) <- CRS("+init=epsg:4326")
+  mean.raster
+  })
+  
+  years <- c(Yearmin:Yearmax)
+  save(list="var.raster", file=paste("P:/hackathon/Simulations/",variablename,Yearmin,Yearmax,
+                                     "modelavg.raster.RData",sep=""))
+  
+  #write rasters
+  for(i in 1:(Yearmax-Yearmin)){
+    writeRaster(rotate(var.raster[[i]]), 
+                paste("P:/hackathon/Simulations/",variablename,years[i],sep=""),
+                format = "GTiff",
+                overwrite=TRUE)
+    }
+  
+  #Average over 20 years
+  annual20 <- lapply(seq(1,(Yearmax-Yearmin) - 19,20),
+                     function(year){
+                       model1 <- abind(avg_annual[year:year+19], along=3)
+                       mn <- apply(model1, MARGIN = c(1,2), mean)
+                       mn
+                       })
+  
+  save(list="annual20", file=paste("P:/hackathon/Simulations/",variablename,
+                                   Yearmin,Yearmax,"20_annual.RData",sep=""))
+  
+  var.raster <- lapply(annual20, function(model1){
+    e <- extent(c(0,360,-90,90))
+    mean.raster <- flip(raster(t(as.matrix(model1, nrow=dims[2]))),
+                        direction="y")
+    extent(mean.raster) <- e
+    proj4string(mean.raster) <- CRS("+init=epsg:4326")
+    mean.raster
+    })
+  
+  save(list="var.raster", file=paste("P:/hackathon/Simulations/",
+                                     variablename,Yearmin,Yearmax,
+                                     "_raster.RData", sep=""))
+  
+  yrs <- paste(Yearmin,Yearmin+20,sep="-")
+  for(i in 1:(trunc((Yearmax-Yearmin)/20)-1)){
+  yrs <- c(yrs,paste(Yearmin+((20*i)+1),Yearmin+(20*(i+1)),sep=""))
+  } 
+  
+  
+  #write rasters
+  for(k in 1:trunc((Yearmax-Yearmin)/20)){
+    writeRaster(rotate(var.raster[[k]]),
+                paste("P:/hackathon/Simulations/",variablename,yrs[k],sep=""),
+                format = "GTiff",
+                overwrite = TRUE)
+  }
+}
+
+
+```
+
 ```{r}
 
 
 ```
+
+
 
 
 #Michelle DePrenger-Levin      
@@ -416,6 +564,10 @@ ScaleBar <- function(reference_raster_utm, round_to_nearest_km, width_percent, y
 #transform to UTM to match l1G1G2
 #60 names with the listed name and the accepted name acording to TPL
 
+#Write table for VisTrails field data, No! This is everything, need less
+#writeout <- coloradosps[coloradosps$decimalLatitude != "",]
+#write.csv(writeout, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORG1G2.csv")
+
 coloradosps.dist <- coloradosps.g1g2
 coloradosps.dist$distNearEOR <- NA
 
@@ -474,9 +626,12 @@ nrow(colo.all) #2451
 unique(colo.all$scientificName[colo.all$Family==""]) #"Gutierrezia elegans"
 colo.all$Family[colo.all$Family==""] <- "Asteraceae"
 
-par(mai=c(7,3,.1,.1))
+
 plot(distNearEOR~as.factor(Family), colo.all[colo.all$distNearEOR<500000,], las=2,
      xlab="",ylab="")
+require(lme4)
+require(lattice)
+
 
 length(table(colo.merged$Taxon)) #58 species with some data
 ```
@@ -902,5 +1057,10 @@ TPL is pulling from synonym from the plant list   "colo"
       "seinetMo"is synonymy with TPL for Mo's list of 53 species (that are G1/G2s)   
       "colonames" is synonym with TPL for all colorado specimens from SEINet   
 
+```{r}
+fmfam <- lmer(distNearEOR~as.factor(Family)|scientificName, colo.all[colo.all$distNearEOR<500000,]) 
+summary(fmfam)
+dotplot(ranef(fmfam,condVar=T))
 
+```
 
