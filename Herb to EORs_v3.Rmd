@@ -564,9 +564,6 @@ ScaleBar <- function(reference_raster_utm, round_to_nearest_km, width_percent, y
 #transform to UTM to match l1G1G2
 #60 names with the listed name and the accepted name acording to TPL
 
-#Write table for VisTrails field data, No! This is everything, need less
-#writeout <- coloradosps[coloradosps$decimalLatitude != "",]
-#write.csv(writeout, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORG1G2.csv")
 
 coloradosps.dist <- coloradosps.g1g2
 coloradosps.dist$distNearEOR <- NA
@@ -634,6 +631,12 @@ require(lattice)
 
 
 length(table(colo.merged$Taxon)) #58 species with some data
+
+
+#Write table for VisTrails field data
+write.csv(colo.merged, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORG1G2.csv")
+
+write.csv(colo.merged, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/FieldData_EORG1G2.csv")
 ```
 
 Code to figure out how to iterate over all 60 species for which I have EOR data from CNHP
@@ -690,7 +693,7 @@ all.g1g2now.joined <- lapply(all.g1g2now, function(x) {
 g1g2.stack <- stack(all.g1g2now) #or could it be points? needs to be a raster
 g1g2.df <- as.data.frame(g1g2.stack)
 
-ggplot()
+#ggplot()
 
 plot(colocounties.UTM, border="grey80")
 plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[1],g1g2names$Taxon[1]),],
@@ -702,21 +705,26 @@ points(distXsp[[1]][[1]], pch=16, cex=0.25)
 ScaleBar(raster(colocounties.UTM), 100, .20, .10, .75, .07, lwd=2)
 ```
 
-
+#What was I trying to do here? come back to this
 ```{r}
+distXsp[[1]][[2]] #The distances from each herbarium point to the nearest EOR
+distXsp[[1]][[3]] #The areas of each EOR polygon for that species
 
-#distXsp[[i]][[1]] are the herbarium points
+#distXsp[[i]][[1]] are the herbarium points, SpatialPointsDataFrame
 speciesNoHerb <- do.call(c,mapply('[[', distXsp, 1))
 want <- which(do.call(c,lapply(speciesNoHerb, function(x) !is.na(x))))
 
-l1G1G2@bbox[l1G1G2$GNAME %in%
-                           c(g1g2names$AcceptedName[i],g1g2names$Taxon[i])]
 
-l1G1G2@polygons[[1]]@Polygons[[1]]@coords
+bboxes <- lapply(want, function(i){
+  speciesNoHerb[[i]]@bbox
+  })
 
+#If there are multiple names/synonyms
+unique(speciesNoHerb[[1]]@data$scientificName)
 
-l1G1G2@polygons[[l1G1G2$GNAME %in%
-                           c(g1g2names$AcceptedName[i],g1g2names$Taxon[i])]]@Polygons[[1]]@coords
+#All the points
+speciesNoHerb[[1]]@coords
+
 ```
 
 
@@ -729,7 +737,7 @@ for(i in want){
   points(distXsp[[i]][[1]], pch=16, cex=0.5, col=rgb(0,0,0,0.75))
   ScaleBar(raster(l1G1G2[l1G1G2$GNAME %in%
                            c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),]), 
-           1, .20, .90, .15, .87, lwd=2)
+           1, .25, .20, .15, .17, lwd=2)
 }
 
 ```
@@ -848,6 +856,47 @@ colo.all$scientificName
 #row 1394 5733 This time missing a digit in the easting so it put it in Nevada
 
 colo.all.ll@data[rownames(colo.all.ll@data) == 99,]
+```
+
+
+#Random forest - classification and regression trees   
+Either a formula, or (1) data.frame with predictor variables, (2) vector with response. categorical will classification, interval will do regression. 
+```{r}
+
+library(randomForest)
+
+bioclim.colorado <- getData("worldclim", var="bio", res=0.5, lon=-106, lat = 39)
+
+
+plot(bioclim.colorado$bio1_12)
+plot(colocounties, add=TRUE)
+
+presvals <- extract(bioclim.colorado, )
+
+
+library(dismo)
+
+kfoldnum <- 5
+
+#Make a training and testing set, will want to iterative over all sets, keeping one out each time
+#lapply(1:kfoldnum, function(x){})
+
+group <- kfold(distXsp[[1]][[1]]@coords, kfoldnum)
+pres_train <- distXsp[[1]][[1]]@coords[group != 1,]
+pres_test <- distXsp[[1]][[1]]@coords[group == 1,]
+
+ext <- extent(-109, -102, 36, 41)
+backg <- randomPoints(bioclim.colorado, n=300, ext=ext, extf=1.25)
+colnames(backg) <- dimnames(pres_test)[[2]]
+groupbk <- kfold(backg, kfoldnum)
+backg_train <- backg[groupbk != 1,]
+backg_test <- backg[groupbk == 1,]
+
+
+
+
+
+
 ```
 
 
