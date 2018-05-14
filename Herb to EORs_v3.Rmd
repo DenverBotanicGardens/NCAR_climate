@@ -634,9 +634,27 @@ length(table(colo.merged$Taxon)) #58 species with some data
 
 
 #Write table for VisTrails field data
-write.csv(colo.merged, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORG1G2.csv")
+# Need only rows with lat long information
 
-write.csv(colo.merged, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/FieldData_EORG1G2.csv")
+#colo.merged.cc <- colo.merged
+
+#colo.merged.cc$decimalLatitude <- as.numeric(as.character(colo.merged.cc$decimalLatitude))
+#colo.merged.cc$decimalLongitude <- as.numeric(as.character(colo.merged.cc$decimalLongitude))
+
+#nrow(colo.merged.cc)
+nrow(seinet_TPL)
+seinet_TPL.cc <- seinet_TPL[seinet_TPL$decimalLongitude > -110,]
+seinet_TPL.cc <- seinet_TPL.cc[seinet_TPL.cc$decimalLatitude > 35, ]
+
+plot(seinet_TPL.cc$decimalLongitude,seinet_TPL.cc$decimalLatitude)
+
+write.csv(seinet_TPL.cc, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORG1G2.csv")
+
+write.csv(seinet_TPL.cc, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/FieldData_EORG1G2.csv")
+
+table(seinet_TPL.cc$scientificName)
+whoswho <- data.frame(table(seinet_TPL.cc$scientificNameAccpt,seinet_TPL.cc$scientificName))
+whoswho[whoswho$Freq>0,]  
 ```
 
 Code to figure out how to iterate over all 60 species for which I have EOR data from CNHP
@@ -680,7 +698,8 @@ length(foo$distNearEOR[which(rownames(coloradosps.g1g2) %in% names(distnow))]) #
 foo$distNearEOR[which(rownames(foo) %in% names(distnow))] <-unname(distnow)
 
 length(g1g2now)
-hist(as.numeric(distnow)/1000, main = "Distance (km) from points to nearest EOR")
+hist(as.numeric(distnow)/1000, main = "Distance (km) from points to nearest EOR",
+     xlab="km", breaks=10)
 ```
 
 #Animate maps over each species with points and polygons
@@ -725,6 +744,15 @@ unique(speciesNoHerb[[1]]@data$scientificName)
 #All the points
 speciesNoHerb[[1]]@coords
 
+
+str(distXspbind) #1091
+hist(distXspbind/1000, main = "Distance (km) from points to nearest EOR",
+     xlab="km", breaks=30)
+
+length(distXspbind[distXspbind>100]) #816
+
+length(distXspbind[distXspbind<=100]) #275
+
 ```
 
 
@@ -743,6 +771,14 @@ for(i in want){
 ```
 
 ```{r}
+library(animation)
+
+ani.options(
+  convert = shQuote('C:/Program Files (x86)/ImageMagick-6.8.1-Q16/convert.exe')
+)
+
+saveGIF(
+  {
 for(i in 1:nrow(g1g2names)){
   plot(colocounties.UTM, border="grey80", main=g1g2names$AcceptedName[i])
   plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),],
@@ -750,6 +786,13 @@ for(i in 1:nrow(g1g2names)){
   points(distXsp[[i]][[1]], pch=16, cex=0.5, col=rgb(0,0,0,0.75))
   ScaleBar(raster(colocounties.UTM), 100, .20, .10, .75, .07, lwd=2)
 }
+  },
+movie.name = "EORtoHerb.gif",
+interval= 0.5,
+ani.width = 500,
+ani.height = 300,
+outdir = getwd()
+)
 
 ```
 
@@ -870,6 +913,11 @@ bioclim.colorado <- getData("worldclim", var="bio", res=0.5, lon=-106, lat = 39)
 
 plot(bioclim.colorado$bio1_12)
 plot(colocounties, add=TRUE)
+
+#When loop, use "i in want" or lapply(want, function(i)) which are non-NA in the list for distXsp[[i]][[1]]@coords
+
+#need back to lat long
+pointsXsp <- spTransform(distXsp[[1]][[1]]@coords, CRS("+proj=longlat +datum=WGS84"))
 
 presvals <- extract(bioclim.colorado, )
 
