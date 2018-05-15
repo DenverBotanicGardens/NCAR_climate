@@ -19,6 +19,7 @@
 # Shapefiles #
 *.tif
 *.nc
+*.rds
 ClimateLayers/*
 2017-Feb-14-14.01.48/*
 Simulation/*

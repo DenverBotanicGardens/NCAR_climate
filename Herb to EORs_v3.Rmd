@@ -151,21 +151,6 @@ Mo Ewing:
 
 
 
-# Mo Ewing's work to pull SEINet colorado specimens of G1G2 species so not sure he got all   
- also did eors <- 
-```{r}
-seinet_Ewingdistances <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/Distance Tables/Vouchers_distance.csv")
-
-table(seinet_Ewingdistances$basisOfRec) #all PreservedSpecimen, 804
-names <- names(table(seinet_Ewingdistances$scientific)) #54 names
-mo_names <- TPL(names)
-table(mo_names$Taxonomic.status)  
-#             Accepted    Synonym Unresolved 
-#         1         45          5          2 
-seinet_Ewingdistances[seinet_Ewingdistances$scientific %in%
-                        mo_names$Taxon[mo_names$Taxonomic.status != "Accepted"],]
-```
-
 #I must have made this one sometime, need to check again that matched all names   
 I think I decided that 54 names was not all the G1/G2 so I went to get the rest one by one from SEINet instead of all Colorado specimens which then has name issues:    
 coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences.csv")
@@ -564,7 +549,7 @@ ScaleBar <- function(reference_raster_utm, round_to_nearest_km, width_percent, y
 #transform to UTM to match l1G1G2
 #60 names with the listed name and the accepted name acording to TPL
 
-
+proj4string(l1G1G2) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
 coloradosps.dist <- coloradosps.g1g2
 coloradosps.dist$distNearEOR <- NA
 
@@ -652,63 +637,19 @@ write.csv(seinet_TPL.cc, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps
 
 write.csv(seinet_TPL.cc, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/FieldData_EORG1G2.csv")
 
-table(seinet_TPL.cc$scientificName)
+table(seinet_TPL.cc$scientificNameAccpt)
 whoswho <- data.frame(table(seinet_TPL.cc$scientificNameAccpt,seinet_TPL.cc$scientificName))
 whoswho[whoswho$Freq>0,]  
 ```
 
-Code to figure out how to iterate over all 60 species for which I have EOR data from CNHP
-```{r, eval=FALSE}
-g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in% c(g1g2names$Taxon[7],
-                                                                   g1g2names$AcceptedName[7]),]
-nrow(g1g2now)
-
-g1g2now$decimalLatitude <- as.numeric(as.character(g1g2now$decimalLatitude))
-g1g2now <- g1g2now[!is.na(g1g2now$decimalLatitude),]
-nrow(g1g2now)
-g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
-
-
-coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
-proj4string(g1g2now) <- CRS("+proj=longlat +datum=WGS84") #should go line by line and change randomly to see effect of different projections since don't know for sure. 
- #next define random, or based on reported, would have to sample rows randomly and assign or group by reported and assign and then transform and rbind(spdf1,spdf2), might need to spChFIDs(spdf2, paste("name", row.names(spdf2), sep="."))
-
-unique(coloradosps.g1g2$geodeticDatum)
-sim.proj4string <- c(CRS("+init=epsg:4326"), #WGS84
-                     CRS("+init=epsg:4269"), #NAD83 but without zone?!
-                     CRS("+init=epsg:4267"), #NAD27 but without zone?!
-                     CRS("+proj=utm +zone=13 +datum=NAD83"),
-                     CRS("+proj=utm +zone=13 +datum=NAD27")) 
-
-
-sample(sim.proj4string,20, replace=TRUE)
-
-g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
-
-distnow <- apply(gDistance(g1g2now,
-          l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[1],g1g2names$Taxon[1]),], byid=TRUE),
-          2,min)
-
-#Row Names!
-unique(coloradosps.g1g2$scientificName[which(rownames(coloradosps.g1g2) %in% names(distnow))])
-foo <- coloradosps.g1g2
-foo$distNearEOR <- NA
-length(foo$distNearEOR[which(rownames(coloradosps.g1g2) %in% names(distnow))]) #120, that's right
-#Oh, row names, not row numbers, row numbers from coloradosps, but kept row numbers to coloradosps.g1g2
-foo$distNearEOR[which(rownames(foo) %in% names(distnow))] <-unname(distnow)
-
-length(g1g2now)
-hist(as.numeric(distnow)/1000, main = "Distance (km) from points to nearest EOR",
-     xlab="km", breaks=10)
-```
 
 #Animate maps over each species with points and polygons
 ```{r}
 all.g1g2now <- do.call(c,mapply('[[', distXsp, 1)) #all the transformed to UTM species points
 all.g1g2now <- all.g1g2now[!is.na(all.g1g2now)]
-all.g1g2now.joined <- lapply(all.g1g2now, function(x) {
-  out <- x@coords
-  out[,3] <- })
+#all.g1g2now.joined <- lapply(all.g1g2now, function(x) {
+#  out <- x@coords
+#  out[,3] <- })
 g1g2.stack <- stack(all.g1g2now) #or could it be points? needs to be a raster
 g1g2.df <- as.data.frame(g1g2.stack)
 
@@ -747,11 +688,24 @@ speciesNoHerb[[1]]@coords
 
 str(distXspbind) #1091
 hist(distXspbind/1000, main = "Distance (km) from points to nearest EOR",
-     xlab="km", breaks=30)
+     xlab="km", breaks=1000, xlim=c(1,500))
+
+vals <- density(distXspbind)
+pStar <- vals$x[which(vals$y==max(vals$y))]
+
+plot(density(distXspbind), xlim=c(0,50000))
+abline(v=pStar, col="red")
+abline(h=max(vals$y)-qlnorm(0.95))
 
 length(distXspbind[distXspbind>100]) #816
 
 length(distXspbind[distXspbind<=100]) #275
+
+median(distXspbind)
+
+reps <- 10000
+rand.diff <- unlist(lapply(1:reps, function(x) median(sample(distXspbind,100))))
+hist(rand.diff)
 
 ```
 
@@ -890,7 +844,6 @@ colo.all[colo.all$recordNumber%in%
          c("scientificName","decimalLatitude","decimalLongitude","county","verbatimCoordinates",
            "habitat","locality","recordNumber")] ##Location would be correct but decimalLongitude goes to -160.4; The easting has an extra zero: -105.7131, 38.1374; 3972 m
 
-colo.all$scientificName
 
 #row 99: 21864 entered 27.47444 lat, probably meant 37.47
 #Row 753 21864 again with an extra trailing 0 for the easting got to -160 for long
