@@ -66,6 +66,76 @@ library(ggmap)
 
 library(gganimate)
 
+library(dismo)
+library(ENMeval)
+library(biomod2)
+```
+#Resample elevation (and others) to the bioclim sized grid, 30km grid is way to small, computer can't handle 
+```{r}
+
+coElev <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Elevation_VT/CO_Mosaic_Elevation_VT/co_elev_VT_WGS84.tif")
+
+coElev_biosize <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Elevation_VT/co_elev_WGS84_30sec.tif")
+
+plot(coElev)
+
+plot(coElev_biosize, xlim = c(-108, -103), ylim=c(37,41))
+```
+
+
+```{r}
+
+SubsampleImageSpGdal <- function()
+{
+   library(rgdal) # loads sp package
+   library(Hmisc)
+ 
+# SampleFactor: the reduction in image size and resolution: 1 / SampleFactor
+# e.g., Sample Factor  = 2 creates an image with 1/2 the resolution 
+# and 1/4 the number of pixels (x and y dimension subsampling)   
+ 
+   SampleFactor <- 2
+
+# Step 1) Read input image into a SpatialGridDataFrame object, then display.
+ 
+   setwd("./Img1")
+   InputImage <- readGDAL("B30SubNP.tif")      
+
+# Create a sampling grid, using the input image's spatial parameters  
+   
+   SamplingGridTopology <- GridTopology(InputImage@bbox[,1],
+                                        InputImage@grid@cellsize * SampleFactor,
+                                        InputImage@grid@cells.dim / SampleFactor)
+
+# Create the necessary data structures
+                                       
+   SamplingGrid <- SpatialGrid(SamplingGridTopology)  
+   OutSpatialGridSGDF <- as(SamplingGrid,"SpatialGridDataFrame")
+   SamplingPoints <- as(SamplingGrid,"SpatialPoints")   
+
+# Create the subsampled image in a SpatialGridDataFrame object.'
+  
+   SamplingPoints <- as(as(SamplingGrid,"SpatialPixels"),"SpatialPoints")
+   SamplingResultsSPDF <- overlay(InputImage,SamplingPoints)    
+   OutSpatialGridSGDF@data <- SamplingResultsSPDF@data 
+   OutSpatialGridSGDF@proj4string <- CRS(proj4string(InputImage))   
+   gridded(OutSpatialGridSGDF) <- TRUE  # necc for writeGDAL to write image.
+ 
+# use Hmisc library describe() function to compare the incoming and resampled images
+ 
+   Incoming = describe(InputImage@data)
+   print(Incoming)
+   Outgoing = describe(SamplingResultsSPDF@data)  
+   print(Outgoing)
+   message("Summary of incoming and outgoing images (hit key to continue):")   
+   browser() 
+#                                                                                                                             
+   writeGDAL(OutSpatialGridSGDF,"B30SubResampled.tif")
+   
+# Finished
+    
+}
+
 ```
 
 
@@ -167,7 +237,7 @@ table(SEINet_names$Taxonomic.status) #
 #             Accepted    Synonym Unresolved 
 #         2         75          9          7 
 SEINet_names$scientificNameAccpt <-paste(SEINet_names$New.Genus, SEINet_names$New.Species)
-write.table(SEINet_names[SEINet_names$Taxonomic.status != "Accepted",c(1,14,16,12)], "clipboard", sep="\t", row.names=FALSE)
+#write.table(SEINet_names[SEINet_names$Taxonomic.status != "Accepted",c(1,14,16,12)], "clipboard", sep="\t", row.names=FALSE)
 SEINet_names[SEINet_names$Taxonomic.status != "Accepted",c(1,14,16,12)]
 
 seinet_TPL <- merge(seinet, SEINet_names, by.x = "scientificName", by.y = "Taxon")
@@ -470,7 +540,7 @@ rowstomatch <- lapply(c("Taxon","AcceptedName"), function(x){
 coloradosps.g1g2 <- unique(rbind(coloradosps[rowstomatch[[1]],],coloradosps[rowstomatch[[2]],]))
 nrow(coloradosps.g1g2)
 hist(as.numeric(as.character(coloradosps.g1g2$decimalLatitude)))
-write.table(sort(unique(coloradosps.g1g2$scientificName)), "clipboard", sep="\t", row.names=FALSE)
+#write.table(sort(unique(coloradosps.g1g2$scientificName)), "clipboard", sep="\t", row.names=FALSE)
 
 setdiff(sort(unique(coloradosps.g1g2$scientificName)),sort(unique(l1G1G2$GNAME))) #species from the SEINet specimens that isn't in the names given for G1G2
 setdiff(sort(unique(l1G1G2$GNAME)),sort(unique(coloradosps.g1g2$scientificName))) #the first list that's not in the second
@@ -541,6 +611,32 @@ ScaleBar <- function(reference_raster_utm, round_to_nearest_km, width_percent, y
 
 ```
 
+
+```{r}
+us <- getData('GADM', country = 'US', level = 1)
+colorado <- us[us$NAME_1 == "Colorado",]
+projLL <- proj4string(colorado)
+
+
+colorado<- spTransform(colorado, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+i<-1
+ polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                         g1g2names$Taxon[i]),] 
+ 
+
+grid <- makegrid(polys, cellsize = 100) # cellsize in map units!
+grid <- SpatialPoints(grid, proj4string = CRS(proj4string(polys)))
+
+plot(grid[polys,])
+
+grid[polys,]@coords
+
+length(grid[polys,]) #106 points
+
+
+
+```
+
 #map each species, map each EOR, check distance from points to nearest EORs
 ```{r}
 #l1G1G2 are in UTM zone 13
@@ -554,6 +650,20 @@ coloradosps.dist <- coloradosps.g1g2
 coloradosps.dist$distNearEOR <- NA
 
 distXsp <- lapply(1:nrow(g1g2names), function(i){
+  #put grid points across colorado, sample from it for each polygons
+     polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                         g1g2names$Taxon[i]),] 
+     grid <- makegrid(polys, cellsize = 100) # cellsize in map units!
+     grid <- SpatialPoints(grid, proj4string = CRS(proj4string(polys)))
+     EORpnts <- data.frame(grid[polys,]@coords)
+  if(nrow(EORpnts)>0){
+    coordinates(EORpnts) <- ~ x1+x2
+    proj4string(EORpnts) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
+    EORpnts <- spTransform(EORpnts, CRS("+proj=longlat +datum=WGS84"))
+  } else {
+    EORpnts <- NA
+  }
+     
   g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in%
                                 c(g1g2names$Taxon[i],g1g2names$AcceptedName[i]),]
   
@@ -574,9 +684,11 @@ distXsp <- lapply(1:nrow(g1g2names), function(i){
                                l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
                                                           g1g2names$Taxon[i]),], byid=TRUE),
                      2,min)
-    out <- list(g1g2now, distnow, areanow)
+    
+    
+    out <- list(g1g2now, distnow, areanow, EORpnts)
   } else {
-      out <- list(NA,NA)
+      out <- list(NA,NA, areanow, EORpnts)
     }
   out
   })
@@ -619,14 +731,6 @@ length(table(colo.merged$Taxon)) #58 species with some data
 
 
 #Write table for VisTrails field data
-# Need only rows with lat long information
-
-#colo.merged.cc <- colo.merged
-
-#colo.merged.cc$decimalLatitude <- as.numeric(as.character(colo.merged.cc$decimalLatitude))
-#colo.merged.cc$decimalLongitude <- as.numeric(as.character(colo.merged.cc$decimalLongitude))
-
-#nrow(colo.merged.cc)
 nrow(seinet_TPL)
 seinet_TPL.cc <- seinet_TPL[seinet_TPL$decimalLongitude > -110,]
 seinet_TPL.cc <- seinet_TPL.cc[seinet_TPL.cc$decimalLatitude > 35, ]
@@ -637,9 +741,14 @@ write.csv(seinet_TPL.cc, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps
 
 write.csv(seinet_TPL.cc, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/FieldData_EORG1G2.csv")
 
-table(seinet_TPL.cc$scientificNameAccpt)
+herbspecimennumxsp<-table(seinet_TPL.cc$scientificNameAccpt)
+
+
 whoswho <- data.frame(table(seinet_TPL.cc$scientificNameAccpt,seinet_TPL.cc$scientificName))
 whoswho[whoswho$Freq>0,]  
+
+
+
 ```
 
 
@@ -673,7 +782,8 @@ distXsp[[1]][[3]] #The areas of each EOR polygon for that species
 #distXsp[[i]][[1]] are the herbarium points, SpatialPointsDataFrame
 speciesNoHerb <- do.call(c,mapply('[[', distXsp, 1))
 want <- which(do.call(c,lapply(speciesNoHerb, function(x) !is.na(x))))
-
+wantEOR <- which(do.call(c,lapply(mapply('[[', distXsp, 4),
+                         function(x) !is.na(x))))
 
 bboxes <- lapply(want, function(i){
   speciesNoHerb[[i]]@bbox
@@ -685,7 +795,81 @@ unique(speciesNoHerb[[1]]@data$scientificName)
 #All the points
 speciesNoHerb[[1]]@coords
 
+#points in the EORs
+EORsxsp <- mapply('[[', distXsp, 4)
 
+for(i in wantEOR){
+  write.csv((EORsxsp[[i]]@coords),
+            paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORG1G2",g1g2names$AcceptedName[i],".csv", sep=""))
+}
+
+
+# make them match the number of points that the herbarium specimens have
+for(i in wantEOR){
+  if(nrow(EORsxsp[[i]]@coords)>herbspecimennumxsp[i]){
+  write.csv(EORsxsp[[i]]@coords[sample(1:nrow(EORsxsp[[i]]@coords), herbspecimennumxsp[i]),],
+            paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORsamplesizematch",g1g2names$AcceptedName[i],".csv", sep=""))
+  }
+}
+
+# spatial thinning instead of just matching the points that the herbarium specimens have. Spatially thin the herbarium specimens as well. 
+
+```
+
+
+
+
+
+
+From VisTrails
+```{r}
+DrEx_EOR <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/NicheModels/Draba exunguiculata_EOR/Maxent_EORvHerb_1/maxent_bin_map.tif")
+
+DrEx <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/NicheModels/Draba exunguiculata/Maxent_1/maxent_bin_map.tif")
+
+#DrExEORmatchss <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/NicheModels/Draba exunguiculata_EORsamplesizematch/Maxent_EORvHerb_1/maxent_bin_map.tif")
+
+
+#Following my code from Elevation_nichemodels_Vistrails.Rmd, make overlap be 3, 2 be EOR, and Herbarium be 1
+#EOR <- DrEx_EOR
+
+plot(DrEx_EOR)
+plot(DrEx)
+#plot(DrExEORmatchss)
+
+AsMi_EOR <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/NicheModels/Astragalus microcymbus_EOR/Maxent_EORvHerb_1/maxent_bin_map.tif")
+
+AsMi <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/NicheModels/Astragalus microcymbus/Maxent_1/maxent_bin_map.tif")
+
+#Following my code from Elevation_nichemodels_Vistrails.Rmd, make overlap be 3, 2 be EOR, and Herbarium be 1
+
+AsMiEORmatchss <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/NicheModels/Astragalus microcymbus_EORsamplesizematch/Maxent_EORvHerb_1/maxent_bin_map.tif")
+
+
+plot(AsMi_EOR,main="EOR")
+plot(colocounties, add=TRUE)
+plot(AsMi, main="Herb")
+plot(colocounties, add=TRUE)
+plot(AsMiEORmatchss, main="EOR sample size match herb")
+plot(colocounties, add=TRUE)
+
+```
+http://www.earthskysea.org/!ecology/sdmShortCourseKState2012/grinnellExercise/exercise-tuning-maxent-using-beta-and-aic.html  
+https://cran.r-project.org/web/packages/ENMeval/vignettes/ENMeval-vignette.html    
+Use AICc with Maxent to find best model  
+```{r}
+
+
+
+```
+
+
+
+
+
+
+
+```{r}
 str(distXspbind) #1091
 hist(distXspbind/1000, main = "Distance (km) from points to nearest EOR",
      xlab="km", breaks=1000, xlim=c(1,500))
@@ -703,9 +887,16 @@ length(distXspbind[distXspbind<=100]) #275
 
 median(distXspbind)
 
-reps <- 10000
-rand.diff <- unlist(lapply(1:reps, function(x) median(sample(distXspbind,100))))
+reps <- 50000
+ssize <- 500
+rand.diff <- unlist(lapply(1:reps, function(x) median(sample(distXspbind,ssize))))
+ctrl95CI <- sd(rand.diff)/sqrt(ssize)*qt(0.975,df=ssize) 
+ctrl95CI.l <- sd(rand.diff)/sqrt(ssize)*qt(0.025,df=ssize)
+
+
 hist(rand.diff)
+abline(v=mean(rand.diff)+ctrl95CI, col="red")
+abline(v=mean(rand.diff)+ctrl95CI.l, col="red")
 
 ```
 
@@ -736,7 +927,7 @@ saveGIF(
 for(i in 1:nrow(g1g2names)){
   plot(colocounties.UTM, border="grey80", main=g1g2names$AcceptedName[i])
   plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),],
-       border = rgb(1,0,0,0.5), add=TRUE, lwd=10)
+       border = rgb(1,0,0,0.5), add=TRUE, lwd=1)
   points(distXsp[[i]][[1]], pch=16, cex=0.5, col=rgb(0,0,0,0.75))
   ScaleBar(raster(colocounties.UTM), 100, .20, .10, .75, .07, lwd=2)
 }
@@ -818,7 +1009,7 @@ countymatch<- adist(colo.all.ll@data$county[!is.na(colo.all.ll@data$county)&
                                               colo.all.ll@data$county!=""],
                     partial=TRUE,ignore.case = TRUE)
 #Single linkage method
-hcfar <- hclust(as.dist(countymatch), method='single')
+#hcfar <- hclust(as.dist(countymatch), method='single')
 
 
 #errors so try clean up county column
@@ -901,12 +1092,6 @@ backg_test <- backg[groupbk == 1,]
 ```
 
 
-
-```{r}
-colo.all.ll$AcceptedName <- paste(colo.all.ll$New.Genus,colo.all.ll$New.Species)
-```
-
-
 ```{r}
 ggplot(colo.all.ll@data[colo.all.ll$distNearEOR<500000,], aes(year, distNearEOR/1000))+
   geom_point()+
@@ -917,28 +1102,34 @@ ggplot(colo.all.ll@data[colo.all.ll$distNearEOR<500000,], aes(year, distNearEOR/
   ylab("Distance (km) to nearest EOR")
 ```
 
-
+Total area of EOR polygons per spcies for the the 46 species with mapped herbarium records 
 ```{r}
-speciesNoEOR <- lapply(1:60, function(x){
-  out <- NA
+speciesNoEOR <- lapply(want, function(x){
   out <- sum(distXsp[[x]][[3]])
   out
 })
 
-areaxsp <- do.call(rbind,lapply(want, function(x) sum(distXsp[[x]][[3]])))
-areaxsp <- data.frame(Area = areaxsp[,1], AccName = g1g2names$AcceptedName[want])
+areaxsp <- unlist(lapply(want, function(x) sum(distXsp[[x]][[3]])))
+areaxsp <- data.frame(Area = areaxsp, AccName = g1g2names$AcceptedName[want])
 
-#One is factor, but they are the same!
-identical(sort(unique(colo.all.ll$AcceptedName)),
-          sort(unique(as.character(areaxsp$AccName))))
-areaxsp$AccName <- as.character(areaxsp$AccName)
+mediandistxsp <- unlist(lapply(want, function(x) median(distXsp[[x]][[2]])))
 
+area_distxsp <- rep(areaxsp$Area, times= unlist(lapply(want,function(x) length(distXsp[[x]][[2]]))))
+sp_distxsp <- rep(areaxsp$AccName, times= unlist(lapply(want,function(x) length(distXsp[[x]][[2]]))))
+
+toplot <- data.frame(area_distxsp, sp_distxsp, distXspbind)
+
+#One is factor, but they are the same! 46 species
+areaxsp$AccName <- as.character(areaxsp$AccName) 
+
+colo.all.ll$AcceptedName <- paste(colo.all.ll$New.Genus,colo.all.ll$New.Species)
 colo.all.ll@data <- merge(colo.all.ll@data,areaxsp, 
                           by.x ="AcceptedName", by.y="AccName")
 
+toplot[which(toplot$area_distxsp==max(toplot$area_distxsp)),]
 
-ggplot(colo.all.ll@data[colo.all.ll$distNearEOR<5000000,], 
-       aes(Area, distNearEOR/1000))+
+
+ggplot(toplot[toplot$distXspbind<200000,], aes(area_distxsp, distXspbind/1000))+
   geom_point()+
   theme_bw()+
   stat_smooth(method="lm")+
@@ -947,7 +1138,31 @@ ggplot(colo.all.ll@data[colo.all.ll$distNearEOR<5000000,],
 
 ```
 
+```{r}
+require(AICcmodavg)
 
+
+
+f1 <- lm(distNearEOR ~ New.Genus + year + institutionCode + Family + Area, data= colo.all.ll@data)
+f2 <- lm(distNearEOR ~ year + institutionCode + Family + Area, data= colo.all.ll)
+f3 <- lm(distNearEOR ~ year + Area, data= colo.all.ll)
+f4 <- lm(distNearEOR ~ year, data= colo.all.ll)
+f5 <- lm(distNearEOR ~ Area, data= colo.all.ll)
+f6 <- lm(distNearEOR ~ 1, data= colo.all.ll)
+
+(lmresults <- aictab(list(f1,f2,f3,f4,f5,f6),
+       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6),formula)))))
+
+evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6),
+                modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6),formula)))))
+
+sapply(1:length(lmresults$Delta_AICc), function(i){
+  exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
+})
+
+(er1 <- exp(0.5*lmresults$Delta_AICc[2]))
+(er2 <- exp(0.5*lmresults$Delta_AICc[3]))
+```
 
 
 #how many are in the county they say they should be in? Check Jessie's code for help
@@ -1113,4 +1328,39 @@ summary(fmfam)
 dotplot(ranef(fmfam,condVar=T))
 
 ```
+
+
+
+
+
+### Background points  
+Can either do bounding box (plus some buffer) or circles at some diameter
+```{r}
+circle <- list()
+for(i in 1:length(wantEOR)){
+  circle[[i]] <- circles((EORsxsp[[wantEOR[i]]]@coords), d=50000, lonlat=TRUE)
+}
+
+plot(colocounties)
+plot(circle[[2]], add=TRUE)
+points(EORsxsp[[2]]@coords, pch=16)
+plot(circle[[3]], add=TRUE, border="red")
+points(EORsxsp[[3]]@coords, pch=16)
+plot(circle[[4]], add=TRUE, border="blue")
+points(EORsxsp[[4]]@coords, pch=16)
+plot(circle[[5]], add=TRUE, border="orange")
+points(EORsxsp[[5]]@coords, pch=16)
+
+# Need stack of environmental layers
+
+
+# Get backgrounds for each species
+envs.backg <- list()
+for(i in 1:length(wantEOR)){
+  envs.backg[[1]] <- mask()
+}
+
+```
+
+
 
