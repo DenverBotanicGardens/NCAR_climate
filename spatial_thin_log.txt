@@ -1,0 +1,69 @@
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Tue Jun 05 12:43:52 2018
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Tue Jun 05 12:44:43 2018
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Tue Jun 05 12:45:30 2018
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Tue Jun 05 12:46:01 2018
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Tue Jun 05 12:46:15 2018
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Tue Jun 05 12:47:43 2018
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Tue Jun 05 12:59:10 2018
+
+Thinning Parameter Used (in km): 0.15
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+5.4 0 5.45 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+35	36	37
+1	44	55
+Maximum number of records after thinning: 37
+Number of data.frames with max records: 55
+No files written for this run.
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Tue Jun 05 12:59:16 2018
+
+Thinning Parameter Used (in km): 0.15
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+169.16 13.57 183.13 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+195	196	197	198	199	200	201	202	203
+2	3	9	20	22	27	12	4	1
+Maximum number of records after thinning: 203
+Number of data.frames with max records: 1
+No files written for this run.
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Tue Jun 05 13:02:21 2018
+
+Thinning Parameter Used (in km): 0.15
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+30.83 0.03 30.97 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+52	55	56	57	58	59	60	61	62	63
+1	1	11	12	21	20	20	12	1	1
+Maximum number of records after thinning: 63
+Number of data.frames with max records: 1
+No files written for this run.

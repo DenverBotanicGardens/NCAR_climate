@@ -69,6 +69,7 @@ library(gganimate)
 library(dismo)
 library(ENMeval)
 library(biomod2)
+library(spThin)
 ```
 #Resample elevation (and others) to the bioclim sized grid, 30km grid is way to small, computer can't handle 
 ```{r}
@@ -759,7 +760,7 @@ all.g1g2now <- all.g1g2now[!is.na(all.g1g2now)]
 #all.g1g2now.joined <- lapply(all.g1g2now, function(x) {
 #  out <- x@coords
 #  out[,3] <- })
-g1g2.stack <- stack(all.g1g2now) #or could it be points? needs to be a raster
+#g1g2.stack <- stack(all.g1g2now) #or could it be points? needs to be a raster
 g1g2.df <- as.data.frame(g1g2.stack)
 
 #ggplot()
@@ -774,7 +775,7 @@ points(distXsp[[1]][[1]], pch=16, cex=0.25)
 ScaleBar(raster(colocounties.UTM), 100, .20, .10, .75, .07, lwd=2)
 ```
 
-#What was I trying to do here? come back to this
+Get the coordiates from each saved to use as csvs in VisTrails. 
 ```{r}
 distXsp[[1]][[2]] #The distances from each herbarium point to the nearest EOR
 distXsp[[1]][[3]] #The areas of each EOR polygon for that species
@@ -1061,8 +1062,12 @@ plot(colocounties, add=TRUE)
 #When loop, use "i in want" or lapply(want, function(i)) which are non-NA in the list for distXsp[[i]][[1]]@coords
 
 #need back to lat long
-pointsXsp <- spTransform(distXsp[[1]][[1]]@coords, CRS("+proj=longlat +datum=WGS84"))
+pointsXsp.latlon <- list()
+for(i in 1:length(want)){
+  pointsXsp.latlon[[i]] <- spTransform(distXsp[[want[1]]][[1]], CRS("+proj=longlat +datum=WGS84"))
+}
 
+##COME BACK TO THIS AND SEE WHAT NEEDS TO BE Done to do random forest
 presvals <- extract(bioclim.colorado, )
 
 
@@ -1232,83 +1237,8 @@ sd(colo.all.ll@data$distNearEOR[grep("1/4", colo.all.ll$verbatimCoordinates)])
 ```
 
 
-```{r}
-sp.df <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),]
-
-length(sp.df)
-sp.df@polygons[[30]]@Polygons[[1]]@coords
-
-for(j in 1:length(sp.df)){
-  print(length(sp.df@polygons[[j]]@Polygons[[1]]@coords))
-}
-
-extractCoords(sp.df)
-
-
-for(j in 1:10){
-  for(i in 1:3){
-    foo[[i]] <- rnorm(floo)
-  }
-}
-
-extractCoords <- function(sp.df)
-{
-    results <- list()
-    for(j in 1:length(sp.df)){
-       for(i in 1:length(sp.df@polygons[[j]]@Polygons))
-      {
-          results[[i]] <- sp.df@polygons[[j]]@Polygons[[i]]@coords
-      }
-    results[[j]] <- Reduce(rbind, results)
-    }
-    results <- Reduce(rbind, results[[j]])
-}
-
-
-```
 
 #Convext hull or tiny circles around eors vs herbarium vs. both together, how much change?    
-Yarggg, not all the polygons, just one
-```{r}
-library(dismo)
-?convHull
-
-circlesXsp <- lapply(1:nrow(g1g2names), function(i){
-  g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in%
-                                c(g1g2names$Taxon[i],g1g2names$AcceptedName[i]),]
-
-  polysout <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),]
-  l1G1G2hull <- convHull(extractCoords(polysout))
-  
-
-
-  g1g2now$decimalLatitude <- as.numeric(as.character(g1g2now$decimalLatitude))
-  g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
-  g1g2now <- g1g2now[!is.na(g1g2now$decimalLatitude),]
-  g1g2now <- g1g2now[!is.na(g1g2now$decimalLongitude),]
-  if(nrow(g1g2now)>0){
-    #turn into spatialpointsdataframe for individual species
-    coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
-    proj4string(g1g2now) <- CRS("+proj=longlat +datum=WGS84") 
-    g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
-    convg1g2now <- convHull(g1g2now)
-    areag1g2now <- slot(convg1g2now)
-    out <- list(l1G1G2hull, convg1g2now, areanow)
-  } else {
-      out <- list(NA,NA)
-    }
-  out
-  })
-
-length(l1G1G2[l1G1G2$GNAME == "Arabis crandallii",])
-plot(l1G1G2[l1G1G2$GNAME == "Arabis crandallii",],border="red", lwd=1)
-plot(l1G1G2hull, add=TRUE) #one tiny box around one 
-
-plot(colocounties.UTM, main=g1g2names$Taxon[i])
-plot(l1G1G2[l1G1G2$GNAME == "Arabis crandallii",],add=TRUE, border="red", lwd=1)
-plot(convg1g2now, add= TRUE,col=rgb(0,0,1,0.25))
-plot(l1G1G2hull, add=TRUE, border=rgb(1,0,0,0.25),lwd=10)
-```
 
 The Weber example of an out of state person mapping a collection to Gray's Peak from Chicago Lake that should be Mount Evans.     
 - <https://conps.org/wp-content/uploads/2015/05/Mount_Evans_Summit_Lake_4-24-2011.pdf>    
@@ -1322,20 +1252,43 @@ TPL is pulling from synonym from the plant list   "colo"
       "seinetMo"is synonymy with TPL for Mo's list of 53 species (that are G1/G2s)   
       "colonames" is synonym with TPL for all colorado specimens from SEINet   
 
+
+#ENMeval vignette
+<https://cran.r-project.org/web/packages/ENMeval/vignettes/ENMeval-vignette.html>   
+
+#Spatial thinning
+<https://cran.r-project.org/web/packages/spThin/vignettes/spThin_vignette.html>     
+Thin to create dataset in which all occurences are at least _thin.par_ distance apart. helps reduce effect of uneven, biased, species occurence collections on spatial model outcomes   
+Got through 19 of them, go from 20 to length(wantEOR)
 ```{r}
-fmfam <- lmer(distNearEOR~as.factor(Family)|scientificName, colo.all[colo.all$distNearEOR<500000,]) 
-summary(fmfam)
-dotplot(ranef(fmfam,condVar=T))
+# The EOR grid points from distXsp is the forth item. Wants lat long, they are. 
+#for(i in 1:length(wantEOR)){
+for(i in 20:(length(wantEOR)-10)){
+  EORsp <- data.frame(distXsp[[wantEOR[i]]][[4]]@coords,
+                      species=g1g2names$AcceptedName[wantEOR[i]])
+    EORgrid.thin <- thin(loc.data = EORsp,
+                         lat.col = "x2", long.col = "x1",
+                         spec.col="species",
+                         thin.par = 0.15, reps=100,
+                         locs.thinned.list.return = TRUE,
+                         write.files = TRUE, max.files=5,
+                         out.dir = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/", paste(out.base="EORsp_1km",g1g2names$AcceptedName[wantEOR[i]],sep=""), write.log.file = TRUE,
+                         log.file = "EORgridthinned_log.txt")
+}
+
+
 
 ```
-
-
-
 
 
 ### Background points  
 Can either do bounding box (plus some buffer) or circles at some diameter
 ```{r}
+
+#Circles around EOR points. 
+
+
+#Circles around herbarium points
 circle <- list()
 for(i in 1:length(wantEOR)){
   circle[[i]] <- circles((EORsxsp[[wantEOR[i]]]@coords), d=50000, lonlat=TRUE)
@@ -1351,14 +1304,39 @@ points(EORsxsp[[4]]@coords, pch=16)
 plot(circle[[5]], add=TRUE, border="orange")
 points(EORsxsp[[5]]@coords, pch=16)
 
-# Need stack of environmental layers
-
+# Need stack of environmental layers  
+#Raster stack of just the bioclim variables
+class(bioclim.colorado)
 
 # Get backgrounds for each species
 envs.backg <- list()
 for(i in 1:length(wantEOR)){
-  envs.backg[[1]] <- mask()
+  envs.backg[[i]] <- crop(bioclim.colorado, circle[[i]]@polygons)
 }
+
+for(i in 1:length(wantEOR)){
+  envs.backg[[i]] <- mask(envs.backg[[i]], circle[[i]]@polygons)
+}
+
+#Plot presence points
+plot(envs.backg[[15]][[1]])
+points(EORsxsp[[15]], pch=16)
+
+
+# Background points from set area, select number of background points equal to the number of presence points
+bg <- list()
+for(i in 1:length(wantEOR)){
+  bg[[i]] <- as.data.frame(randomPoints(envs.backg[[i]][[1]], n=nrow(EORsxsp[[wantEOR[i]]]@coords)))
+}
+
+#Plot presence and background points
+for(i in 1:length(wantEOR)){
+  plot(envs.backg[[i]][[1]])
+  points(EORsxsp[[i]], pch=16, cex=0.5)
+  points(bg[[i]], pch=21, cex=0.5, col="red")
+}
+
+#Try some thinning first, for some that's lots of points that are 
 
 ```
 
