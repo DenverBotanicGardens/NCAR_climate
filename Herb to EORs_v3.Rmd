@@ -84,61 +84,6 @@ plot(coElev_biosize, xlim = c(-108, -103), ylim=c(37,41))
 ```
 
 
-```{r}
-
-SubsampleImageSpGdal <- function()
-{
-   library(rgdal) # loads sp package
-   library(Hmisc)
- 
-# SampleFactor: the reduction in image size and resolution: 1 / SampleFactor
-# e.g., Sample Factor  = 2 creates an image with 1/2 the resolution 
-# and 1/4 the number of pixels (x and y dimension subsampling)   
- 
-   SampleFactor <- 2
-
-# Step 1) Read input image into a SpatialGridDataFrame object, then display.
- 
-   setwd("./Img1")
-   InputImage <- readGDAL("B30SubNP.tif")      
-
-# Create a sampling grid, using the input image's spatial parameters  
-   
-   SamplingGridTopology <- GridTopology(InputImage@bbox[,1],
-                                        InputImage@grid@cellsize * SampleFactor,
-                                        InputImage@grid@cells.dim / SampleFactor)
-
-# Create the necessary data structures
-                                       
-   SamplingGrid <- SpatialGrid(SamplingGridTopology)  
-   OutSpatialGridSGDF <- as(SamplingGrid,"SpatialGridDataFrame")
-   SamplingPoints <- as(SamplingGrid,"SpatialPoints")   
-
-# Create the subsampled image in a SpatialGridDataFrame object.'
-  
-   SamplingPoints <- as(as(SamplingGrid,"SpatialPixels"),"SpatialPoints")
-   SamplingResultsSPDF <- overlay(InputImage,SamplingPoints)    
-   OutSpatialGridSGDF@data <- SamplingResultsSPDF@data 
-   OutSpatialGridSGDF@proj4string <- CRS(proj4string(InputImage))   
-   gridded(OutSpatialGridSGDF) <- TRUE  # necc for writeGDAL to write image.
- 
-# use Hmisc library describe() function to compare the incoming and resampled images
- 
-   Incoming = describe(InputImage@data)
-   print(Incoming)
-   Outgoing = describe(SamplingResultsSPDF@data)  
-   print(Outgoing)
-   message("Summary of incoming and outgoing images (hit key to continue):")   
-   browser() 
-#                                                                                                                             
-   writeGDAL(OutSpatialGridSGDF,"B30SubResampled.tif")
-   
-# Finished
-    
-}
-
-```
-
 
 ```{r}
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
@@ -618,24 +563,15 @@ us <- getData('GADM', country = 'US', level = 1)
 colorado <- us[us$NAME_1 == "Colorado",]
 projLL <- proj4string(colorado)
 
-
 colorado<- spTransform(colorado, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
 i<-1
  polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
                                          g1g2names$Taxon[i]),] 
  
-
 grid <- makegrid(polys, cellsize = 100) # cellsize in map units!
 grid <- SpatialPoints(grid, proj4string = CRS(proj4string(polys)))
 
-plot(grid[polys,])
-
-grid[polys,]@coords
-
 length(grid[polys,]) #106 points
-
-
-
 ```
 
 #map each species, map each EOR, check distance from points to nearest EORs
@@ -757,21 +693,11 @@ whoswho[whoswho$Freq>0,]
 ```{r}
 all.g1g2now <- do.call(c,mapply('[[', distXsp, 1)) #all the transformed to UTM species points
 all.g1g2now <- all.g1g2now[!is.na(all.g1g2now)]
-#all.g1g2now.joined <- lapply(all.g1g2now, function(x) {
-#  out <- x@coords
-#  out[,3] <- })
-#g1g2.stack <- stack(all.g1g2now) #or could it be points? needs to be a raster
-g1g2.df <- as.data.frame(g1g2.stack)
-
-#ggplot()
 
 plot(colocounties.UTM, border="grey80")
 plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[1],g1g2names$Taxon[1]),],
      border = "red", add=TRUE, lwd=4)
 points(distXsp[[1]][[1]], pch=16, cex=0.25)
-#scalebar(1000, xy = c(extent(raster(colocounties.UTM))[c(2,4)]-100000), type = "bar", divs = 4, 
-#         below = "km", lwd = 2) #label = c(0,50,100),adj=c(0.5, -0.5),lonlat = NULL, 
-#myScalebar("1 km")
 ScaleBar(raster(colocounties.UTM), 100, .20, .10, .75, .07, lwd=2)
 ```
 
@@ -916,33 +842,7 @@ for(i in want){
 
 ```
 
-```{r}
-library(animation)
-
-ani.options(
-  convert = shQuote('C:/Program Files (x86)/ImageMagick-6.8.1-Q16/convert.exe')
-)
-
-saveGIF(
-  {
-for(i in 1:nrow(g1g2names)){
-  plot(colocounties.UTM, border="grey80", main=g1g2names$AcceptedName[i])
-  plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),],
-       border = rgb(1,0,0,0.5), add=TRUE, lwd=1)
-  points(distXsp[[i]][[1]], pch=16, cex=0.5, col=rgb(0,0,0,0.75))
-  ScaleBar(raster(colocounties.UTM), 100, .20, .10, .75, .07, lwd=2)
-}
-  },
-movie.name = "EORtoHerb.gif",
-interval= 0.5,
-ani.width = 500,
-ani.height = 300,
-outdir = getwd()
-)
-
-```
-
-4/6/2018 - Danielle Gualtieri working on Colton Gaines protocol for mapping and adding uncertainty protocol (similar to Mo's work)
+4/6/2018 - Danielle Gualtieri working on Colton Gaines protocol for mapping and adding uncertainty protocol (similar to Mo's work)  6/11/2018 - long gone, hasn't been back in a while, not doing the work any more
 
 
 #Mechanistic models based on matrix models growth rates and fecundity correlative, use some model selection? for best prediction by species  
@@ -1263,16 +1163,20 @@ Got through 19 of them, go from 20 to length(wantEOR)
 ```{r}
 # The EOR grid points from distXsp is the forth item. Wants lat long, they are. 
 #for(i in 1:length(wantEOR)){
-for(i in 20:(length(wantEOR)-10)){
+#for(i in 20:length(wantEOR)){
+#for(i in 21:length(wantEOR)){
+
+EORgrid.thin <- list()
+for(i in c(1:18,21:47,49:length(wantEOR))){
   EORsp <- data.frame(distXsp[[wantEOR[i]]][[4]]@coords,
                       species=g1g2names$AcceptedName[wantEOR[i]])
-    EORgrid.thin <- thin(loc.data = EORsp,
+    EORgrid.thin[[i]] <- thin(loc.data = EORsp,
                          lat.col = "x2", long.col = "x1",
                          spec.col="species",
-                         thin.par = 0.15, reps=100,
+                         thin.par = 1, reps=10,
                          locs.thinned.list.return = TRUE,
                          write.files = TRUE, max.files=5,
-                         out.dir = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/", paste(out.base="EORsp_1km",g1g2names$AcceptedName[wantEOR[i]],sep=""), write.log.file = TRUE,
+                         out.dir = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/",paste(out.base="EORsp_1km",i,"_",g1g2names$AcceptedName[wantEOR[i]],sep=""), write.log.file = TRUE,
                          log.file = "EORgridthinned_log.txt")
 }
 
