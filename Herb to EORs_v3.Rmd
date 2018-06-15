@@ -1314,7 +1314,10 @@ for(i in 1:length(want)){
 plot(envs.backg[[wantEOR[19]]][[1]], main=g1g2names$AcceptedName[wantEOR[19]])
 points(EORsxsp[[wantEOR[19]]], pch=16)
 
-
+for(i in 1:length(envs.backg.herb)){
+  plot(envs.backg.herb[[i]][[1]], main=g1g2names$AcceptedName[want[match(i,want)]] )
+  plot(colocounties, add=TRUE)
+}
 
 for(i in 1:60){
   print(paste(i,g1g2names$AcceptedName[i],"or is it:",
@@ -1328,13 +1331,17 @@ for(i in 1:60){
 
 ```{r}
 #The item in the list that matches the number, i, is the the match(i, want) or match(i, wantEOR) but some are missing (want and envs.backg.herb are 46 long, wantEOR and envs.backg are 59 long )
-for(i in 1:59){
+for(i in want){
   if(!is.na(want[match(i,want)])){
     if(!is.na(wantEOR[match(i,wantEOR)])){
+      plot(colocounties)
       plot(envs.backg.herb[[want[match(i,want)]]][[1]], #just the first bioclim 
-         main=g1g2names$AcceptedName[want[match(i,want)]] )
-      plot(envs.backg[[wantEOR[match(i,wantEOR)]]][[1]], col="grey", add=TRUE, legend=FALSE)
+         main=g1g2names$AcceptedName[want[match(i,want)]],
+         add=TRUE)
+      plot(envs.backg[[wantEOR[match(i,wantEOR)]]][[1]], col="grey", add=TRUE, legend=FALSE) #from the EORs
       points(pointsXsp.latlon[[i]], pch=20)
+      points(distXsp[[wantEOR[match(i, wantEOR)]]][[4]]@coords, col="red", pch=16)
+
     }
   }
 }
