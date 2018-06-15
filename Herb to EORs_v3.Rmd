@@ -1152,9 +1152,37 @@ TPL is pulling from synonym from the plant list   "colo"
       "seinetMo"is synonymy with TPL for Mo's list of 53 species (that are G1/G2s)   
       "colonames" is synonym with TPL for all colorado specimens from SEINet   
 
-
+<https://rpubs.com/spoonerf/SDM4>   
+        
 #ENMeval vignette
 <https://cran.r-project.org/web/packages/ENMeval/vignettes/ENMeval-vignette.html>   
+```{r}
+bioclim.colorado <- getData("worldclim", var="bio", res=0.5, lon=-106, lat = 39)
+
+
+plot(bioclim.colorado$bio1_12)
+plot(colocounties, add=TRUE)
+
+
+# Use rasters in a RasterStack:
+class(bioclim.colorado)
+
+
+#Need back to latlon for bioclim layers
+pointsXsp.latlon <- list()
+for(i in 1:length(want)){
+  pointsXsp.latlon[[i]] <- spTransform(distXsp[[want[i]]][[1]], CRS("+proj=longlat +datum=WGS84"))
+}
+
+# Plot first raster in the stack, bio1
+# Add points for all the occurrence points onto the raster
+plot(bioclim.colorado[[1]], main=names(bioclim.colorado)[1])
+points(pointsXsp.latlon[[15]])
+
+
+
+```
+
 
 #Spatial thinning
 <https://cran.r-project.org/web/packages/spThin/vignettes/spThin_vignette.html>     
@@ -1167,7 +1195,8 @@ Got through 19 of them, go from 20 to length(wantEOR)
 #for(i in 21:length(wantEOR)){
 
 EORgrid.thin <- list()
-for(i in c(1:18,21:47,49:length(wantEOR))){
+#for(i in c(1:18,21:47,49:length(wantEOR))){
+for(i in c(20,48)){
   EORsp <- data.frame(distXsp[[wantEOR[i]]][[4]]@coords,
                       species=g1g2names$AcceptedName[wantEOR[i]])
     EORgrid.thin[[i]] <- thin(loc.data = EORsp,
@@ -1180,23 +1209,71 @@ for(i in c(1:18,21:47,49:length(wantEOR))){
                          log.file = "EORgridthinned_log.txt")
 }
 
+save(EORgrid.thin, file= "P:/hackathon/Simulations/EORgrid.thin.Rda")
+```
 
 
+```{r}
+Herb.thin <- list()
+#for(i in c(1:18,21:47,49:length(wantEOR))){
+for(i in 1:length(want)){
+  Herbsp <- data.frame(pointsXsp.latlon[[i]]@coords,
+                       species=g1g2names$AcceptedName[want[i]])
+  Herb.thin[[i]] <- thin(loc.data = Herbsp,
+                     lat.col = "decimalLatitude", long.col = "decimalLongitude",
+                     spec.col="species",
+                     thin.par = 1, reps=10,
+                     locs.thinned.list.return = TRUE,
+                     write.files = TRUE, max.files=5,
+                     out.dir = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/",paste(out.base="Herb.thin_1km",i,"_",g1g2names$AcceptedName[wantEOR[i]],sep=""), write.log.file = TRUE,
+                     log.file = "EORgridthinned_log.txt")
+}
+
+save(Herb.thin, file= "P:/hackathon/Simulations/Herb.thin.Rda")
+```
+
+```{r}
+plot(EORgrid.thin[[1]][[1]])
+plot(EORgrid.thin[[1]][[2]])
+
+for(i in 1:length(EORgrid.thin)){
+  plotThin(EORgrid.thin[[i]])
+}
 ```
 
 
 ### Background points  
-Can either do bounding box (plus some buffer) or circles at some diameter
+Can either do bounding box (plus some buffer) or circles at some diameter   
+    
+    - there are 60 species L1/L2 species with data   
+    - 59 species have EOR data    
+    - 46 species have herbarium data avalaible through SEINet    
+    - wantEOR are the ones from the 60 that have EOR data so wantEOR[i] in a loop would get the ones I want    
+    - want[i] would get teh 46 that have herbarium data from the list of 60 species   
 ```{r}
+#Circles around herbarium points
+circleHerb <- list()
+for(i in 1:length(want)){
+  circleHerb[[i]] <- circles(pointsXsp.latlon[[i]]@coords, d=50000, lonlat=TRUE)
+}
+
+save(circleHerb, file= "P:/hackathon/Simulations/circleHerb.Rda")
 
 #Circles around EOR points. 
-
-
-#Circles around herbarium points
 circle <- list()
 for(i in 1:length(wantEOR)){
-  circle[[i]] <- circles((EORsxsp[[wantEOR[i]]]@coords), d=50000, lonlat=TRUE)
+  circle[[i]] <- circles(EORsxsp[[wantEOR[i]]]@coords, d=50000, lonlat=TRUE)
 }
+
+save(circle, file= "P:/hackathon/Simulations/circleEOR.Rda")
+```
+
+
+```{r}
+load("P:/hackathon/Simulations/circleEOR.Rda")
+load("P:/hackathon/Simulations/circleHerb.Rda")
+load("P:/hackathon/Simulations/EORgrid.thin.Rda")
+load("P:/hackathon/Simulations/circleEOR.Rda")
 
 plot(colocounties)
 plot(circle[[2]], add=TRUE)
@@ -1222,11 +1299,55 @@ for(i in 1:length(wantEOR)){
   envs.backg[[i]] <- mask(envs.backg[[i]], circle[[i]]@polygons)
 }
 
+
+#Get backgrounds for each species according to the herbarium specimens
+envs.backg.herb <- list()
+for(i in 1:length(want)){
+  envs.backg.herb[[i]] <- crop(bioclim.colorado, circleHerb[[i]]@polygons)
+}
+
+for(i in 1:length(want)){
+  envs.backg.herb[[i]] <- mask(envs.backg.herb[[i]], circleHerb[[i]]@polygons)
+}
+
 #Plot presence points
-plot(envs.backg[[15]][[1]])
-points(EORsxsp[[15]], pch=16)
+plot(envs.backg[[wantEOR[19]]][[1]], main=g1g2names$AcceptedName[wantEOR[19]])
+points(EORsxsp[[wantEOR[19]]], pch=16)
 
 
+
+for(i in 1:60){
+  print(paste(i,g1g2names$AcceptedName[i],"or is it:",
+              "herb:",
+              want[match(i,want)], "and EOR:", wantEOR[match(i,wantEOR)],
+        "Just want[i]:", want[i], "and wantEOR[i]", wantEOR[i]))
+}
+```
+
+
+
+```{r}
+#The item in the list that matches the number, i, is the the match(i, want) or match(i, wantEOR) but some are missing (want and envs.backg.herb are 46 long, wantEOR and envs.backg are 59 long )
+for(i in 1:59){
+  if(!is.na(want[match(i,want)])){
+    if(!is.na(wantEOR[match(i,wantEOR)])){
+      plot(envs.backg.herb[[want[match(i,want)]]][[1]], #just the first bioclim 
+         main=g1g2names$AcceptedName[want[match(i,want)]] )
+      plot(envs.backg[[wantEOR[match(i,wantEOR)]]][[1]], col="grey", add=TRUE, legend=FALSE)
+      points(pointsXsp.latlon[[i]], pch=20)
+    }
+  }
+}
+
+
+
+
+```
+
+
+
+
+```{r}
 # Background points from set area, select number of background points equal to the number of presence points
 bg <- list()
 for(i in 1:length(wantEOR)){
@@ -1236,12 +1357,31 @@ for(i in 1:length(wantEOR)){
 #Plot presence and background points
 for(i in 1:length(wantEOR)){
   plot(envs.backg[[i]][[1]])
+  plot(colocounties, add=TRUE)
   points(EORsxsp[[i]], pch=16, cex=0.5)
   points(bg[[i]], pch=21, cex=0.5, col="red")
+  scalebar(100, type="line", divs = 4, below="kilometers", lonlat = TRUE)
 }
 
 #Try some thinning first, for some that's lots of points that are 
 
+```
+
+Partitioning occurrences for evalutaiton of models to reduce overinflated performace due to biased sampling/autocorrelation among points   
+```{r}
+#Block partitioning spatially by dividing the data into four bins based on their position in relation to a north/south and east/west partitioning that gets the points into nearly 4 equal size groups. 
+
+#NEED to do this for the herbarium specemins too, not just the EORS!!!
+
+blocks <- list()
+for(i in 1:length(pointsXsp.latlon)){ #46 species with points
+  blocks[[i]] <- get.block(pointsXsp.latlon[[i]]@coords, bg[[want[i]]])
+  
+  plot(envs.backg[[i]][[1]], col="gray", legend=FALSE)
+  points(EORsxsp[[i]]@coords, pch=21, bg=blocks[[i]]$occ.grp) #In CRS("+proj=longlat +datum=WGS84"), grid points every 100 meters (map units which was UTM) within EOR polygons.
+  points(pointsXsp.latlon[[i]])
+  
+}
 ```
 
 
