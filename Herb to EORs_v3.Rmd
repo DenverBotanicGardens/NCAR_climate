@@ -78,6 +78,8 @@ load("P:/hackathon/Simulations/EORgrid.thin.Rda")
 load("P:/hackathon/Simulations/circleEOR.Rda")
 load("P:/hackathon/Simulations/envs.backgEOR.Rda")
 load("P:/hackathon/Simulations/envs.backgHerb.Rda")
+load("P:/hackathon/Simulations/Herb.thin1000.Rda")
+load("P:/hackathon/Simulations/EORgrid.thin.Rda")
 
 ```
 #Resample elevation (and others) to the bioclim sized grid, 30km grid is way to small, computer can't handle 
@@ -97,8 +99,12 @@ l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/a
 colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
 colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
 
-
+#In lat/lon WGS 84
 plot(colocounties)
+
+#in UTM NAD83
+plot(colocounties.UTM)
+plot(l1eor, add=TRUE)
 
 #Each polygon might be made of multiple disconnected polygons. Need to separate and label
 l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
@@ -117,7 +123,8 @@ length(unique(l1G1G2$GNAME)) #60
 namesg1g2 <- table(l1G1G2$GNAME)
 length(namesg1g2[namesg1g2 > 0]) #60 species
 g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
-table(g1g2names$Taxonomic.status) #2 not in there, "Gutierrezia elegans" "Oonopsis sp. 1", 10 synonyms, 3 unresolved
+table(g1g2names$Taxonomic.status) 
+#2 not in there, "Gutierrezia elegans" "Oonopsis sp. 1", 10 synonyms, 3 unresolved
 
 
 
@@ -1220,22 +1227,21 @@ save(EORgrid.thin, file= "P:/hackathon/Simulations/EORgrid.thin.Rda")
 
 
 ```{r}
-Herb.thin <- list()
-#for(i in c(1:18,21:47,49:length(wantEOR))){
+Herb.thin1000 <- list()
 for(i in 1:length(want)){
   Herbsp <- data.frame(pointsXsp.latlon[[i]]@coords,
                        species=g1g2names$AcceptedName[want[i]])
-  Herb.thin[[i]] <- thin(loc.data = Herbsp,
+  Herb.thin1000[[i]] <- thin(loc.data = Herbsp,
                      lat.col = "decimalLatitude", long.col = "decimalLongitude",
                      spec.col="species",
-                     thin.par = 1, reps=10,
+                     thin.par = 1, reps=1000,
                      locs.thinned.list.return = TRUE,
                      write.files = TRUE, max.files=5,
-                     out.dir = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/",paste(out.base="Herb.thin_1km",i,"_",g1g2names$AcceptedName[wantEOR[i]],sep=""), write.log.file = TRUE,
-                     log.file = "EORgridthinned_log.txt")
+                     out.dir = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/",paste(out.base="Herb.thin_1km_1000",i,"_",g1g2names$AcceptedName[wantEOR[i]],sep=""), write.log.file = TRUE,
+                     log.file = "EORgridthinned1000_log.txt")
 }
 
-save(Herb.thin, file= "P:/hackathon/Simulations/Herb.thin.Rda")
+save(Herb.thin1000, file= "P:/hackathon/Simulations/Herb.thin1000.Rda")
 ```
 
 ```{r}
@@ -1338,20 +1344,21 @@ save(envs.backg.herb, file= "P:/hackathon/Simulations/envs.backgHerb.Rda")
 
 ```{r}
 #The item in the list that matches the number, i, is the the match(i, want) or match(i, wantEOR) but some are missing (want and envs.backg.herb are 46 long, wantEOR and envs.backg are 59 long )
-for(i in want){
-  if(!is.na(want[match(i,want)])){
-    if(!is.na(wantEOR[match(i,wantEOR)])){
-      plot(colocounties)
-      plot(envs.backg.herb[[want[match(i,want)]]][[1]], #just the first bioclim 
-         main=g1g2names$AcceptedName[want[match(i,want)]],
-         add=TRUE)
-      plot(envs.backg[[wantEOR[match(i,wantEOR)]]][[1]], col="grey", add=TRUE, legend=FALSE) #from the EORs
-      points(pointsXsp.latlon[[i]], pch=20)
-      points(distXsp[[wantEOR[match(i, wantEOR)]]][[4]]@coords, col="red", pch=16)
+for(i in 1:length(want)){
+  if(!is.na(wantEOR[match(want[i],wantEOR)])){
+    plot(colocounties,
+         main=g1g2names$AcceptedName[want[i]])
+    plot(envs.backg.herb[[i]][[1]], #just the first bioclim 
+         add=TRUE, col=rgb(0,1,1,0.25),border="black")
+    plot(envs.backg[[wantEOR[match(want[i],wantEOR)]]][[1]], col=rgb(1,0,0,0.25),
+         add=TRUE, legend=FALSE) #from the EORs
+    points(pointsXsp.latlon[[i]], pch=20) #herb points
+    points(distXsp[[wantEOR[match(want[i], wantEOR)]]][[4]]@coords, col="red", pch=16)
 
     }
-  }
 }
+  
+
 
 
 
