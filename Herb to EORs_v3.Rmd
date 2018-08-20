@@ -126,33 +126,10 @@ g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
 table(g1g2names$Taxonomic.status) 
 #2 not in there, "Gutierrezia elegans" "Oonopsis sp. 1", 10 synonyms, 3 unresolved
 
-
-
-
-#Are both synonyms and accepted in as GNAME?
-notaccepted <- l1G1G2$GNAME[!is.na(match(l1G1G2$GNAME,
-      g1g2names$Taxon[g1g2names$Taxonomic.status != "Accepted"]))]
-unique(notaccepted)
-g1g2names[g1g2names$Taxonomic.status != "Accepted",]
-
-unique(l1G1G2$GNAME[grep("Boechera",l1G1G2$GNAME)])
-
-#Are any accepted names also in the list?
-l1G1G2$GNAME[l1G1G2$GNAME %in% 
-               g1g2names$New.Genus[g1g2names$Taxonomic.status
-                                   != "Accepted"]]
-
-g1g2names[g1g2names$Taxonomic.status == "",] #Gutierrezia elegans; Arabis crandallii --> Boechera crandallii
-
-g1g2names$Taxon
-g1g2names$Taxon[g1g2names$Taxonomic.status == ""]
-g1g2names$Taxon[g1g2names$Taxonomic.status == "Synonym"]
-
-# All names to look for in SEINet, both the stated and the corrected by TPL
-allnames <- c(g1g2names$Taxon, 
-              paste(g1g2names$New.Genus,g1g2names$New.Species,sep=" "))
-length(unique(allnames)) #71
-
+g1g2names[g1g2names$Taxonomic.status == "Unresolved",]
+#Gilia sedifolia
+#Ipomopsis ramosa
+#Packera mancosana
 ```
 
 
@@ -177,12 +154,7 @@ Mo Ewing:
                      or "GoogleEarth"      
 
 
-
-
-
-#I must have made this one sometime, need to check again that matched all names   
-I think I decided that 54 names was not all the G1/G2 so I went to get the rest one by one from SEINet instead of all Colorado specimens which then has name issues:    
-coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences.csv")
+# Check when names are good or not from herbarium specimens
 ```{r}
 seinet <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/seinet_colorado_with_coordinates_ALLG1G2.csv")
 
@@ -207,10 +179,6 @@ seinet_TPL$family <- toupper(seinet_TPL$family)
 seinet_TPL[seinet_TPL$institutionCode=="USU",]
 seinet_TPL$institutionCode[seinet_TPL$institutionCode=="USU"] <- "USUUB"
 
-```
-
-# Check when names are good or not from herbarium specimens
-```{r}
 namesbyyear <- table(seinet_TPL$Taxonomic.status,seinet_TPL$year)
 plot(as.numeric(dimnames(namesbyyear)[[2]]),namesbyyear[2,],col="blue", type="l",
      xlab="Year",ylab="Specimens", ylim=c(0,max(namesbyyear))) #accepted
@@ -276,171 +244,6 @@ abind3 <- function(...) { abind(along = 3, ...) }
 
 ```
 
-#Can't get the layers again... skip for now. 
-```{r}
-NetCDF2Raster <- function(simulationmin, simulationmax, Yearmin, Yearmax, SimulationStartName,
-                          SimulationEndName, SimulationEndName2, 
-                          variablename,variablename2, precip = TRUE){
-  sims <- sprintf('%0.3d', simulationmin:simulationmax)
-  
-  varyears <- lapply(sims, function(sims){
-    nc_open(paste(SimulationStartName,sims,SimulationEndName,sep=""))
-    })
-   #Precip needs to add together CC and CL
-  if(precip){
-  varyears2 <- lapply(sims, function(sims){
-    nc_open(paste(SimulationStartName,sims,SimulationEndName2,sep=""))
-  })
-  }
-  
-  #Sum 12 months for annual 
-  varannual <- lapply(1:length(varyears), function(model){
-    precc1 <- ncvar_get(varyears[[model]], variablename)
-    cl <- makeCluster(6)
-    registerDoParallel(cl)
-    precc <- foreach(timeindex = seq(1,(Yearmax-Yearmin)*12,12),
-                     .combine = "abind3") %dopar% 
-      {
-        apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), 
-              if(precip){
-                sum
-                } else {
-                  mean
-                })
-        }
-    stopCluster(cl)
-    gc()
-    rm(precc1)
-    precc
-    })
-  
-  if(precip){
-  #Sum 12 months for annual 
-  varannual2 <- lapply(1:length(varyears2), function(model){
-    precc1 <- ncvar_get(varyears2[[model]], variablename2)
-    cl <- makeCluster(6)
-    registerDoParallel(cl)
-    precc <- foreach(timeindex = seq(1,(Yearmax-Yearmin)*12,12),
-                     .combine = "abind3") %dopar% 
-      {
-        apply(precc1[,,timeindex:(timeindex+11)], MARGIN = c(1,2), sum)
-        }
-    stopCluster(cl)
-    gc()
-    rm(precc1)
-    precc
-    })
-  
-  varannual_sum <- lapply(1:length(varyears), function(model){
-    Ycc <- varannual[[model]]
-    Ycl <- varannual2[[model]]
-    cl <- makeCluster(6)
-    registerDoParallel(cl)
-    total <- foreach(timeindex = 1:(Yearmax-Yearmin),
-                     .combine = "abind3") %dopar% 
-      {
-        Ycc[,,timeindex]+Ycl[,,timeindex]
-        }
-    stopCluster(cl)
-    gc()
-    rm(Ycc,Ycl)
-    total
-  })
-  }
-  
-  # Avreage over the models over years
-  cl <- makeCluster(6)
-  registerDoParallel(cl)
-  avg_annual <- foreach(timeindex = 1:(Yearmax-Yearmin),
-                        .packages = "abind") %dopar%
-    {
-      byyearmodel <- lapply(if(precip){
-        varannual_sum
-        } else {
-          varannual
-        }, function(model1){
-      model1[,,timeindex]
-    })
-    oneyear <- abind(byyearmodel, along=3)
-    abind(apply(oneyear, MARGIN = c(1,2), mean), along=3)
-    }
-  stopCluster(cl)
-  
-  save(list="avg_annual", file=paste("P:/hackathon/Simulations/",variablename,"modelavg_annual.RData",
-                                     sep=""))
-  dims <- dim(avg_annual [[1]])
-  
-  #make rasters
-  var.raster <- lapply(avg_annual, function(model1){
-  e <- extent(c(0,360,-90,90))
-  mean.raster <- flip(raster(t(as.matrix(model1[,,1], nrow=dims[2]))),
-                      direction = "y")
-  extent(mean.raster) <- e
-  proj4string(mean.raster) <- CRS("+init=epsg:4326")
-  mean.raster
-  })
-  
-  years <- c(Yearmin:Yearmax)
-  save(list="var.raster", file=paste("P:/hackathon/Simulations/",variablename,Yearmin,Yearmax,
-                                     "modelavg.raster.RData",sep=""))
-  
-  #write rasters
-  for(i in 1:(Yearmax-Yearmin)){
-    writeRaster(rotate(var.raster[[i]]), 
-                paste("P:/hackathon/Simulations/",variablename,years[i],sep=""),
-                format = "GTiff",
-                overwrite=TRUE)
-    }
-  
-  #Average over 20 years
-  annual20 <- lapply(seq(1,(Yearmax-Yearmin) - 19,20),
-                     function(year){
-                       model1 <- abind(avg_annual[year:year+19], along=3)
-                       mn <- apply(model1, MARGIN = c(1,2), mean)
-                       mn
-                       })
-  
-  save(list="annual20", file=paste("P:/hackathon/Simulations/",variablename,
-                                   Yearmin,Yearmax,"20_annual.RData",sep=""))
-  
-  var.raster <- lapply(annual20, function(model1){
-    e <- extent(c(0,360,-90,90))
-    mean.raster <- flip(raster(t(as.matrix(model1, nrow=dims[2]))),
-                        direction="y")
-    extent(mean.raster) <- e
-    proj4string(mean.raster) <- CRS("+init=epsg:4326")
-    mean.raster
-    })
-  
-  save(list="var.raster", file=paste("P:/hackathon/Simulations/",
-                                     variablename,Yearmin,Yearmax,
-                                     "_raster.RData", sep=""))
-  
-  yrs <- paste(Yearmin,Yearmin+20,sep="-")
-  for(i in 1:(trunc((Yearmax-Yearmin)/20)-1)){
-  yrs <- c(yrs,paste(Yearmin+((20*i)+1),Yearmin+(20*(i+1)),sep=""))
-  } 
-  
-  
-  #write rasters
-  for(k in 1:trunc((Yearmax-Yearmin)/20)){
-    writeRaster(rotate(var.raster[[k]]),
-                paste("P:/hackathon/Simulations/",variablename,yrs[k],sep=""),
-                format = "GTiff",
-                overwrite = TRUE)
-  }
-}
-
-
-```
-
-```{r}
-
-
-```
-
-
-
 
 #Michelle DePrenger-Levin      
 In ArcMap do this: <https://blogs.esri.com/esri/arcgis/2010/09/16/nearbygroup/>
@@ -478,13 +281,10 @@ table(coloradosps.specimens$basisOfRecord)
 coloradosps <- coloradosps.specimens
 nrow(coloradosps)
 
-
-coloradosps[grep("bluffs above tributary",coloradosps$basisOfRecord) ,] #there are all messed up
-
 g1g2names$AcceptedName <- paste(g1g2names$New.Genus,g1g2names$New.Species)
 #match SEINet names to either the given or accepted names from G1/G2s
 length(unique(g1g2names$Taxon))
-length(unique(g1g2names$AcceptedName))
+length(unique(g1g2names$AcceptedName)) #60
 length(unique(c(g1g2names$Taxon,g1g2names$AcceptedName))) #71 
 
 
@@ -492,27 +292,80 @@ rowstomatch <- lapply(c("Taxon","AcceptedName"), function(x){
    coloradosps[,"scientificName"] %in%  g1g2names[,x]
 })
 
-#######do I need this or just take matches for coloradosps? 
-
 #The rows to keep that match either an accepted or synonym or unresolved name for a G1G2 species
 #coloradosps.specimens was intermediate to get rid of none specimen records
 coloradosps.g1g2 <- unique(rbind(coloradosps[rowstomatch[[1]],],coloradosps[rowstomatch[[2]],]))
 nrow(coloradosps.g1g2)
 hist(as.numeric(as.character(coloradosps.g1g2$decimalLatitude)))
 #write.table(sort(unique(coloradosps.g1g2$scientificName)), "clipboard", sep="\t", row.names=FALSE)
+plot(as.numeric(as.character(coloradosps.g1g2$decimalLongitude)),
+     as.numeric(as.character(coloradosps.g1g2$decimalLatitude)))
+```
+How many are within 0.01 decimals of each other, round to two decimals - per Soltis 
+```{r}
+coloradosps.g1g2$decimalLatitude <- 
+  as.numeric(as.character(coloradosps.g1g2$decimalLatitude))
+coloradosps.g1g2$decimalLongitude <- 
+  as.numeric(as.character(coloradosps.g1g2$decimalLongitude))
 
+coloradosps.g1g2[which(coloradosps.g1g2$decimalLatitude <37),]
+coloradosps.g1g2[which(coloradosps.g1g2$decimalLongitude < -109.2),]
+
+coloradosps.g1g2$lon2 <- round(coloradosps.g1g2$decimalLongitude,2)
+coloradosps.g1g2$lat2 <- round(coloradosps.g1g2$decimalLatitude,2)
+
+duplicated(coloradosps.g1g2[,c("lat2","lon2")])
+
+plot(colocounties)
+points(coloradosps.g1g2$lon2,coloradosps.g1g2$lat2,pch=20,cex=0.5)
+points(coloradosps.g1g2$decimalLongitude,coloradosps.g1g2$decimalLatitude,col="red",
+       pch=20,cex=0.5)
+
+
+nrow(coloradosps.g1g2) #-
+nrow(coloradosps.g1g2[!duplicated(coloradosps.g1g2[,c("lat2","lon2")]),])
+
+#which ones are in denver?
+write.table(coloradosps.g1g2[which(coloradosps.g1g2$decimalLatitude >39.5&
+                         coloradosps.g1g2$decimalLatitude <40.1&
+                         coloradosps.g1g2$decimalLongitude>-105.5),], 
+            "clipboard", sep="\t", row.names=FALSE)
+
+write.table(coloradosps.g1g2[grep("Den",coloradosps.g1g2$county),], 
+            "clipboard", sep="\t", row.names=FALSE)
+```
+
+
+```{r}
 setdiff(sort(unique(coloradosps.g1g2$scientificName)),sort(unique(l1G1G2$GNAME))) #species from the SEINet specimens that isn't in the names given for G1G2
 setdiff(sort(unique(l1G1G2$GNAME)),sort(unique(coloradosps.g1g2$scientificName))) #the first list that's not in the second
 
+
+#convert points from WGS84 to NAD83
+projected <- coloradosps.g1g2[complete.cases(coloradosps.g1g2[,c("lat2","lon2")]),]
+coordinates(projected) <- ~ lon2+lat2
+proj4string(projected) <- CRS("+proj=longlat +datum=WGS84") 
+projected <- spTransform(projected, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+
 head(g1g2names)
 unique(l1G1G2$PolyID$GNAME)
-plot(colocounties.UTM) #colocounties is in WGS84, not in same datum as l1G1G2
-plot(l1G1G2, add=TRUE)
-plot(l1G1G2[grep( "Astragalus",l1G1G2$GNAME),], border = "red", add=TRUE)
-plot(l1G1G2[grep( "Penstemon",l1G1G2$GNAME),], border = "blue", add=TRUE)
+```
 
+There seems to be lots of points in Denver but no EOs!
+```{r}
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/HerbPntsEORs_CO.jpg",
+     width=250, height=225,units='mm', res=300)
+
+plot(colocounties.UTM,border="gray80") #colocounties is in WGS84, not in same datum as l1G1G2
+plot(l1G1G2, border="gray70",add=TRUE, lwd=7)
+plot(projected, add=TRUE, pch=20, cex=0.5)
+
+dev.off()
 
 ```
+
+
+
        [1] WGS84                     WGS 84                    WGS 1984                      
        [4] WGS96                     WGS 72                    WGS-84                     
        [7] WGS 1984.                 WGS83                     WGS84 (UTM Datum: NAD83)   
@@ -554,7 +407,7 @@ ScaleBar <- function(reference_raster_utm, round_to_nearest_km, width_percent, y
         scale_size_adj <- mround(scale_size, round_to_nearest_km)
         scale_size_adj_plot <- (scale_size_adj*1000)/2
     # Horizontal percent position (x) for scale bar
-        x_position <- ((xmax(reference_raster_utm)-xmin(reference_raster_utm))*x_percent_from_left)+xmin(reference_raster_utm)
+        x_position <- ((xmax(reference_raster_utm)-xmin(refe???rence_raster_utm))*x_percent_from_left)+xmin(reference_raster_utm)
     # Vertical percent position y for scale bar
         y_position <- ((ymax(reference_raster_utm)-ymin(reference_raster_utm))*y_percent_from_bottom)+ymin(reference_raster_utm)
         y_position_text <- ((ymax(reference_raster_utm)-ymin(reference_raster_utm))*y_text_percent_from_bottom)+ymin(reference_raster_utm)

@@ -2968,3 +2968,2094 @@ Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modelin
 
 Thinning Parameter Used (in km): 1
 Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+41806.58 1593.46 43492.1 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+47	48	49
+71	28	1
+Maximum number of records after thinning: 49
+Number of data.frames with max records: 1
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km13_Draba exunguiculata_thin1.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Fri Jun 15 19:36:22 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+7082.11 267.97 7354.5 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+46
+100
+Maximum number of records after thinning: 46
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km14_Draba graminea_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km14_Draba graminea_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km14_Draba graminea_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km14_Draba graminea_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km14_Draba graminea_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Fri Jun 15 21:38:58 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+47113.88 1810.33 48951.81 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+53	54	55	56
+21	60	18	1
+Maximum number of records after thinning: 56
+Number of data.frames with max records: 1
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km15_Draba grayana_thin1.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sat Jun 16 11:14:51 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+41167.1 1518.62 42709.36 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+57	58	59
+11	83	6
+Maximum number of records after thinning: 59
+Number of data.frames with max records: 6
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km16_Draba smithii_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km16_Draba smithii_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km16_Draba smithii_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km16_Draba smithii_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km16_Draba smithii_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sat Jun 16 23:06:42 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+0 0 0 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+2
+100
+Maximum number of records after thinning: 2
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km17_Draba weberi_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km17_Draba weberi_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km17_Draba weberi_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km17_Draba weberi_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km17_Draba weberi_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sat Jun 16 23:06:43 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+33.22 0 33.24 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+7
+100
+Maximum number of records after thinning: 7
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km18_Erigeron kachinensis_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km18_Erigeron kachinensis_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km18_Erigeron kachinensis_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km18_Erigeron kachinensis_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km18_Erigeron kachinensis_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sat Jun 16 23:07:18 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+8.46 0 8.45 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+19
+100
+Maximum number of records after thinning: 19
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km21_Eriogonum pelinophilum_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km21_Eriogonum pelinophilum_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km21_Eriogonum pelinophilum_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km21_Eriogonum pelinophilum_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km21_Eriogonum pelinophilum_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sat Jun 16 23:07:28 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.31 0 1.31 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+4
+100
+Maximum number of records after thinning: 4
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km22_Gilia sedifolia_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km22_Gilia sedifolia_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km22_Gilia sedifolia_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km22_Gilia sedifolia_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km22_Gilia sedifolia_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sat Jun 16 23:07:31 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+3.71 0.05 3.76 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+7	8
+64	36
+Maximum number of records after thinning: 8
+Number of data.frames with max records: 36
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km23_Gutierrezia elegans_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km23_Gutierrezia elegans_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km23_Gutierrezia elegans_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km23_Gutierrezia elegans_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km23_Gutierrezia elegans_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sat Jun 16 23:07:36 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+849.09 0.91 850.59 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+27	28
+5	95
+Maximum number of records after thinning: 28
+Number of data.frames with max records: 95
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km24_Ipomopsis globularis_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km24_Ipomopsis globularis_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km24_Ipomopsis globularis_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km24_Ipomopsis globularis_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km24_Ipomopsis globularis_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sat Jun 16 23:21:48 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+2.56 0 2.56 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+9
+100
+Maximum number of records after thinning: 9
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km25_Ipomopsis ramosa_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km25_Ipomopsis ramosa_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km25_Ipomopsis ramosa_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km25_Ipomopsis ramosa_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km25_Ipomopsis ramosa_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sat Jun 16 23:21:52 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+16040.35 79.32 16128.31 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+39	40	41	42
+2	20	69	9
+Maximum number of records after thinning: 42
+Number of data.frames with max records: 9
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km26_Lepidium crenatum_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km26_Lepidium crenatum_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km26_Lepidium crenatum_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km26_Lepidium crenatum_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km26_Lepidium crenatum_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 03:50:42 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+47.67 0 47.69 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+21
+100
+Maximum number of records after thinning: 21
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km27_Physaria congesta_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km27_Physaria congesta_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km27_Physaria congesta_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km27_Physaria congesta_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km27_Physaria congesta_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 03:51:31 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+82.97 0 82.98 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+51	52
+73	27
+Maximum number of records after thinning: 52
+Number of data.frames with max records: 27
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km28_Physaria parviflora_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km28_Physaria parviflora_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km28_Physaria parviflora_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km28_Physaria parviflora_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km28_Physaria parviflora_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 03:52:56 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+418.72 4.08 423.11 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+19
+100
+Maximum number of records after thinning: 19
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km29_Physaria pruinosa_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km29_Physaria pruinosa_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km29_Physaria pruinosa_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km29_Physaria pruinosa_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km29_Physaria pruinosa_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 04:00:00 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.52 0 1.52 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+12
+100
+Maximum number of records after thinning: 12
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km30_Physaria vicina_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km30_Physaria vicina_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km30_Physaria vicina_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km30_Physaria vicina_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km30_Physaria vicina_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 04:00:03 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1862.83 32.36 1896.23 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+23	24
+48	52
+Maximum number of records after thinning: 24
+Number of data.frames with max records: 52
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km31_Lupinus crassus_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km31_Lupinus crassus_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km31_Lupinus crassus_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km31_Lupinus crassus_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km31_Lupinus crassus_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 04:31:41 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+2408.84 0.09 2410.67 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+35	36	37
+27	53	20
+Maximum number of records after thinning: 37
+Number of data.frames with max records: 20
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km32_Mentzelia chrysantha_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km32_Mentzelia chrysantha_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km32_Mentzelia chrysantha_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km32_Mentzelia chrysantha_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km32_Mentzelia chrysantha_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 05:11:53 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+630.39 0.04 630.68 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+37	38	39
+32	50	18
+Maximum number of records after thinning: 39
+Number of data.frames with max records: 18
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km33_Mentzelia densa_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km33_Mentzelia densa_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km33_Mentzelia densa_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km33_Mentzelia densa_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km33_Mentzelia densa_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 05:22:26 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+8309.23 19.25 8333.12 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+24	25	26
+33	55	12
+Maximum number of records after thinning: 26
+Number of data.frames with max records: 12
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km34_Nuttallia rhizomata_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km34_Nuttallia rhizomata_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km34_Nuttallia rhizomata_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km34_Nuttallia rhizomata_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km34_Nuttallia rhizomata_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 07:41:20 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+217.05 0 217.14 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+11
+100
+Maximum number of records after thinning: 11
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km35_Mertensia humilis_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km35_Mertensia humilis_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km35_Mertensia humilis_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km35_Mertensia humilis_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km35_Mertensia humilis_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 07:44:59 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+0.22 0 0.22 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+7
+100
+Maximum number of records after thinning: 7
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km36_Mimulus gemmiparus_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km36_Mimulus gemmiparus_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km36_Mimulus gemmiparus_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km36_Mimulus gemmiparus_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km36_Mimulus gemmiparus_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 07:45:01 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+584.17 0 584.5 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+51	52	53
+4	44	52
+Maximum number of records after thinning: 53
+Number of data.frames with max records: 52
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km37_Mirabilis rotundifolia_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km37_Mirabilis rotundifolia_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km37_Mirabilis rotundifolia_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km37_Mirabilis rotundifolia_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km37_Mirabilis rotundifolia_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 07:54:47 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+4111.5 19.61 4133.52 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+34	35	36	37
+12	32	35	21
+Maximum number of records after thinning: 37
+Number of data.frames with max records: 21
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km38_Oenothera acutissima_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km38_Oenothera acutissima_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km38_Oenothera acutissima_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km38_Oenothera acutissima_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km38_Oenothera acutissima_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 09:03:41 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+877.86 5.37 883.72 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+29
+100
+Maximum number of records after thinning: 29
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km39_Oonopsis sp._thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km39_Oonopsis sp._thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km39_Oonopsis sp._thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km39_Oonopsis sp._thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km39_Oonopsis sp._thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 09:18:27 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+14.94 0 14.98 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+15
+100
+Maximum number of records after thinning: 15
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km40_Oreoxis humilis_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km40_Oreoxis humilis_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km40_Oreoxis humilis_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km40_Oreoxis humilis_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km40_Oreoxis humilis_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 09:18:43 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+0.25 0 0.25 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+3
+100
+Maximum number of records after thinning: 3
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km41_Penstemon debilis_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km41_Penstemon debilis_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km41_Penstemon debilis_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km41_Penstemon debilis_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km41_Penstemon debilis_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 09:18:45 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+14.55 0 14.55 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+26
+100
+Maximum number of records after thinning: 26
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km42_Penstemon degeneri_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km42_Penstemon degeneri_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km42_Penstemon degeneri_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km42_Penstemon degeneri_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km42_Penstemon degeneri_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 09:19:01 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+17.52 0 17.55 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+5	6
+7	93
+Maximum number of records after thinning: 6
+Number of data.frames with max records: 93
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km43_Penstemon grahamii_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km43_Penstemon grahamii_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km43_Penstemon grahamii_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km43_Penstemon grahamii_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km43_Penstemon grahamii_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 09:19:20 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+32.86 0 32.88 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+5
+100
+Maximum number of records after thinning: 5
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km44_Penstemon penlandii_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km44_Penstemon penlandii_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km44_Penstemon penlandii_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km44_Penstemon penlandii_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km44_Penstemon penlandii_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 09:19:54 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+11.04 0 11.03 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+26
+100
+Maximum number of records after thinning: 26
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km45_Phacelia formosula_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km45_Phacelia formosula_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km45_Phacelia formosula_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km45_Phacelia formosula_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km45_Phacelia formosula_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 09:20:07 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+12.53 0 12.54 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+45	46
+25	75
+Maximum number of records after thinning: 46
+Number of data.frames with max records: 75
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km46_Phacelia submutica_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km46_Phacelia submutica_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km46_Phacelia submutica_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km46_Phacelia submutica_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km46_Phacelia submutica_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 09:20:21 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1631.51 19.56 1652.1 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+16	17
+99	1
+Maximum number of records after thinning: 17
+Number of data.frames with max records: 1
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km47_Physaria alpina_thin1.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Sun Jun 17 09:47:54 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+50599.18 1035.25 51663.01 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+40	41	42	43
+4	15	55	26
+Maximum number of records after thinning: 43
+Number of data.frames with max records: 26
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km49_Physaria rollinsii_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km49_Physaria rollinsii_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km49_Physaria rollinsii_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km49_Physaria rollinsii_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km49_Physaria rollinsii_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Mon Jun 18 00:08:59 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+0.17 0 0.17 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+1
+100
+Maximum number of records after thinning: 1
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km50_Physaria scrotiformis_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km50_Physaria scrotiformis_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km50_Physaria scrotiformis_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km50_Physaria scrotiformis_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km50_Physaria scrotiformis_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Mon Jun 18 00:09:00 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+0.06 0 0.06 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+3
+100
+Maximum number of records after thinning: 3
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km51_Platanthera zothecina_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km51_Platanthera zothecina_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km51_Platanthera zothecina_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km51_Platanthera zothecina_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km51_Platanthera zothecina_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Mon Jun 18 00:09:02 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+75822.08 1928.15 77791.53 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+55	56	57	58	59
+1	50	40	8	1
+Maximum number of records after thinning: 59
+Number of data.frames with max records: 1
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km52_Potentilla rupincola_thin1.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Mon Jun 18 21:45:34 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+54.02 0 54.01 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+23
+100
+Maximum number of records after thinning: 23
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km53_Stipa porteri_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km53_Stipa porteri_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km53_Stipa porteri_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km53_Stipa porteri_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km53_Stipa porteri_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Mon Jun 18 21:46:30 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+20459.28 294.84 20765.55 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+58	59	60	61
+21	46	30	3
+Maximum number of records after thinning: 61
+Number of data.frames with max records: 3
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km54_Telesonix jamesii_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km54_Telesonix jamesii_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km54_Telesonix jamesii_thin3.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Tue Jun 19 03:32:37 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+4.81 0 4.81 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+16
+100
+Maximum number of records after thinning: 16
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km55_Thalictrum heliophilum_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km55_Thalictrum heliophilum_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km55_Thalictrum heliophilum_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km55_Thalictrum heliophilum_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km55_Thalictrum heliophilum_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Tue Jun 19 03:32:44 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+70247.89 2042.08 72331.59 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+50	51	52	53
+28	45	25	2
+Maximum number of records after thinning: 53
+Number of data.frames with max records: 2
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km56_Thelypodiopsis juniperorum_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km56_Thelypodiopsis juniperorum_thin2.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Tue Jun 19 23:38:16 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+3.78 0 3.79 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+7
+100
+Maximum number of records after thinning: 7
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km57_Townsendia fendleri_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km57_Townsendia fendleri_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km57_Townsendia fendleri_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km57_Townsendia fendleri_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned2/EORsp_1km57_Townsendia fendleri_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Tue Jun 19 23:38:22 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:58:10 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.59 0.17 1.79 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km1_Boechera crandallii_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km1_Boechera crandallii_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km1_Boechera crandallii_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km1_Boechera crandallii_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km1_Boechera crandallii_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:58:14 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.53 0.01 1.55 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km2_Astragalus debequaeus_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km2_Astragalus debequaeus_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km2_Astragalus debequaeus_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km2_Astragalus debequaeus_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km2_Astragalus debequaeus_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:58:17 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.53 0 1.53 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km3_Astragalus iodopetalus_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km3_Astragalus iodopetalus_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km3_Astragalus iodopetalus_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km3_Astragalus iodopetalus_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km3_Astragalus iodopetalus_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:58:21 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.51 0 1.52 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km4_Astragalus microcymbus_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km4_Astragalus microcymbus_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km4_Astragalus microcymbus_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km4_Astragalus microcymbus_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km4_Astragalus microcymbus_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:58:23 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.51 0 1.51 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km5_Astragalus osterhoutii_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km5_Astragalus osterhoutii_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km5_Astragalus osterhoutii_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km5_Astragalus osterhoutii_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km5_Astragalus osterhoutii_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:58:27 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.54 0 1.54 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km6_Astragalus schmolliae_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km6_Astragalus schmolliae_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km6_Astragalus schmolliae_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km6_Astragalus schmolliae_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km6_Astragalus schmolliae_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:58:30 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.51 0 1.51 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km7_Astragalus sparsiflorus_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km7_Astragalus sparsiflorus_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km7_Astragalus sparsiflorus_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km7_Astragalus sparsiflorus_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km7_Astragalus sparsiflorus_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:58:33 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.51 0 1.52 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km8_Boechera gunnisoniana_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km8_Boechera gunnisoniana_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km8_Boechera gunnisoniana_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km8_Boechera gunnisoniana_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km8_Boechera gunnisoniana_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:58:37 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.53 0 1.53 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km9_Chylismia eastwoodiae_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km9_Chylismia eastwoodiae_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km9_Chylismia eastwoodiae_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km9_Chylismia eastwoodiae_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km9_Chylismia eastwoodiae_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:58:41 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.51 0 1.54 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km10_Carex stenoptila_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km10_Carex stenoptila_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km10_Carex stenoptila_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km10_Carex stenoptila_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km10_Carex stenoptila_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:58:44 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.52 0 1.51 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km11_Cryptantha gypsophila_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km11_Cryptantha gypsophila_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km11_Cryptantha gypsophila_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km11_Cryptantha gypsophila_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km11_Cryptantha gypsophila_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:58:47 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.55 0 1.55 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km12_Descurainia kenheilii_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km12_Descurainia kenheilii_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km12_Descurainia kenheilii_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km12_Descurainia kenheilii_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km12_Descurainia kenheilii_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:58:50 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.52 0 1.52 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km13_Draba exunguiculata_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km13_Draba exunguiculata_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km13_Draba exunguiculata_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km13_Draba exunguiculata_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km13_Draba exunguiculata_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:58:53 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.55 0 1.54 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km14_Draba graminea_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km14_Draba graminea_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km14_Draba graminea_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km14_Draba graminea_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km14_Draba graminea_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:58:56 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.52 0 1.51 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km15_Draba grayana_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km15_Draba grayana_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km15_Draba grayana_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km15_Draba grayana_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km15_Draba grayana_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:58:59 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.53 0 1.53 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km16_Draba smithii_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km16_Draba smithii_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km16_Draba smithii_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km16_Draba smithii_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km16_Draba smithii_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:02 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.52 0 1.51 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km17_Draba weberi_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km17_Draba weberi_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km17_Draba weberi_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km17_Draba weberi_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km17_Draba weberi_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:05 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.54 0 1.54 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km18_Erigeron kachinensis_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km18_Erigeron kachinensis_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km18_Erigeron kachinensis_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km18_Erigeron kachinensis_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km18_Erigeron kachinensis_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:09 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.54 0 1.53 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km19_Erigeron wilkenii_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km19_Erigeron wilkenii_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km19_Erigeron wilkenii_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km19_Erigeron wilkenii_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km19_Erigeron wilkenii_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:11 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.53 0 1.54 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km20_Eriogonum coloradense_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km20_Eriogonum coloradense_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km20_Eriogonum coloradense_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km20_Eriogonum coloradense_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km20_Eriogonum coloradense_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:14 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.53 0 1.54 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km21_Eriogonum pelinophilum_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km21_Eriogonum pelinophilum_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km21_Eriogonum pelinophilum_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km21_Eriogonum pelinophilum_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km21_Eriogonum pelinophilum_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:17 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.53 0 1.53 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km22_Gilia sedifolia_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km22_Gilia sedifolia_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km22_Gilia sedifolia_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km22_Gilia sedifolia_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km22_Gilia sedifolia_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:20 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.52 0 1.52 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km23_Gutierrezia elegans_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km23_Gutierrezia elegans_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km23_Gutierrezia elegans_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km23_Gutierrezia elegans_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km23_Gutierrezia elegans_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:24 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.54 0 1.54 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km24_Ipomopsis globularis_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km24_Ipomopsis globularis_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km24_Ipomopsis globularis_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km24_Ipomopsis globularis_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km24_Ipomopsis globularis_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:28 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.53 0 1.53 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km25_Ipomopsis ramosa_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km25_Ipomopsis ramosa_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km25_Ipomopsis ramosa_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km25_Ipomopsis ramosa_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km25_Ipomopsis ramosa_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:31 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.54 0 1.54 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km26_Lepidium crenatum_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km26_Lepidium crenatum_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km26_Lepidium crenatum_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km26_Lepidium crenatum_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km26_Lepidium crenatum_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:34 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.53 0 1.53 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km27_Physaria congesta_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km27_Physaria congesta_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km27_Physaria congesta_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km27_Physaria congesta_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km27_Physaria congesta_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:37 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.53 0 1.53 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km28_Physaria parviflora_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km28_Physaria parviflora_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km28_Physaria parviflora_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km28_Physaria parviflora_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km28_Physaria parviflora_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:40 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.7 0 1.88 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km29_Physaria pruinosa_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km29_Physaria pruinosa_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km29_Physaria pruinosa_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km29_Physaria pruinosa_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km29_Physaria pruinosa_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:43 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.54 0 1.56 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km30_Physaria vicina_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km30_Physaria vicina_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km30_Physaria vicina_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km30_Physaria vicina_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km30_Physaria vicina_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:46 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.5 0 1.5 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km31_Lupinus crassus_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km31_Lupinus crassus_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km31_Lupinus crassus_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km31_Lupinus crassus_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km31_Lupinus crassus_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:49 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.51 0 1.53 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km32_Mentzelia chrysantha_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km32_Mentzelia chrysantha_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km32_Mentzelia chrysantha_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km32_Mentzelia chrysantha_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km32_Mentzelia chrysantha_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:52 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.52 0 1.52 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km33_Mentzelia densa_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km33_Mentzelia densa_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km33_Mentzelia densa_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km33_Mentzelia densa_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km33_Mentzelia densa_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:55 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.54 0 1.55 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km34_Nuttallia rhizomata_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km34_Nuttallia rhizomata_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km34_Nuttallia rhizomata_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km34_Nuttallia rhizomata_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km34_Nuttallia rhizomata_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 15:59:58 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.51 0 1.52 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km35_Mertensia humilis_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km35_Mertensia humilis_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km35_Mertensia humilis_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km35_Mertensia humilis_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km35_Mertensia humilis_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 16:00:01 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.53 0.02 1.55 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km36_Mimulus gemmiparus_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km36_Mimulus gemmiparus_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km36_Mimulus gemmiparus_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km36_Mimulus gemmiparus_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km36_Mimulus gemmiparus_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 16:00:04 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.52 0 1.51 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km37_Mirabilis rotundifolia_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km37_Mirabilis rotundifolia_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km37_Mirabilis rotundifolia_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km37_Mirabilis rotundifolia_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km37_Mirabilis rotundifolia_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 16:00:06 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.53 0 1.54 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km38_Oenothera acutissima_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km38_Oenothera acutissima_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km38_Oenothera acutissima_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km38_Oenothera acutissima_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km38_Oenothera acutissima_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 16:00:10 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.5 0 1.51 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km39_Oonopsis sp._thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km39_Oonopsis sp._thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km39_Oonopsis sp._thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km39_Oonopsis sp._thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km39_Oonopsis sp._thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 16:00:13 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.55 0 1.55 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km40_Oreoxis humilis_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km40_Oreoxis humilis_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km40_Oreoxis humilis_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km40_Oreoxis humilis_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km40_Oreoxis humilis_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 16:00:17 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.53 0 1.53 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km41_Penstemon debilis_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km41_Penstemon debilis_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km41_Penstemon debilis_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km41_Penstemon debilis_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km41_Penstemon debilis_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 16:00:21 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.53 0 1.53 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km42_Penstemon degeneri_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km42_Penstemon degeneri_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km42_Penstemon degeneri_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km42_Penstemon degeneri_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km42_Penstemon degeneri_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 16:00:24 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.51 0 1.52 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km43_Penstemon grahamii_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km43_Penstemon grahamii_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km43_Penstemon grahamii_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km43_Penstemon grahamii_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km43_Penstemon grahamii_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 16:00:27 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.53 0 1.57 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km44_Penstemon penlandii_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km44_Penstemon penlandii_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km44_Penstemon penlandii_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km44_Penstemon penlandii_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km44_Penstemon penlandii_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 16:00:30 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.51 0 1.52 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km45_Phacelia formosula_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km45_Phacelia formosula_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km45_Phacelia formosula_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km45_Phacelia formosula_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km45_Phacelia formosula_thin5.csv
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Wed Jun 20 16:00:33 2018
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 100
+
+Elapsed time for thinning completion
+1.53 0 1.53 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+80
+100
+Maximum number of records after thinning: 80
+Number of data.frames with max records: 100
+
+**New *.csv file creation:**
+Created new output directory: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km46_Phacelia submutica_thin1.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km46_Phacelia submutica_thin2.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km46_Phacelia submutica_thin3.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km46_Phacelia submutica_thin4.csv
+Writing file: Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Thinned/Herb.thin_1km46_Phacelia submutica_thin5.csv
