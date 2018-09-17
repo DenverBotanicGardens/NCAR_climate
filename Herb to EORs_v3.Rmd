@@ -89,6 +89,8 @@ coElev <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENE
 
 coElev_biosize <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Elevation_VT/co_elev_WGS84_30sec.tif")
 
+
+plot(coElev)
 ```
 
 
@@ -245,6 +247,7 @@ abind3 <- function(...) { abind(along = 3, ...) }
 ```
 
 
+
 #Michelle DePrenger-Levin      
 In ArcMap do this: <https://blogs.esri.com/esri/arcgis/2010/09/16/nearbygroup/>
 repeat distance analysis in R          
@@ -381,9 +384,39 @@ plot(projected, add=TRUE, pch=20, cex=0.5)
 dev.off()
 
 ```
+```{r}
+jpeg("Q:/Research/Presentations/External Conference presentations/Natural Areas Conference 2018/EORs.jpg",
+     width=170, height=150,units='mm', res=300)
 
+plot(colocounties.UTM,border="gray30") #colocounties is in WGS84, not in same datum as l1G1G2
+plot(l1G1G2, border="goldenrod", add=TRUE, lwd=5) #???
+#plot(projected, add=TRUE, pch=20, cex=0.5)
 
+dev.off()
 
+```
+```{r}
+jpeg("Q:/Research/Presentations/External Conference presentations/Natural Areas Conference 2018/herbs.jpg",
+     width=170, height=150,units='mm', res=300)
+
+plot(colocounties.UTM,border="gray30") #colocounties is in WGS84, not in same datum as l1G1G2
+#plot(l1G1G2, border="blue", add=TRUE, lwd=5) #???
+plot(projected, col = "blue", add=TRUE, pch=20, cex=0.5)
+
+dev.off()
+
+```
+```{r}
+jpeg("Q:/Research/Presentations/External Conference presentations/Natural Areas Conference 2018/both.jpg",
+     width=170, height=150,units='mm', res=300)
+
+plot(colocounties.UTM,border="gray30") #colocounties is in WGS84, not in same datum as l1G1G2
+plot(l1G1G2, border="goldenrod", add=TRUE, lwd=5) 
+plot(projected, col="blue", add=TRUE, pch=20, cex=0.5)
+
+dev.off()
+
+```
        [1] WGS84                     WGS 84                    WGS 1984                      
        [4] WGS96                     WGS 72                    WGS-84                     
        [7] WGS 1984.                 WGS83                     WGS84 (UTM Datum: NAD83)   
@@ -585,6 +618,78 @@ plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[1],g1g2names$Taxon[1]),],
      border = "red", add=TRUE, lwd=4)
 points(distXsp[[1]][[1]], pch=16, cex=0.25)
 ScaleBar(raster(colocounties.UTM), 100, .20, .10, .75, .07, lwd=2)
+```
+
+# Follow niche modeling with background points by Iturbide et al 2015  
+```{r}
+if (!require(devtools)) install.packages("devtools")
+devtools::install_git("https://github.com/SantanderMetGroup/mopa.git")
+
+
+library(mopa)
+```
+```{r}
+OCSVMprofiling<-function(xy, varstack, background = NULL, nu=.5){
+  if (class(xy) != "list")  xy <- list(xy)
+  if(is.null(background)) background <- backgroundGrid(varstack[[1]])$xy
+  if (class(background) != "list")  background <- rep(list(background), length(xy))
+  
+  bioclim <-varstack
+  absence <- list()    
+  presence <- list()
+  for(i in 1:length(xy)){
+    length(absence) <- i
+    coo <- background[[i]]
+    mat <- cbind(xy[[i]], rep(1, nrow(xy[[i]])))
+    mat <- biomat(mat, bioclim)
+    mod <- svm(mat[,-1], y=NULL, type='one-classification', nu=nu)
+    proj <- biomat(cbind(coo,rep(1,nrow(coo))), bioclim)
+    pre <- predict(mod, proj[,-1])
+    absence[[i]] <- coo[(which(pre==0)),]
+    presence[[i]] <- coo[(which(pre!=0)),]
+  }
+  if(length(absence) == 1){
+    absence <- absence[[1]]
+    presence <- presence[[1]]
+  }else{
+    names(absence) <- names(xy)
+    names(presence) <- names(xy)
+  }
+  return(list("absence"=absence, "presence"=presence))
+}
+```
+
+Get background points that don't overlap with presence and are at differnt distances away
+```{r}
+
+
+```
+
+
+Test a PCoA for all grid EOR points and all Herb points. Then limit by year, can we figure out which EOR are historic points? 
+```{r}
+
+library(tidyr)
+library(stringr)
+library(raster)
+library(magrittr)
+
+options(prism.path = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Prism_Climate_Data/30Year_Normal") 
+
+
+get_prism_normals(type="tmax", resolution = "800m", keepZip = FALSE, mon = 1:12)
+get_prism_normals(type="tmin", resolution = "800m", keepZip = FALSE, mon = 1:12)
+get_prism_normals(type="ppt", resolution = "800m", keepZip = FALSE, mon = 1:12)
+# stack rasters
+rasterstack <- ls_prism_data() %>% prism_stack(.) # many skipping the first 6 that are provisional
+#get the projection from the raster stack
+rscrs <- rasterstack@crs@projargs # "+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"
+
+(distXsp[[1]][[4]]) #+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0   Need to transform
+
+
+
+
 ```
 
 Get the coordiates from each saved to use as csvs in VisTrails. 
