@@ -389,7 +389,7 @@ jpeg("Q:/Research/Presentations/External Conference presentations/Natural Areas 
      width=170, height=150,units='mm', res=300)
 
 plot(colocounties.UTM,border="gray30") #colocounties is in WGS84, not in same datum as l1G1G2
-plot(l1G1G2, border="goldenrod", add=TRUE, lwd=5) #???
+plot(l1G1G2, border="goldenrod", add=TRUE, lwd=5) #☻
 #plot(projected, add=TRUE, pch=20, cex=0.5)
 
 dev.off()
@@ -400,7 +400,7 @@ jpeg("Q:/Research/Presentations/External Conference presentations/Natural Areas 
      width=170, height=150,units='mm', res=300)
 
 plot(colocounties.UTM,border="gray30") #colocounties is in WGS84, not in same datum as l1G1G2
-#plot(l1G1G2, border="blue", add=TRUE, lwd=5) #???
+#plot(l1G1G2, border="blue", add=TRUE, lwd=5) #☻
 plot(projected, col = "blue", add=TRUE, pch=20, cex=0.5)
 
 dev.off()
@@ -508,7 +508,9 @@ distXsp <- lapply(1:nrow(g1g2names), function(i){
      polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
                                          g1g2names$Taxon[i]),] 
      grid <- makegrid(polys, cellsize = 100) # cellsize in map units!
-     grid <- SpatialPoints(grid, proj4string = CRS(proj4string(polys)))
+     grid <- SpatialPointsDataFrame(grid, 
+                                    data.frame(id = 1:nrow(grid), Species = g1g2names$AcceptedName[i]),
+                                    proj4string = CRS(proj4string(polys)))
      EORpnts <- data.frame(grid[polys,]@coords)
   if(nrow(EORpnts)>0){
     coordinates(EORpnts) <- ~ x1+x2
@@ -666,40 +668,7 @@ Get background points that don't overlap with presence and are at differnt dista
 ```
 
 
-Test a PCoA for all grid EOR points and all Herb points. Then limit by year, can we figure out which EOR are historic points? 
-```{r}
 
-library(tidyr)
-library(stringr)
-library(raster)
-library(magrittr)
-
-options(prism.path = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Prism_Climate_Data/30Year_Normal") 
-
-
-get_prism_normals(type="tmax", resolution = "800m", keepZip = FALSE, mon = 1:12)
-get_prism_normals(type="tmin", resolution = "800m", keepZip = FALSE, mon = 1:12)
-get_prism_normals(type="ppt", resolution = "800m", keepZip = FALSE, mon = 1:12)
-# stack rasters
-rasterstack <- ls_prism_data() %>% prism_stack(.) # many skipping the first 6 that are provisional
-#get the projection from the raster stack
-rscrs <- rasterstack@crs@projargs # "+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"
-
-
-#The first in all these are the herbarium records
-(distXsp[[1]][[4]]) #+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0   Need to transform
-
-pca_herb <- coloradosps.g1g2
-pca_herb <- pca_herb[!is.na(pca_herb$decimalLatitude),]
-
-coordinates(pca_herb) <- c('decimalLongitude','decimalLatitude')
-proj4string(pca_herb) <- CRS(rscrs)
-
-#Clearly still have some of the really wrong, data entry problems
-plot(pca_herb)
-
-
-```
 
 Get the coordiates from each saved to use as csvs in VisTrails. 
 ```{r}
@@ -759,7 +728,159 @@ for(i in wantEOR){
     
     
 
+Test a PCoA for all grid EOR points and all Herb points. Then limit by year, can we figure out which EOR are historic points? 
+```{r}
 
+library(tidyr)
+library(stringr)
+library(raster)
+library(magrittr)
+library(prism)
+
+options(prism.path = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Prism_Climate_Data/30Year_Normal") 
+
+
+#get_prism_normals(type="tmax", resolution = "800m", keepZip = FALSE, mon = 1:12)
+#get_prism_normals(type="tmin", resolution = "800m", keepZip = FALSE, mon = 1:12)
+#get_prism_normals(type="ppt", resolution = "800m", keepZip = FALSE, mon = 1:12)
+# stack rasters
+rasterstack <- ls_prism_data() %>% prism_stack(.) # many skipping the first 6 that are provisional
+#get the projection from the raster stack
+rscrs <- rasterstack@crs@projargs # "+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"
+```
+
+
+```{r}
+
+#l1G1G2 are in UTM zone 13
+#l1G1G2@proj4string <- CRS("+proj=utm +zone=13 ellps=NAD83") 
+# says  projargs: chr "+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84
+#transform to UTM to match l1G1G2
+#60 names with the listed name and the accepted name acording to TPL
+
+
+#uses l1G1G2 for pca of the eors
+# use coloradosps.g1g2 for the herbarium, go species by species and get the grid points and the herb points and extract the rasterbrick things (add elevation and others to the raster stack)
+#proj4string(l1G1G2) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
+#coloradosps.dist <- coloradosps.g1g2
+#coloradosps.dist$distNearEOR <- NA
+
+pca_eorandherb <- lapply(1:nrow(g1g2names), function(i){
+  #put grid points across colorado, sample from it for each polygons
+     polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                         g1g2names$Taxon[i]),] 
+     split.polys <- disaggregate(polys)
+     #str(split.polys@data$PolyID@data)
+     #str(split.polys@polygons)
+     plot(split.polys[2:4,])
+     #Data associated with each polygon
+     #str((polys@data$PolyID@data))
+     grid <- lapply(1:length(polys), function(i){
+       grid <- makegrid(split.polys[i,], cellsize = 30) #so maybe every 30 meters?
+       gridout <- SpatialPointsDataFrame(grid, data.frame(id=1:nrow(grid),
+                                                          split.polys@data$PolyID@data[i,]))
+       gridout
+       })
+     
+     EORpnts <- 
+  if(nrow(EORpnts)>0){
+    coordinates(EORpnts) <- ~ x1+x2
+    proj4string(EORpnts) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
+    EORpnts <- spTransform(EORpnts, CRS("+proj=longlat +datum=WGS84"))
+  } else {
+    EORpnts <- NA
+  }
+     
+  g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in%
+                                c(g1g2names$Taxon[i],g1g2names$AcceptedName[i]),]
+  
+  areanow <- sapply(slot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                         g1g2names$Taxon[i]),], "polygons"), 
+         slot, "area")
+
+  g1g2now$decimalLatitude <- as.numeric(as.character(g1g2now$decimalLatitude))
+  g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
+  g1g2now <- g1g2now[!is.na(g1g2now$decimalLatitude),]
+  g1g2now <- g1g2now[!is.na(g1g2now$decimalLongitude),]
+  if(nrow(g1g2now)>0){
+    #turn into spatialpointsdataframe for individual species
+    coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
+    proj4string(g1g2now) <- CRS("+proj=longlat +datum=WGS84") 
+    g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+    distnow <- apply(gDistance(g1g2now,
+                               l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                                          g1g2names$Taxon[i]),], byid=TRUE),
+                     2,min)
+    
+    
+    out <- list(g1g2now, distnow, areanow, EORpnts)
+  } else {
+      out <- list(NA,NA, areanow, EORpnts)
+    }
+  out
+  })
+
+distXspbind <- do.call(c,mapply('[[', distXsp, 2))
+ 
+length(distXspbind[is.na(distXspbind)]) #14 don't have any data
+distXspbind <- distXspbind[!is.na(distXspbind)]
+coloradosps.dist$distNearEOR[which(rownames(coloradosps.dist) %in%
+                                         names(distXspbind))] <-unname(distXspbind)
+
+
+```
+
+
+```{r}
+
+#The first in all these are the herbarium records
+(distXsp[[1]][[4]]) #+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0   Need to transform
+
+pca_herb <- coloradosps.g1g2
+pca_herb <- pca_herb[!is.na(pca_herb$decimalLatitude),]
+
+#change/transform to match projection for the raster stack
+coordinates(pca_herb) <- c('decimalLongitude','decimalLatitude')
+proj4string(pca_herb) <- CRS(rscrs)
+
+#Clearly still have some of the really wrong, data entry problems
+plot(pca_herb)
+
+#Extract data from raster stack
+#Get monthly 30 year average ppt, tmin, and tmax
+data_herb <- data.frame(coordinates(pca_herb), pca_herb$id, 
+                        pca_herb$genus, pca_herb$specificEpithet, 
+                        extract(rasterstack, pca_herb))
+
+
+
+#need to transform EOR grid points from CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0") to rscrs ('raster stack CRS')
+#Get the raster stack data from the EOR grid cells
+
+pca_eor <- lapply(1:nrow(g1g2names), function(i){
+  #put grid points across colorado, sample from it for each polygons
+     polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                         g1g2names$Taxon[i]),] 
+     grid <- makegrid(polys, cellsize = 100) # cellsize in map units!
+     grid <- SpatialPointsDataFrame(grid, data=data.frame(id=1:nrow(grid),
+                                                          acceptedName = g1g2names$AcceptedName[i],
+                                                          taxon = g1g2names$Taxon[i]),
+                   proj4string = CRS("+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+  })
+
+
+pca_eor[[8]]@data$id
+
+data_eor <- list()
+for(i in 1:2){
+  data_eor[[i]] <- data.frame(coordinates(pca_eor[[i]]), pca_eor[[i]]@data,
+                              extract(rasterstack, pca_eor[[i]]))
+}
+
+data_eor <- lapply(EORsxsp, function(x){
+  data.frame(coordinates(x), x$id, extract(rasterstack, x))
+}) 
+```
 
  From VisTrails
 ```{r}
