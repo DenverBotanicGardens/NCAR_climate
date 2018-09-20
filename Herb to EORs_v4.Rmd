@@ -769,21 +769,82 @@ pca_eorandherb <- lapply(1:nrow(g1g2names), function(i){
   #put grid points across colorado, sample from it for each polygons
      polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
                                          g1g2names$Taxon[i]),] 
-     split.polys <- disaggregate(polys)
+     #CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0") to rscrs ('raster stack CRS')   The bioclim data is in 
+     ##But to make a grid, need it in UTM, convert later?!?!
+     #polys <- spTransform(polys, CRS(paste(rscrs)))
+  split.polys <- disaggregate(polys)
      #str(split.polys@data$PolyID@data)
      #str(split.polys@polygons)
-     plot(split.polys[2:4,])
+     #plot(split.polys[1,])
      #Data associated with each polygon
      #str((polys@data$PolyID@data))
+     
+     #Could make Colorado grid and then select point where polygons overlap, but still want to split by polygon, or at least get data from each one
+  colorado.grid <- makegrid(colocounties.UTM, cellsize = 1000)  
+```
+
+```{r}
+#Problems because NAs not permitted in row index. Likey because of subsetting the polygons there are uneven removals throughout the data structure so NAs are introducted. Following soemone's function to get rid of NAs in sp dataframe object: x is a spatial dataframe object, margin to remove rows (1) or columns (2)
+  sp.na.omit <- function(x, margin=1) {
+  if (!inherits(x, "SpatialPointsDataFrame") & !inherits(x, "SpatialPolygonsDataFrame")) 
+    stop("MUST BE sp SpatialPointsDataFrame OR SpatialPolygonsDataFrame CLASS OBJECT") 
+  na.index <- unique(as.data.frame(which(is.na(x@data),arr.ind=TRUE))[,margin])
+    if(margin == 1) {  
+      cat("DELETING ROWS: ", na.index, "\n") 
+        return( x[-na.index,]  ) 
+    }
+    if(margin == 2) {  
+      cat("DELETING COLUMNS: ", na.index, "\n") 
+        return( x[,-na.index]  ) 
+    }
+ }
+
+# DELETE NA's IN meuse AND SHOW CHANGE IN dim
+polys2 <- sp.na.omit(polys)     
+  dim(polys)
+    dim(polys2) #dim is now 0 and 41 down from 151? eeek, that's not right
+
+# PLOT DELETED POINTS IN RED    
+plot(polys, col="red", pch=20)
+  plot(polys2, col="black", pch=20, add=TRUE)
+```
+
+```{r}
+  
+  colorado.grid <- lapply(1:length(polys), function(i){
+    out <- SpatialPointsDataFrame(colorado.grid, data.frame(id=1:nrow(colorado.grid),
+                                                            polys[i,]@data$PolyID@data),
+                                         proj4string = CRS(proj4string(polys)))
+    row.names(out)
+    ov <- sp::over(out, polys[1,])
+  })
+  
      grid <- lapply(1:length(polys), function(i){
-       grid <- makegrid(split.polys[i,], cellsize = 30) #so maybe every 30 meters?
+       grid <- makegrid(split.polys[i,], cellsize = 10) #so maybe every 100 meters?
        gridout <- SpatialPointsDataFrame(grid, data.frame(id=1:nrow(grid),
-                                                          split.polys@data$PolyID@data[i,]))
+                                                          split.polys@data$PolyID@data[i,]),
+                                         proj4string = CRS(proj4string(split.polys)))
        gridout
        })
+     #All for one species right now
+     data_EOR <- data.frame(coordinates(grid[[2]]), grid[[2]]$id,
+                            extract(rasterstack, grid[[2]])) 
+
+split.polys[2,]@polygons     
+plot(split.polys[2,])
+points(gridout@coords)
+
+#Errors
+ov <- sp::over(gridout, split.polys[2,])
+
+plot(colocounties.UTM)
+points(colorado.grid)
+plot(polys[1,], border="blue", add=TRUE, lwd=10)
+```
      
-     EORpnts <- 
-  if(nrow(EORpnts)>0){
+     
+     
+       if(nrow(EORpnts)>0){
     coordinates(EORpnts) <- ~ x1+x2
     proj4string(EORpnts) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
     EORpnts <- spTransform(EORpnts, CRS("+proj=longlat +datum=WGS84"))
