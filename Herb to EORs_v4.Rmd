@@ -748,7 +748,14 @@ rasterstack <- ls_prism_data() %>% prism_stack(.) # many skipping the first 6 th
 #get the projection from the raster stack
 rscrs <- rasterstack@crs@projargs # "+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"
 ```
-
+     
+     for(poo in 1:length(polys)){
+       print(polys[poo,]@bbox)
+       poogrid <- makegrid(polys[poo,], cellsize = 800, pretty = FALSE)
+       #plot(polys[poo,])
+       plot(poogrid)
+        # ScaleBar(polys[i,],0.01, .25, .20, .15, .17, lwd=2) 
+       
 
 ```{r}
 
@@ -770,33 +777,51 @@ pca_eorandherb <- lapply(1:nrow(g1g2names), function(i){
      polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
                                          g1g2names$Taxon[i]),] 
      #CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0") to rscrs ('raster stack CRS')   The bioclim data is in 
-     ##But to make a grid, need it in UTM, convert later?!?!
-     #polys <- spTransform(polys, CRS(paste(rscrs)))
-  #split.polys <- disaggregate(polys)
-     #str(split.polys@data$PolyID@data)
-     #str(split.polys@polygons)
-     #plot(split.polys[1,])
-     #Data associated with each polygon
-     #str((polys@data$PolyID@data))
-     
-     #Could make Colorado grid and then select point where polygons overlap, but still want to split by polygon, or at least get data from each one
-  #colorado.grid <- makegrid(colocounties.UTM, cellsize = 100)  
 
-  
-  colorado.grid <- lapply(1:length(polys), function(i){
-    grid <- lapply(1:length(polys), function(i){
-       grid <- makegrid(polys[i,], cellsize = 10) #so maybe every 100 meters?
-       gridout <- SpatialPointsDataFrame(grid, data.frame(id=1:nrow(grid),
-                                                          polys@data$PolyID@data[i,]),
-                                         proj4string = CRS(paste(rscrs)))
-       gridout
+
+       }
+
+          
+     colorado.grid <- lapply(1:length(polys), function(i){
+       grid <- lapply(1:length(polys), function(i){
+         if(sqrt((polys[i,]@bbox[3]-polys[i,]@bbox[1])*(polys[i,]@bbox[4]-polys[i,]@bbox[2]))/1000 < 1){
+           center <- gCentroid(polys[i,])
+           centerout <- SpatialPointsDataFrame(center, data.frame(id=1,
+                                                    polys@data$PolyID@data[i,]),
+                                               proj4string = CRS(proj4string(polys[i,])))
+           centerout
+         } else {
+           gridout <- SpatialPointsDataFrame(grid, data.frame(id=1:nrow(grid),
+                                                            polys@data$PolyID@data[i,]),
+                                           proj4string = CRS(proj4string(polys[i,])))
+           gridout
+         }
+         grid <- makegrid(polys[i,], cellsize = 500, pretty=FALSE) #so maybe every 800 meters?, even though scale is 1km or bigger!
+         if(nrow(grid)>0){
+           gridout <- SpatialPointsDataFrame(grid, data.frame(id=1:nrow(grid),
+                                                            polys@data$PolyID@data[i,]),
+                                           proj4string = CRS(proj4string(polys[i,])))
+           gridout
+         } else {
+           center <- gCentroid(polys[i,])
+           centerout <- SpatialPointsDataFrame(center, data.frame(id=1,
+                                                    polys@data$PolyID@data[i,]),
+                                               proj4string = CRS(proj4string(polys[i,])))
+           centerout
+         }
+         })
+       
+       proj4string(grid[[i]])
+       
+       ov <- lapply(1:length(polys), function(i){
+         out <- grid[[i]][polys[i,],]
+         out
+         })
        })
-    ov <- lapply(1:length(polys), function(i){
-      out <- sp::over(grid[[i]], polys[i,])
-    })
-    ov <- sp::over(grid, polys)
-  })
-  
+     
+     #before extracting bioclim data, project grid points to 
+     #  > paste(rscrs)
+     #  [1] "+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"
      
      #All for one species right now
      data_EOR <- data.frame(coordinates(grid[[2]]), grid[[2]]$id,
@@ -806,16 +831,13 @@ split.polys[2,]@polygons
 plot(split.polys[2,])
 points(gridout@coords)
 
-#Errors
-ov <- sp::over(gridout, split.polys[2,])
-
 plot(colocounties.UTM)
-plot(grid[[1]], add=TRUE)
+plot(colorado.grid[[1]][[1]], add=TRUE)
 plot(polys[1,], border="blue", add=TRUE, lwd=10)
 
 for(i in 1:length(polys)){
   plot(polys[i,], border="blue")
-  plot(grid[[i]], pch=20, cex=0.5, add=TRUE)
+  plot(colorado.grid[[i]][[i]], pch=20, cex=0.5, add=TRUE)
   ScaleBar(polys[i,],
            0.01, .25, .20, .15, .17, lwd=2) #first is round to nearest km
 }
