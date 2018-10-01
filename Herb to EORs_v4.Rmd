@@ -71,6 +71,11 @@ library(ENMeval)
 library(biomod2)
 library(spThin)
 
+library(tidyr)
+library(stringr)
+library(magrittr)
+library(prism)
+
 #Skip making these, takes a long time
 load("P:/hackathon/Simulations/circleEOR.Rda")
 load("P:/hackathon/Simulations/circleHerb.Rda")
@@ -620,20 +625,17 @@ library(mopa)
 
 Get the coordiates from each saved to use as csvs in VisTrails. 
 ```{r}
-distXsp[[1]][[2]] #The distances from each herbarium point to the nearest EOR
-distXsp[[1]][[3]] #The areas of each EOR polygon for that species
-distXsp[[1]][[4]] #The 100 meter grid points within EORs
-
-g1g2names
+# distXsp[[1]][[2]] #The distances from each herbarium point to the nearest EOR
+# distXsp[[1]][[3]] #The areas of each EOR polygon for that species
+# distXsp[[1]][[4]] #The 100 meter grid points within EORs
 
 #lat/lon WGS 84
-plot(colocounties)
-points(distXsp[[1]][[4]], pch=20, col="blue", cex=0.5)
-
+# plot(colocounties)
+# points(distXsp[[1]][[4]], pch=20, col="blue", cex=0.5)
 
 #AsMi
-plot(colocounties)
-points(distXsp[[4]][[4]]) 
+# plot(colocounties)
+# points(distXsp[[4]][[4]]) 
 
 
 #distXsp[[i]][[1]] are the herbarium points, SpatialPointsDataFrame
@@ -647,27 +649,28 @@ bboxes <- lapply(want, function(i){
   })
 
 #If there are multiple names/synonyms
-unique(speciesNoHerb[[1]]@data$scientificName)
+# unique(speciesNoHerb[[1]]@data$scientificName)
 
 #All the points
-speciesNoHerb[[1]]@coords
+# speciesNoHerb[[1]]@coords
 
 #points in the EORs
 EORsxsp <- mapply('[[', distXsp, 4)
 
-for(i in wantEOR){
-  write.csv((EORsxsp[[i]]@coords),
-            paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORG1G2",g1g2names$AcceptedName[i],".csv", sep=""))
-}
-
-
-# make them match the number of points that the herbarium specimens have
-for(i in wantEOR){
-  if(nrow(EORsxsp[[i]]@coords)>herbspecimennumxsp[i]){
-  write.csv(EORsxsp[[i]]@coords[sample(1:nrow(EORsxsp[[i]]@coords), herbspecimennumxsp[i]),],
-            paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORsamplesizematch",g1g2names$AcceptedName[i],".csv", sep=""))
-  }
-}
+# ctrl+shift+c to uncomment out
+# for(i in wantEOR){
+#   write.csv((EORsxsp[[i]]@coords),
+#             paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORG1G2",g1g2names$AcceptedName[i],".csv", sep=""))
+# }
+# 
+# 
+# # make them match the number of points that the herbarium specimens have
+# for(i in wantEOR){
+#   if(nrow(EORsxsp[[i]]@coords)>herbspecimennumxsp[i]){
+#   write.csv(EORsxsp[[i]]@coords[sample(1:nrow(EORsxsp[[i]]@coords), herbspecimennumxsp[i]),],
+#             paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORsamplesizematch",g1g2names$AcceptedName[i],".csv", sep=""))
+#   }
+# }
 
 # spatial thinning instead of just matching the points that the herbarium specimens have. Spatially thin the herbarium specimens as well. 
 
@@ -679,31 +682,19 @@ for(i in wantEOR){
 Test a PCoA for all grid EOR points and all Herb points. Then limit by year, can we figure out which EOR are historic points? 
 ```{r}
 
-library(tidyr)
-library(stringr)
-library(raster)
-library(magrittr)
-library(prism)
-
 options(prism.path = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Prism_Climate_Data/30Year_Normal") 
-
 
 #get_prism_normals(type="tmax", resolution = "800m", keepZip = FALSE, mon = 1:12)
 #get_prism_normals(type="tmin", resolution = "800m", keepZip = FALSE, mon = 1:12)
 #get_prism_normals(type="ppt", resolution = "800m", keepZip = FALSE, mon = 1:12)
+
 # stack rasters
 rasterstack <- ls_prism_data() %>% prism_stack(.) # many skipping the first 6 that are provisional
 #get the projection from the raster stack
 rscrs <- rasterstack@crs@projargs # "+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"
 ```
      
-     for(poo in 1:length(polys)){
-       print(polys[poo,]@bbox)
-       poogrid <- makegrid(polys[poo,], cellsize = 800, pretty = FALSE)
-       #plot(polys[poo,])
-       plot(poogrid)
-        # ScaleBar(polys[i,],0.01, .25, .20, .15, .17, lwd=2) 
-       
+
 ```{r}
 cellsize <- 10
      grid <- lapply(1:length(polys), function(i){
