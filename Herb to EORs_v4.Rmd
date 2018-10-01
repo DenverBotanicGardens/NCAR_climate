@@ -80,9 +80,35 @@ load("P:/hackathon/Simulations/envs.backgEOR.Rda")
 load("P:/hackathon/Simulations/envs.backgHerb.Rda")
 load("P:/hackathon/Simulations/Herb.thin1000.Rda")
 load("P:/hackathon/Simulations/EORgrid.thin.Rda")
+load("P:/hackathon/Simulations/coloradosps.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorsinglecell.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp.Rda")
+
+ScaleBar <- function(reference_raster_utm, round_to_nearest_km, width_percent, y_percent_from_bottom, x_percent_from_left, y_text_percent_from_bottom, ...) {
+    # Round by max to nearest... e.g. 5 km 
+    mround <- function(x,base){ 
+        base*round(x/base) 
+    }   
+    # scale bar size adjustment to avoid decimals
+        scale_size <- ((xmax(reference_raster_utm)-xmin(reference_raster_utm))*width_percent)/1000
+        scale_size_adj <- mround(scale_size, round_to_nearest_km)
+        scale_size_adj_plot <- (scale_size_adj*1000)/2
+    # Horizontal percent position (x) for scale bar
+        x_position <- ((xmax(reference_raster_utm)-xmin(reference_raster_utm))*x_percent_from_left)+xmin(reference_raster_utm)
+    # Vertical percent position y for scale bar
+        y_position <- ((ymax(reference_raster_utm)-ymin(reference_raster_utm))*y_percent_from_bottom)+ymin(reference_raster_utm)
+        y_position_text <- ((ymax(reference_raster_utm)-ymin(reference_raster_utm))*y_text_percent_from_bottom)+ymin(reference_raster_utm)
+    # Draw line on plot
+        library(sp)
+        x_ends <- c((x_position-scale_size_adj_plot), (x_position+scale_size_adj_plot))
+        y_ends <- c((y_position), (y_position))
+        scale_bar_line <- SpatialLines(list(Lines(Line(cbind(x_ends, y_ends)), ID="length")))
+        projection(scale_bar_line) <- projection(reference_raster_utm)
+        plot(scale_bar_line, add=TRUE, ...)
+        text(x_position, y_position_text, paste0(scale_size_adj, "km"))
+}
+
 
 ```
 #Resample elevation (and others) to the bioclim sized grid, 30km grid is way to small, computer can't handle 
@@ -99,7 +125,10 @@ plot(coElev)
 
 
 ```{r}
-l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
+l1eor <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records", layer="L1shp")
+
+object.size(l1eor)
+object.size(l1eor2)
 
 colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
 colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
@@ -196,9 +225,6 @@ lines(as.numeric(dimnames(namesbyyear)[[2]]),namesbyyear[1,],col="pink") #not in
 familyxyear <- data.frame(table(seinet_TPL$year,seinet_TPL$family)) #now changed toupper lowercase $family has 44 levels, inconsistent capitals and lowercase..
 familyxyear$Var1 <- as.numeric(as.character(familyxyear$Var1))
 
-familyxyear[familyxyear$Freq>0,]
-
-
 library(lattice)
 xyplot(Freq ~ Var1|Var2, familyxyear[familyxyear$Freq>0,],
        type = c("g","p","r"),
@@ -206,15 +232,13 @@ xyplot(Freq ~ Var1|Var2, familyxyear[familyxyear$Freq>0,],
        xlab = "Year of Collection",
        ylab = "Number of Collections", aspect = "xy")
 
-
 herbariumxyear <- data.frame(table(seinet_TPL$year,seinet_TPL$institutionCode)) 
 ggplot(herbariumxyear[herbariumxyear$Freq>0,],aes(Var1, Freq, colour=Var2 ))+
   geom_point()+
   theme_bw()
 
-
-unique(seinet_TPL$geodeticDatum)
-seinet_TPL[seinet_TPL$geodeticDatum == "27",]
+#unique(seinet_TPL$geodeticDatum)
+#seinet_TPL[seinet_TPL$geodeticDatum == "27",]
 ```
 
 Cite MODIS data: <https://lpdaac.usgs.gov/citing_our_data>   
@@ -261,41 +285,35 @@ Only G1G2 EORs (to limit range of species)
 #coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences.csv")
 
 #save(coloradosps, file= "P:/hackathon/Simulations/coloradosps.Rda")
-load("P:/hackathon/Simulations/coloradosps.Rda")
-
-
-nrow(coloradosps) #567328
+#nrow(coloradosps) #567328
 
 howlongrecordedby <- nchar(as.character(coloradosps$recordedBy))
-head(howlongrecordedby<20)
 recordedby <- unique(coloradosps$recordedBy[howlongrecordedby < 100])
 
-
-table(coloradosps$basisOfRecord) # PreservedSpecimen: 566067; preservedspecimen: 55; Preserved specimen: 143; Photograph: 1; Observation: 124; Native and Naturalized Flora of; HumanObservation; many just wrong column info in this
+#table(coloradosps$basisOfRecord) # PreservedSpecimen: 566067; preservedspecimen: 55; Preserved specimen: 143; Photograph: 1; Observation: 124; Native and Naturalized Flora of; HumanObservation; many just wrong column info in this
 
 
 # both of these from OBI: California Polytechnic State University
-coloradosps[coloradosps$basisOfRecord == "Plants of Jefferson County Open",] #68 plus 1 more with some other typo
-coloradosps[coloradosps$basisOfRecord == "Plants of Colorado",] #68 plus 1 more with some other typo
+#coloradosps[coloradosps$basisOfRecord == "Plants of Jefferson County Open",] #68 plus 1 more with some other typo
+#coloradosps[coloradosps$basisOfRecord == "Plants of Colorado",] #68 plus 1 more with some other typo
 
 #Subset by just preserved specimens  
 coloradosps$basisOfRecord <- as.character(coloradosps$basisOfRecord)
 coloradosps.specimens <- coloradosps[grep("specimen",coloradosps$basisOfRecord,
                                           ignore.case=TRUE),]
-table(coloradosps.specimens$basisOfRecord)
+#table(coloradosps.specimens$basisOfRecord)
 
 coloradosps.specimens <- coloradosps.specimens[nchar(coloradosps.specimens$basisOfRecord)<50,]
-table(coloradosps.specimens$basisOfRecord)
 
 #Now only preserved specimens
 coloradosps <- coloradosps.specimens
-nrow(coloradosps) #566265
+#nrow(coloradosps) #566265
 
 g1g2names$AcceptedName <- paste(g1g2names$New.Genus,g1g2names$New.Species)
 #match SEINet names to either the given or accepted names from G1/G2s
-length(unique(g1g2names$Taxon))
-length(unique(g1g2names$AcceptedName)) #60
-length(unique(c(g1g2names$Taxon,g1g2names$AcceptedName))) #71 
+#length(unique(g1g2names$Taxon))
+#length(unique(g1g2names$AcceptedName)) #60
+#length(unique(c(g1g2names$Taxon,g1g2names$AcceptedName))) #71 
 
 
 rowstomatch <- lapply(c("Taxon","AcceptedName"), function(x){
@@ -350,13 +368,14 @@ nrow(coloradosps.g1g2[duplicated(coloradosps.g1g2[,c("lat2","lon2")]),]) #1766
 
 
 #which ones are in denver?
-write.table(coloradosps.g1g2[which(coloradosps.g1g2$decimalLatitude >39.5&
-                         coloradosps.g1g2$decimalLatitude <40.1&
-                         coloradosps.g1g2$decimalLongitude>-105.5),], 
-            "clipboard", sep="\t", row.names=FALSE)
-
-write.table(coloradosps.g1g2[grep("Den",coloradosps.g1g2$county),], 
-            "clipboard", sep="\t", row.names=FALSE)
+# control + shift + C 
+# write.table(coloradosps.g1g2[which(coloradosps.g1g2$decimalLatitude >39.5&
+#                          coloradosps.g1g2$decimalLatitude <40.1&
+#                          coloradosps.g1g2$decimalLongitude>-105.5),], 
+#             "clipboard", sep="\t", row.names=FALSE)
+# 
+# write.table(coloradosps.g1g2[grep("Den",coloradosps.g1g2$county),], 
+#             "clipboard", sep="\t", row.names=FALSE)
 ```
 
 
@@ -436,51 +455,6 @@ dev.off()
       
       "The latest revision is WGS 84 (also known as WGS 1984, EPSG:4326), established in 1984 and last revised in 2004.[1] Earlier schemes included WGS 72, WGS 66, and WGS 60. WGS 84 is the reference coordinate system used by the Global Positioning System."
 
-Scale bar attempts
-```{r}
-myScalebar = function(units_label, yadj=1.5) {
-
-  # Get plot coordinates
-  pc = par("usr") 
-
-  # Position scale line between last two major x-axis tick marks
-  # and 1/10th of the total y-range above the lower y-axis coordinate
-  lines(c(floor(pc[2]-100),floor(pc[2])),     
-        rep(pc[3] + 0.1*(pc[4] - pc[3]), 2))
-
-  # Place the units label at the midpoint of and just below the scale line
-  text(x=mean(c(floor(pc[2]-100), floor(pc[2]))), 
-       y=pc[3] + 0.1*(pc[4] - pc[3]),
-       label=units_label, adj=c(0.5, yadj))
-}
-```
-
-```{r}
-ScaleBar <- function(reference_raster_utm, round_to_nearest_km, width_percent, y_percent_from_bottom, x_percent_from_left, y_text_percent_from_bottom, ...) {
-    # Round by max to nearest... e.g. 5 km 
-    mround <- function(x,base){ 
-        base*round(x/base) 
-    }   
-    # scale bar size adjustment to avoid decimals
-        scale_size <- ((xmax(reference_raster_utm)-xmin(reference_raster_utm))*width_percent)/1000
-        scale_size_adj <- mround(scale_size, round_to_nearest_km)
-        scale_size_adj_plot <- (scale_size_adj*1000)/2
-    # Horizontal percent position (x) for scale bar
-        x_position <- ((xmax(reference_raster_utm)-xmin(reference_raster_utm))*x_percent_from_left)+xmin(reference_raster_utm)
-    # Vertical percent position y for scale bar
-        y_position <- ((ymax(reference_raster_utm)-ymin(reference_raster_utm))*y_percent_from_bottom)+ymin(reference_raster_utm)
-        y_position_text <- ((ymax(reference_raster_utm)-ymin(reference_raster_utm))*y_text_percent_from_bottom)+ymin(reference_raster_utm)
-    # Draw line on plot
-        library(sp)
-        x_ends <- c((x_position-scale_size_adj_plot), (x_position+scale_size_adj_plot))
-        y_ends <- c((y_position), (y_position))
-        scale_bar_line <- SpatialLines(list(Lines(Line(cbind(x_ends, y_ends)), ID="length")))
-        projection(scale_bar_line) <- projection(reference_raster_utm)
-        plot(scale_bar_line, add=TRUE, ...)
-        text(x_position, y_position_text, paste0(scale_size_adj, "km"))
-}
-
-```
 
 
 ```{r}
@@ -502,15 +476,25 @@ length(grid[polys,]) #106 points
 #map each species, map each EOR, check distance from points to nearest EORs
 ```{r}
 #l1G1G2 are in UTM zone 13
-l1G1G2@proj4string <- CRS("+proj=utm +zone=13 ellps=NAD83") 
 # says  projargs: chr "+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84
 #transform to UTM to match l1G1G2
 #60 names with the listed name and the accepted name acording to TPL
 
-proj4string(l1G1G2) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
+proj4string(l1G1G2) <- CRS(proj4string(l1eor))
 coloradosps.dist <- coloradosps.g1g2
 coloradosps.dist$distNearEOR <- NA
 
+distXspbind <- do.call(c,mapply('[[', distXsp, 2))
+ 
+length(distXspbind[is.na(distXspbind)]) #14 don't have any data
+distXspbind <- distXspbind[!is.na(distXspbind)]
+coloradosps.dist$distNearEOR[which(rownames(coloradosps.dist) %in%
+                                         names(distXspbind))] <-unname(distXspbind)
+```
+
+
+#Already loaded! Skip
+```{r}
 distXsp <- lapply(1:nrow(g1g2names), function(i){
   #put grid points across colorado, sample from it for each polygons
      polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
@@ -557,12 +541,6 @@ distXsp <- lapply(1:nrow(g1g2names), function(i){
   out
   })
 
-distXspbind <- do.call(c,mapply('[[', distXsp, 2))
- 
-length(distXspbind[is.na(distXspbind)]) #14 don't have any data
-distXspbind <- distXspbind[!is.na(distXspbind)]
-coloradosps.dist$distNearEOR[which(rownames(coloradosps.dist) %in%
-                                         names(distXspbind))] <-unname(distXspbind)
   
 save(distXsp, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp.Rda")
 ```
@@ -595,15 +573,15 @@ length(table(colo.merged$Taxon)) #58 species with some data
 
 
 #Write table for VisTrails field data
-nrow(seinet_TPL)
+#nrow(seinet_TPL)
 seinet_TPL.cc <- seinet_TPL[seinet_TPL$decimalLongitude > -110,]
 seinet_TPL.cc <- seinet_TPL.cc[seinet_TPL.cc$decimalLatitude > 35, ]
 
 plot(seinet_TPL.cc$decimalLongitude,seinet_TPL.cc$decimalLatitude)
-
-write.csv(seinet_TPL.cc, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORG1G2.csv")
-
-write.csv(seinet_TPL.cc, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/FieldData_EORG1G2.csv")
+# 
+# write.csv(seinet_TPL.cc, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORG1G2.csv")
+# 
+# write.csv(seinet_TPL.cc, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/FieldData_EORG1G2.csv")
 
 herbspecimennumxsp<-table(seinet_TPL.cc$scientificNameAccpt)
 
@@ -623,7 +601,7 @@ whoswho[whoswho$Freq>0,]
 all.g1g2now <- do.call(c,mapply('[[', distXsp, 1)) #all the transformed to UTM species points
 all.g1g2now <- all.g1g2now[!is.na(all.g1g2now)]
 
-plot(colocounties.UTM, border="grey80")
+plot(colocounties.UTM, border="grey80", main=g1g2names$AcceptedName[1])
 plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[1],g1g2names$Taxon[1]),],
      border = "red", add=TRUE, lwd=4)
 points(distXsp[[1]][[1]], pch=16, cex=0.25)
@@ -638,45 +616,6 @@ devtools::install_git("https://github.com/SantanderMetGroup/mopa.git")
 
 library(mopa)
 ```
-
-```{r}
-OCSVMprofiling<-function(xy, varstack, background = NULL, nu=.5){
-  if (class(xy) != "list")  xy <- list(xy)
-  if(is.null(background)) background <- backgroundGrid(varstack[[1]])$xy
-  if (class(background) != "list")  background <- rep(list(background), length(xy))
-  
-  bioclim <-varstack
-  absence <- list()    
-  presence <- list()
-  for(i in 1:length(xy)){
-    length(absence) <- i
-    coo <- background[[i]]
-    mat <- cbind(xy[[i]], rep(1, nrow(xy[[i]])))
-    mat <- biomat(mat, bioclim)
-    mod <- svm(mat[,-1], y=NULL, type='one-classification', nu=nu)
-    proj <- biomat(cbind(coo,rep(1,nrow(coo))), bioclim)
-    pre <- predict(mod, proj[,-1])
-    absence[[i]] <- coo[(which(pre==0)),]
-    presence[[i]] <- coo[(which(pre!=0)),]
-  }
-  if(length(absence) == 1){
-    absence <- absence[[1]]
-    presence <- presence[[1]]
-  }else{
-    names(absence) <- names(xy)
-    names(presence) <- names(xy)
-  }
-  return(list("absence"=absence, "presence"=presence))
-}
-```
-
-Get background points that don't overlap with presence and are at differnt distances away
-```{r}
-
-
-```
-
-
 
 
 Get the coordiates from each saved to use as csvs in VisTrails. 
