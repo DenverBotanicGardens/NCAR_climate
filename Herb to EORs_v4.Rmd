@@ -1005,11 +1005,10 @@ pca_herbpost1980 <- lapply(pca_herb, function(x){
 })
 ```
 
-select background points that are closer to road so pick more background points around roads and most where buffer around population and roads overlap.   
+select background points that are closer to road so pick more background points around roads and most where buffer around population and roads overlap.     
+Or like Wunder's student's bat paper, just use random points from the circles made earlier, just a buffer, cite Elith
 ```{r}
 coroads <- shapefile("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Roads/Local Roads/Local Roads SHP/LROADS.shp")
-
-#plot(coroads)
 
 #Planer
 proj4string(coroads) #"+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"
@@ -1023,9 +1022,13 @@ r[] <- apply(dd,1,min)
 dd.smaller <- gDistance(coroads, as(r.smaller, "SpatialPoints"), byid=TRUE)
 r.smaller[] <- apply(dd.smaller,1,min)
 
+r.longlat <- spTransform(r.smaller,CRS(paste(rscrs)))
 
 plot(r)
 plot(r.smaller)
+plot(circleHerb[[1]])
+plot(coroads, add=TRUE)
+
 plot(rasterstack[[1]], xlim=c(-109,-103), ylim=c(37,41))
 
 plot(r.smaller[r.smaller<8000])
@@ -1034,6 +1037,11 @@ plot(coroads, add=TRUE)
 ```
 
 Either background points are selected with more frequency closer to roads or 'background' is a buffer around roads and around points and selected randomly within that overlap - all need to match the number of presence points. 
+
+Without quality presence–absence data, discrimination metrics such as TSS can be misleading measures of model performance
+Boris Leroy  Robin Delsol  Bernard Hugueny  Christine N. Meynard  Chéïma Barhoumi Morgane Barbet‐Massin  Céline Bellard
+First published: 02 July 2018  
+
 ```{r}
 bkgrnd <- calc(r.smaller, fun= function(X) sampleRandom(r.smaller, size= x))
 
