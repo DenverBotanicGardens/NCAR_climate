@@ -981,7 +981,7 @@ points(projected[grep("micro", projected$scientificName),])
 
 
 
-layout plot  
+layout plot   
 ```{r}
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/EOR_Herb_EORthin_AsMi.jpg",
      width=700, height=170,units='mm', res=300)
@@ -1045,9 +1045,9 @@ dd <- gDistance(localroads.latlon, as(r, "SpatialPoints"), byid=TRUE)
 ```
 
 
-
+#No recollection of what I'm doing here...   
 ```{r}
-str(distXspbind) #1091
+
 hist(distXspbind/1000, main = "Distance (km) from points to nearest EOR",
      xlab="km", breaks=1000, xlim=c(1,500))
 
@@ -1077,19 +1077,29 @@ abline(v=mean(rand.diff)+ctrl95CI.l, col="red")
 
 ```
 
+```{r}
+for(i in want){
+  plot(distXsp[[i]][[1]], pch=16, cex=0.5, col=rgb(0,0,0,0.75), main=g1g2names$AcceptedName[i])
+  plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),],
+       border = rgb(1,0,0,0.5), lwd=3, add=TRUE)
+  ScaleBar(raster(l1G1G2[l1G1G2$GNAME %in%
+                           c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),]), #reference raster
+           0.1, .5, .15, .15, .05, lwd=2) #round to nearest km, width, % y from bottom, % x from left, y text
+}
+```
+
 
 ```{r}
 for(i in want){
   plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),],
        border = rgb(1,0,0,0.5),  main=g1g2names$AcceptedName[i], lwd=3,
-       xlim=c(min(distXsp[[i]][[1]]@coords[,1]),max(distXsp[[i]][[1]]@coords[,1])),
-       ylim=c(min(distXsp[[i]][[1]]@coords[,2]),max(distXsp[[i]][[1]]@coords[,2])))
+       xlim=c(min(distXsp[[i]][[1]]@coords[,1])-100,max(distXsp[[i]][[1]]@coords[,1]))+100,
+       ylim=c(min(distXsp[[i]][[1]]@coords[,2]-100),max(distXsp[[i]][[1]]@coords[,2]))+100)
   points(distXsp[[i]][[1]], pch=16, cex=0.5, col=rgb(0,0,0,0.75))
   ScaleBar(raster(l1G1G2[l1G1G2$GNAME %in%
-                           c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),]), 
-           1, .25, .20, .15, .17, lwd=2)
+                           c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),]), #reference raster
+           0.1, .25, .15, .15, .10, lwd=2) #round to nearest km, width, % y from bottom, % x from left, y text
 }
-
 ```
 
 4/6/2018 - Danielle Gualtieri working on Colton Gaines protocol for mapping and adding uncertainty protocol (similar to Mo's work)  6/11/2018 - long gone, hasn't been back in a while, not doing the work any more
