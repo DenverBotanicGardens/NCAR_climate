@@ -1102,17 +1102,76 @@ for(i in want){
 }
 ```
 
-
-
 ```{r}
+i <- sapply(colo.all, is.factor)
+colo.all[i]<-lapply(colo.all[i], as.character)
 
-ggplot(colo.all.ll@data[colo.all.ll$distNearEOR<500000,], aes(year, distNearEOR/1000))+
-  geom_point()+
-  theme_bw()+
-#  geom_hline(yintercept=(57936.4/1000), col="red")+ #if off by 36 miles
-#  geom_hline(yintercept=(666), col="blue")+ #if off by 1 zone, 111km wide at equator
-  stat_smooth(method="lm")+
-  ylab("Distance (km) to nearest EOR")
+colo.all$year <- as.numeric(colo.all$year)
+colo.all$decimalLatitude <- as.numeric(colo.all$decimalLatitude)
+colo.all$decimalLongitude <- as.numeric(colo.all$decimalLongitude)
+colo.all$minimumElevationInMeters <- as.numeric(colo.all$minimumElevationInMeters)
+
+colo.all[colo.all$recordNumber == 9088,] #year is 1999, not recorded at Fort Lewis
+colo.all[colo.all$recordNumber == 1596,] #another repeat, should be 1997 not 1007
+## Ok to get rid of duplicates that resulted in wrong years
+colo.all <- colo.all[colo.all$year > 1800,]
+
+colo.all$coordinateUncertaintyInMeters <-
+  as.numeric(colo.all$coordinateUncertaintyInMeters)
+#How many specimens give an uncertainty in meters (square meters?)
+length(colo.all$coordinateUncertaintyInMeters[!is.na(colo.all$coordinateUncertaintyInMeters) & !is.na(colo.all$decimalLatitude)])/
+  length(colo.all$coordinateUncertaintyInMeters[!is.na(colo.all$decimalLatitude)])
+
+colo.all[is.na(colo.all$coordinateUncertaintyInMeters),]
+
+colo.all[colo.all$distNearEOR>50000 & !is.na(colo.all$distNearEOR),c(56,57,83,61,63,66,67)] #611551meters is width of colorado about
+
+#Can't have missing data
+colo.all.ll <- colo.all[!is.na(colo.all$decimalLatitude)&
+                       !is.na(colo.all$decimalLongitude),]
+coordinates(colo.all.ll) <-~decimalLongitude+decimalLatitude
+proj4string(colo.all.ll) <- CRS("+proj=longlat +datum=WGS84") 
+colo.all.ll <- spTransform(colo.all.ll, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+
+all.county <- over(colo.all.ll, colocounties.UTM[,"COUNTY"])
+colo.all.ll$InCounty <- all.county[,1]
+
+
+table(colo.all.ll$county[colo.all.ll$county != colo.all.ll$InCounty])
+colo.all.ll@data[colo.all.ll$county != colo.all.ll$InCounty &
+              !is.na(colo.all.ll$county),c("scientificName","institutionCode","county","InCounty","georeferencedBy")]
+
+#Which county are the points really in
+colocounties.UTM.df <- as.data.frame(colocounties.UTM)
+colocounties.UTM.df$id <- as.numeric(rownames(colocounties.UTM.df))
+
+plot(colocounties.UTM, border="grey80")
+plot(colo.all.ll, add=TRUE, pch=16, cex=0.5)
+
+#Make a Levenshtein distance matric between names (like that paper!)
+countymatch<- adist(colo.all.ll@data$county[!is.na(colo.all.ll@data$county)&
+                                              colo.all.ll@data$county!=""],
+                    colo.all.ll@data$InCounty[!is.na(colo.all.ll@data$county)&
+                                              colo.all.ll@data$county!=""],
+                    partial=TRUE,ignore.case = TRUE)
+#Single linkage method
+#hcfar <- hclust(as.dist(countymatch), method='single')
+
+
+#errors so try clean up county column
+colo.all.ll$countyclean <- gsub("Co.*","",colo.all.ll$county)
+#trim trailing white space
+colo.all.ll$countyclean <- sub("\\s+$", "", colo.all.ll$countyclean)
+colo.all.ll$countyclean <- toupper(colo.all.ll$countyclean)
+
+colo.all.ll@data[!(colo.all.ll$countyclean %in%colo.all.ll$InCounty),]
+
+nrow(colo.all.ll@data[!(colo.all.ll$countyclean %in%colo.all.ll$InCounty),])/
+       nrow(colo.all.ll)
+
+colo.all.ll@data[!(colo.all.ll$countyclean %in%colo.all.ll$InCounty),]
+
+
 ```
 
 Total area of EOR polygons per spcies for the the 46 species with mapped herbarium records 
@@ -1265,29 +1324,20 @@ TPL is pulling from synonym from the plant list   "colo"
 #ENMeval vignette
 <https://cran.r-project.org/web/packages/ENMeval/vignettes/ENMeval-vignette.html>   
 ```{r}
-bioclim.colorado <- getData("worldclim", var="bio", res=0.5, lon=-106, lat = 39)
-
+bioclim.colorado <- getData("worldclim", var="bio", res=0.5, lon=-106, lat = 39) #at 0.5 minutes of a degree
+##just get the datafiles lat and long from pca_eorandherb and extract the bioclim variables in addtion to the monthly precip, min, max temps
 
 plot(bioclim.colorado$bio1_12)
 plot(colocounties, add=TRUE)
 
-
 # Use rasters in a RasterStack:
 class(bioclim.colorado)
-
 
 #Need back to latlon for bioclim layers
 pointsXsp.latlon <- list()
 for(i in 1:length(want)){
-  pointsXsp.latlon[[i]] <- spTransform(distXsp[[want[i]]][[1]], CRS("+proj=longlat +datum=WGS84"))
+  pointsXsp.latlon[[i]] <- spTransform(distXsp[[want[i]]][[1]], CRS(proj4string(bioclim.colorado)))
 }
-
-# Plot first raster in the stack, bio1
-# Add points for all the occurrence points onto the raster
-plot(bioclim.colorado[[1]], main=names(bioclim.colorado)[1])
-points(pointsXsp.latlon[[15]])
-
-
 
 ```
 
@@ -1295,7 +1345,8 @@ points(pointsXsp.latlon[[15]])
 #Spatial thinning
 <https://cran.r-project.org/web/packages/spThin/vignettes/spThin_vignette.html>     
 Thin to create dataset in which all occurences are at least _thin.par_ distance apart. helps reduce effect of uneven, biased, species occurence collections on spatial model outcomes   
-Got through 19 of them, go from 20 to length(wantEOR)
+Got through 19 of them, go from 20 to length(wantEOR)   
+SKIP, already loaded
 ```{r}
 # The EOR grid points from distXsp is the forth item. Wants lat long, they are. 
 #for(i in 1:length(wantEOR)){
@@ -1339,15 +1390,6 @@ for(i in 1:length(want)){
 save(Herb.thin1000, file= "P:/hackathon/Simulations/Herb.thin1000.Rda")
 ```
 
-```{r}
-plot(EORgrid.thin[[1]][[1]])
-plot(EORgrid.thin[[1]][[2]])
-
-for(i in 1:length(EORgrid.thin)){
-  plotThin(EORgrid.thin[[i]])
-}
-```
-
 
 ### Background points  
 Can either do bounding box (plus some buffer) or circles at some diameter   
@@ -1377,7 +1419,7 @@ for(i in 1:length(wantEOR)){
 save(circle, file= "P:/hackathon/Simulations/circleEOR.Rda")
 ```
 
-#SKIP!!! already loaded
+
 ```{r}
 plot(colocounties)
 plot(circle[[2]], add=TRUE)
@@ -1388,10 +1430,13 @@ plot(circle[[4]], add=TRUE, border="blue")
 points(EORsxsp[[4]]@coords, pch=16)
 plot(circle[[5]], add=TRUE, border="orange")
 points(EORsxsp[[5]]@coords, pch=16)
+```
 
+#SKIP!!! already loaded
+```{r}
 # Need stack of environmental layers  
 #Raster stack of just the bioclim variables
-class(bioclim.colorado)
+#class(bioclim.colorado)
 
 # Get backgrounds for each species
 envs.backg <- list()
@@ -1414,22 +1459,6 @@ for(i in 1:length(want)){
   envs.backg.herb[[i]] <- mask(envs.backg.herb[[i]], circleHerb[[i]]@polygons)
 }
 
-#Plot presence points
-plot(envs.backg[[wantEOR[19]]][[1]], main=g1g2names$AcceptedName[wantEOR[19]])
-points(EORsxsp[[wantEOR[19]]], pch=16)
-
-for(i in 1:length(envs.backg.herb)){
-  plot(envs.backg.herb[[i]][[1]], main=g1g2names$AcceptedName[want[match(i,want)]] )
-  plot(colocounties, add=TRUE)
-}
-
-for(i in 1:60){
-  print(paste(i,g1g2names$AcceptedName[i],"or is it:",
-              "herb:",
-              want[match(i,want)], "and EOR:", wantEOR[match(i,wantEOR)],
-        "Just want[i]:", want[i], "and wantEOR[i]", wantEOR[i]))
-} 
-
 
 save(envs.backg, file= "P:/hackathon/Simulations/envs.backgEOR.Rda")
 save(envs.backg.herb, file= "P:/hackathon/Simulations/envs.backgHerb.Rda")
@@ -1439,37 +1468,103 @@ save(envs.backg.herb, file= "P:/hackathon/Simulations/envs.backgHerb.Rda")
 
 ```{r}
 #The item in the list that matches the number, i, is the the match(i, want) or match(i, wantEOR) but some are missing (want and envs.backg.herb are 46 long, wantEOR and envs.backg are 59 long )
+
+g1g2names$Taxon[41] #Packera mancosana - new species
+g1g2names$AcceptedName[41] #Packera mancosana
+
+
+#need back to lat long
+pointsXsp.latlon <- list()
 for(i in 1:length(want)){
-  if(!is.na(wantEOR[match(want[i],wantEOR)])){
+  pointsXsp.latlon[[i]] <- spTransform(distXsp[[want[1]]][[1]], CRS("+proj=longlat +datum=WGS84"))
+}
+
+wantWOPaMa <- want[-which(want==41)] #now 45 names
+
+
+#gets thrown off after Packera mancosana but can't tell why
+for(i in 1:length(want)){
+  if(want[i]!=41){
+
     plot(colocounties,
          main=g1g2names$AcceptedName[want[i]])
-    plot(envs.backg.herb[[i]][[1]], #just the first bioclim 
+    plot(envs.backg.herb[[i]][[1]], #just the first bioclim, 46 of them. 
          add=TRUE, col=rgb(0,1,1,0.25),border="black")
-    plot(envs.backg[[wantEOR[match(want[i],wantEOR)]]][[1]], col=rgb(1,0,0,0.25),
+    plot(envs.backg[[want[i]]][[1]], col=rgb(1,0,0,0.25), # there are 59 with EORs
          add=TRUE, legend=FALSE) #from the EORs
-    points(pointsXsp.latlon[[i]], pch=20) #herb points
-    points(distXsp[[wantEOR[match(want[i], wantEOR)]]][[4]]@coords, col="red", pch=16)
+    points(pointsXsp.latlon[[i]], pch=17, col="purple") #herb points, need to skip 41...
+    points(distXsp[[want[i]]][[4]]@coords, col="red", pch=16)   #this gets off one after Packera mancosana, 60 of them 
 
-    }
+  }
 }
-  
+
+#Penstemon degeneri and after are off, must be after Packera mancosana, got rid of the 34th one
+#Now error after Oreoxis which is 41, Packera mancosana
+
+which(g1g2names$AcceptedName == "Oreoxis humilis") #40
+g1g2names$AcceptedName[41]
 
 
+```
 
+```{r}
+#Plot presence points
+plot(envs.backg[[wantEOR[19]]][[1]], main=g1g2names$AcceptedName[wantEOR[19]])
+points(EORsxsp[[wantEOR[19]]], pch=16)
+
+for(i in 1:length(envs.backg.herb)){
+  plot(envs.backg.herb[[i]][[1]], main=g1g2names$AcceptedName[want[match(i,want)]] )
+  plot(colocounties, add=TRUE)
+  points(pointsXsp.latlon[[i]])
+}
+
+```
+
+
+Background points for EORs
+```{r}
+# Background points from set area, select number of background points equal to the number of presence points
+#Amend to 25% more background than presence. 
+
+pca_eorandherb[[1]]
+
+#bg <- list()
+bg <- lapply(1:length(wantEOR), function(i){
+  background <- as.data.frame(randomPoints(envs.backg[[i]][[1]], n=nrow(EORsxsp[[wantEOR[i]]]@coords)+
+                                          0.25*(nrow(EORsxsp[[wantEOR[i]]]@coords))))
+  out <- data.frame(x1 = background$x, x2 = background$y, id = NA, polyid=NA, Bestcrs=NA, firstobs=NA,
+                           GRANK=NA, ENDEMIC=NA, Lastobs=NA, raster::extract(rasterstack, background))
+  out
+})
+
+save(bg, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bg.Rda")
 
 
 ```
 
 
+Background points for herbs
+```{r}
+# Background points from set area, select number of background points equal to the number of presence points
+#Amend to 25% more background than presence. 
+
+length(pointsXsp.latlon) #46
+
+#bg <- list()
+bg.herb <- lapply(1:length(want), function(i){
+  background <- as.data.frame(randomPoints(envs.backg.herb[[i]][[1]], n=nrow(pointsXsp.latlon[[i]]@coords)+
+                                          0.25*(nrow(pointsXsp.latlon[[i]]@coords))))
+  out <- data.frame(x1 = background$x, x2 = background$y, id = NA, polyid=NA, Bestcrs=NA, firstobs=NA,
+                           GRANK=NA, ENDEMIC=NA, Lastobs=NA, raster::extract(rasterstack, background))
+  out
+})
+
+save(bg.herb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bg.herb.Rda")
+```
+
 
 
 ```{r}
-# Background points from set area, select number of background points equal to the number of presence points
-bg <- list()
-for(i in 1:length(wantEOR)){
-  bg[[i]] <- as.data.frame(randomPoints(envs.backg[[i]][[1]], n=nrow(EORsxsp[[wantEOR[i]]]@coords)))
-}
-
 #Plot presence and background points
 for(i in 1:length(wantEOR)){
   plot(envs.backg[[i]][[1]])
