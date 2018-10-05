@@ -134,10 +134,10 @@ plot(coElev)
 
 
 ```{r}
-l1eor <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records", layer="L1shp")
+#l1eor <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records", layer="L1shp")
+l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
 
 object.size(l1eor)
-object.size(l1eor2)
 
 colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
 colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
@@ -173,32 +173,9 @@ g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
 #Gilia sedifolia
 #Ipomopsis ramosa
 #Packera mancosana
-```
-
-
-Mo Ewing:    
-     1) split all polygons (from CNHP) with ArcGIS 'explosion' tool    
-     2) Copy the Feature_id field into the Parcel-num field and annotate each parcel: "a", "b" etc    
-     3) Import G1G2 Seinet Vouchers into ArcMap      
-     4) Create linking field: "Parcel_num"          
-     5) Go through each parcel, linking the Eos by duplicating the Parcel_num.    
-     6) determin the closest 'parcel' to each herabarium point using ArcMap 'near' tool Analyst Tools/Proximity/Near   *I assume to the nearest line of the polygon, nearest spot of the polygon, not to the center of the polygon          
-     7) Add Map Method informaiton     
-            i. "GPS" = indication that GPS was used, just GPS coordinates present    
-            ii. "tr" = township/range info only recorded to township and range     
-            iii. "trs" = township/Range info recorded to section, or indication that tr conversion tool used       
-            iv. "trqs" = Township/Range info recorded to quarter-section       
-            v. "Locality" = no verbatim data recorded, only written description recorded    
-                     or "Terrain nav" (terrain navigator used)    
-                     or "Nat. Geog. TOPO"    
-                     or "Mapstedi"     
-                     or "digital mape"     
-                     or "geoLocate"     
-                     or "GoogleEarth"      
 
 
 # Check when names are good or not from herbarium specimens
-```{r}
 seinet <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/seinet_colorado_with_coordinates_ALLG1G2.csv")
 
 seinet <- seinet[seinet$genus != "",]
@@ -344,9 +321,9 @@ coloradosps.g1g2$decimalLatitude <-
   as.numeric(as.character(coloradosps.g1g2$decimalLatitude))
 coloradosps.g1g2$decimalLongitude <- 
   as.numeric(as.character(coloradosps.g1g2$decimalLongitude))
-
-coloradosps.g1g2[which(coloradosps.g1g2$decimalLatitude <37),]
-coloradosps.g1g2[which(coloradosps.g1g2$decimalLongitude < -109.2),]
+# ctrl+shift+c to comment/uncomment
+# coloradosps.g1g2[which(coloradosps.g1g2$decimalLatitude <37),]
+# coloradosps.g1g2[which(coloradosps.g1g2$decimalLongitude < -109.2),]
 
 coloradosps.g1g2$lon2 <- round(coloradosps.g1g2$decimalLongitude,2) # about 1.1 km 
 coloradosps.g1g2$lat2 <- round(coloradosps.g1g2$decimalLatitude,2)
@@ -354,26 +331,26 @@ coloradosps.g1g2$lat2 <- round(coloradosps.g1g2$decimalLatitude,2)
 coloradosps.g1g2$lon3 <- round(coloradosps.g1g2$decimalLongitude,3) # about 110 m
 coloradosps.g1g2$lat3 <- round(coloradosps.g1g2$decimalLatitude,3)
 
+# 
+# 
+# duplicated(coloradosps.g1g2[,c("lat2","lon2")])
+# 
+# duplicated(coloradosps.g1g2[,c("lat3","lon3")])
+# 
+# plot(colocounties)
+# points(coloradosps.g1g2$lon2,coloradosps.g1g2$lat2,pch=20,cex=0.5)
+# points(coloradosps.g1g2$decimalLongitude,coloradosps.g1g2$decimalLatitude,col="red",
+#        pch=20,cex=0.5)
+# points(coloradosps.g1g2$lon3,coloradosps.g1g2$lat3,pch=21,cex=0.5, col="blue")
 
-
-duplicated(coloradosps.g1g2[,c("lat2","lon2")])
-
-duplicated(coloradosps.g1g2[,c("lat3","lon3")])
-
-plot(colocounties)
-points(coloradosps.g1g2$lon2,coloradosps.g1g2$lat2,pch=20,cex=0.5)
-points(coloradosps.g1g2$decimalLongitude,coloradosps.g1g2$decimalLatitude,col="red",
-       pch=20,cex=0.5)
-points(coloradosps.g1g2$lon3,coloradosps.g1g2$lat3,pch=21,cex=0.5, col="blue")
-
-
-nrow(coloradosps.g1g2) #-
-nrow(coloradosps.g1g2[!duplicated(coloradosps.g1g2[,c("lat2","lon2")]),]) #685
-
-nrow(coloradosps.g1g2[!duplicated(coloradosps.g1g2[,c("lat3","lon3")]),]) #791
-
-nrow(coloradosps.g1g2[duplicated(coloradosps.g1g2[,c("lat3","lon3")]),]) #1660
-nrow(coloradosps.g1g2[duplicated(coloradosps.g1g2[,c("lat2","lon2")]),]) #1766
+# 
+# nrow(coloradosps.g1g2) #-
+# nrow(coloradosps.g1g2[!duplicated(coloradosps.g1g2[,c("lat2","lon2")]),]) #685
+# 
+# nrow(coloradosps.g1g2[!duplicated(coloradosps.g1g2[,c("lat3","lon3")]),]) #791
+# 
+# nrow(coloradosps.g1g2[duplicated(coloradosps.g1g2[,c("lat3","lon3")]),]) #1660
+# nrow(coloradosps.g1g2[duplicated(coloradosps.g1g2[,c("lat2","lon2")]),]) #1766
 
 
 #which ones are in denver?
@@ -385,12 +362,9 @@ nrow(coloradosps.g1g2[duplicated(coloradosps.g1g2[,c("lat2","lon2")]),]) #1766
 # 
 # write.table(coloradosps.g1g2[grep("Den",coloradosps.g1g2$county),], 
 #             "clipboard", sep="\t", row.names=FALSE)
-```
 
-
-```{r}
-setdiff(sort(unique(coloradosps.g1g2$scientificName)),sort(unique(l1G1G2$GNAME))) #species from the SEINet specimens that isn't in the names given for G1G2
-setdiff(sort(unique(l1G1G2$GNAME)),sort(unique(coloradosps.g1g2$scientificName))) #the first list that's not in the second
+# setdiff(sort(unique(coloradosps.g1g2$scientificName)),sort(unique(l1G1G2$GNAME))) #species from the SEINet specimens that isn't in the names given for G1G2
+# setdiff(sort(unique(l1G1G2$GNAME)),sort(unique(coloradosps.g1g2$scientificName))) #the first list that's not in the second
 
 
 #convert points from WGS84 to NAD83
@@ -398,10 +372,11 @@ projected <- coloradosps.g1g2[complete.cases(coloradosps.g1g2[,c("lat2","lon2")]
 coordinates(projected) <- ~ lon2+lat2
 proj4string(projected) <- CRS("+proj=longlat +datum=WGS84") 
 projected <- spTransform(projected, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
-
-head(g1g2names)
-unique(l1G1G2$PolyID$GNAME)
+# 
+# head(g1g2names)
+# unique(l1G1G2$PolyID$GNAME)
 ```
+
 
 There seems to be lots of points in Denver but no EOs!
 ```{r}
@@ -465,7 +440,7 @@ dev.off()
       "The latest revision is WGS 84 (also known as WGS 1984, EPSG:4326), established in 1984 and last revised in 2004.[1] Earlier schemes included WGS 72, WGS 66, and WGS 60. WGS 84 is the reference coordinate system used by the Global Positioning System."
 
 
-
+#Test to make distXsp
 ```{r}
 us <- getData('GADM', country = 'US', level = 1)
 colorado <- us[us$NAME_1 == "Colorado",]
@@ -480,10 +455,9 @@ grid <- makegrid(polys, cellsize = 100) # cellsize in map units!
 grid <- SpatialPoints(grid, proj4string = CRS(proj4string(polys)))
 
 length(grid[polys,]) #106 points
-```
 
 #map each species, map each EOR, check distance from points to nearest EORs
-```{r}
+
 #l1G1G2 are in UTM zone 13
 # says  projargs: chr "+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84
 #transform to UTM to match l1G1G2
@@ -604,7 +578,7 @@ whoswho[whoswho$Freq>0,]
 
 
 
-#Animate maps over each species with points and polygons   
+#Animate maps over each species with points and polygons, animation isn't working    
 
 ```{r}
 all.g1g2now <- do.call(c,mapply('[[', distXsp, 1)) #all the transformed to UTM species points
