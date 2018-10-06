@@ -591,15 +591,6 @@ points(distXsp[[1]][[1]], pch=16, cex=0.25)
 ScaleBar(raster(colocounties.UTM), 100, .20, .10, .75, .07, lwd=2)
 ```
 
-# Follow niche modeling with background points by Iturbide et al 2015  
-```{r}
-if (!require(devtools)) install.packages("devtools")
-devtools::install_git("https://github.com/SantanderMetGroup/mopa.git")
-
-
-library(mopa)
-```
-
 
 Get the coordiates from each saved to use as csvs in VisTrails. 
 ```{r}
@@ -815,7 +806,7 @@ for(j in 3:5){
   }
 }
 
-for(i in 1:3){
+for(i in 10:23){
   plot(polys[[i]], border="goldenrod", lwd=10, main=polys[[j]][i,]@data$LASTOBS)
   plot(eorsinglecell[[i]], add=TRUE)
     ScaleBar(polys[[j]][i,],
@@ -823,9 +814,9 @@ for(i in 1:3){
 }
 
 for(i in 1:length(polys)){
-  plot(polys[i,], border="blue")
-  plot(grid[[i]], pch=20, cex=0.5, add=TRUE)
-  ScaleBar(polys[i,],
+  plot(polys[[i]], border="blue")
+  plot(grid[i], pch=20, cex=0.5, add=TRUE)
+  ScaleBar(polys[[i]],
            0.01, .25, .20, .15, .17, lwd=2) #first is round to nearest km
 }
 
@@ -899,7 +890,6 @@ plot(circleHerb[[2]], add=TRUE)
 plot(rasterstack[[1]], xlim=c(-109,-103), ylim=c(37,41))
 
 plot(r.smaller[r.smaller<8000])
-
 plot(coroads, add=TRUE)
 ```
 
@@ -950,6 +940,44 @@ plot(colocounties, add=TRUE)
 plot(AsMiEORmatchss, main="EOR sample size match herb")
 plot(colocounties, add=TRUE)
 points(projected[grep("micro", projected$scientificName),])
+
+
+#Make a copy of each to compare overlap O1 and O2
+OAsMiEormatch <- AsMiEORmatchss
+Oasmi <- AsMi 
+
+#Where there is overlap between AsMiEormatchss and AsMi assign a 2 instead of 1 to AsMiEormatchss
+OAsMiEormatch[Oasmi==1] <- 2 #change to 2 where overlap
+out <- AsMi+OAsMiEormatch    #When added together will be 1 if only in one, 2 if only in AsMiEormatchss, 3 if in both
+outcat <- ratify(out)        #To add ID for each
+levelplot(outcat, col.regions =  c("white","green","darkred"), att="ID")
+
+#Overlap of the other
+Oasmi[AsMiEORmatchss==1] <- 2
+out2 <- Oasmi+AsMiEORmatchss
+outcat2 <- ratify(out2)
+levelplot(outcat2, col.regions =  c("white","green","darkred"), att="ID")
+#to get area, easier to be in meters, UTM so convert to proj4string(colocounties.UTM)
+class(outcat)
+# outcat <- projectRaster(outcat, crs = (proj4string(colocounties.UTM)))
+# outcat2 <- projectRaster(outcat2, crs = (proj4string(colocounties.UTM))) 
+
+areaoutcat <- outcat
+areaoutcat[areaoutcat!=3] <- NA
+sum(raster::area(areaoutcat, na.rm=TRUE))
+
+areaoutcat2 <- outcat2
+areaoutcat2[areaoutcat2!=3] <- NA
+#tryagain<- projectRaster(outcat, crs = "+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0", method="ngb")
+raster::area(areaoutcat2, na.rm=TRUE)
+
+areaoutcat2raster <- rasterToPolygons(areaoutcat2)
+out2proj <- spTransform(areaoutcat2raster, CRS(proj4string(colocounties.UTM)))
+sum(gArea(out2proj, byid=TRUE))/(1000^2) #divided by 1km squared: 1043.532 square km
+
+#Sum rasters that are overlap ==3 and multiply by cell size, but this is in decimal seconds at this latitude so about 1km is 1 and this is 0.00083 or whatevers
+sum(outcat[] == 3)*res(outcat)[1]^2
+sum(outcat2[] == 3)*res(outcat2)[1]^2
 
 ```
      1. Could use the comparison of more points (appropriate density?) within EORs vs. the sparse data because of biases and practices of herbarium collections to compare overlap of niche models for herb, eor, and sample size same eor. how many background?    
@@ -1742,7 +1770,9 @@ for(i in 2:length(lm.list)){
 
 https://www.molecularecologist.com/2013/04/species-distribution-models-in-r/  
 ```{r}
-group_pa <- kfold(pca_data2[[1]],10) #nope, need seperate for presence and background
+group_pa <- do.call(c,sapply(1:4, function(x) kfold(pca_data2[[1]][pca_data2[[1]]$pa==x,],10))) #nope, need seperate for presence and background
+
+train_pEOR <- 
 
 ```
 
