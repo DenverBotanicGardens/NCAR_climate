@@ -1768,15 +1768,93 @@ for(i in 2:length(lm.list)){
 #Largest model most parsimonious. The uncorrelated is less parsimonious (Delta_AICc=63.86) (winterprecip and summerprecip), ~1 is worse
 ```
 
-https://www.molecularecologist.com/2013/04/species-distribution-models-in-r/  
+https://www.molecularecologist.com/2013/04/species-distribution-models-in-r/    
+EOR presence is 1 and background is 3    
+Herb presence is 2 and background is 4
 ```{r}
+#dec-mar precip, max temp
+winterPrecip <- stackApply(rasterstack[[c(12,1:3)]], 1, mean)
+winterMaxtemp <- stackApply(rasterstack[[c(12,1:3)+12]], 1, mean)
+
+#would lke to use scaled, colorado layers
+us <- getData("GADM", country="USA", level=1)
+# extract states (need to uppercase everything)
+swstates <- c("Colorado", "Wyoming", "Utah", "New Mexico" ,"Arizona")
+
+sw = us[match(toupper(swstates),toupper(us$NAME_1)),]
+sw <- spTransform(sw, CRS(proj4string(winterPrecip)))
+
+# now use the mask function
+winPrecipclip <- mask(winterPrecip, sw)
+winTmaxclip <- mask(winterMaxtemp, sw)
+
+stackmini <- stack(winPrecipclip,winTmaxclip)
+
+
+#Loop through all the species
+Maxent46species <- lapply(1:length(pca_data2), function(i){
+  group_pa <- do.call(c,sapply(1:4, function(x) kfold(pca_data2[[i]][pca_data2[[i]]$pa==x,],10))) 
+  
+  out <- replicate){     #Are 10 repeats for 10 fold enough?
+      #randomly select on of the test roups to sample as the training data, 10 fold
+      test <- sample(1, 1:10)
+      
+      train_pEOR <- pca_data2[[i]][pca_data2[[i]]$pa == 1 & group_pa!=test,c("x1","x2")]
+      train_pHerb <- pca_data2[[i]][pca_data2[[i]]$pa == 2 & group_pa!=test,c("x1","x2")]
+      train_bEOR <- pca_data2[[i]][pca_data2[[i]]$pa == 3 & group_pa!=test,c("x1","x2")]
+      train_bHerb <- pca_data2[[i]][pca_data2[[i]]$pa == 4 & group_pa!=test,c("x1","x2")]
+      
+      test_pEOR <- pca_data2[[i]][pca_data2[[i]]$pa == 1 & group_pa==test,c("x1","x2")]
+      test_pHerb <- pca_data2[[i]][pca_data2[[i]]$pa == 2 & group_pa==test,c("x1","x2")]
+      test_bEOR <- pca_data2[[i]][pca_data2[[i]]$pa == 3 & group_pa==test,c("x1","x2")]
+      test_bHerb <- pca_data2[[i]][pca_data2[[i]]$pa == 4 & group_pa==test,c("x1","x2")]
+      
+      me <- maxent(stackmini, p=train_pEOR, a=train_bEOR) #put maxent.jar into the java folder of dismo and changed  regedit.exe, navigate to HKEY_LOCAL_MACHINE\SOFTWARE\JavaSoft, right click and change permissions to full operation.
+      
+      
+      #validate teh model
+      e <- dismo::evaluate(test_pEOR, test_bEOR, me, stackmini)
+      
+      #Visulatize predictions
+      pred_me <- dismo::predict(me, stackmini)
+      thres <- dismo::threshold(e)  
+  }
+  
+})
+
+
+
 group_pa <- do.call(c,sapply(1:4, function(x) kfold(pca_data2[[1]][pca_data2[[1]]$pa==x,],10))) #nope, need seperate for presence and background
 
-train_pEOR <- 
+#randomly select on of the test roups to sample as the training data
+test <- sample(1, 1:10)
 
+train_pEOR <- pca_data2[[1]][pca_data2[[1]]$pa == 1 & group_pa!=test,c("x1","x2")]
+train_pHerb <- pca_data2[[1]][pca_data2[[1]]$pa == 2 & group_pa!=test,c("x1","x2")]
+train_bEOR <- pca_data2[[1]][pca_data2[[1]]$pa == 3 & group_pa!=test,c("x1","x2")]
+train_bHerb <- pca_data2[[1]][pca_data2[[1]]$pa == 4 & group_pa!=test,c("x1","x2")]
+
+test_pEOR <- pca_data2[[1]][pca_data2[[1]]$pa == 1 & group_pa==test,c("x1","x2")]
+test_pHerb <- pca_data2[[1]][pca_data2[[1]]$pa == 2 & group_pa==test,c("x1","x2")]
+test_bEOR <- pca_data2[[1]][pca_data2[[1]]$pa == 3 & group_pa==test,c("x1","x2")]
+test_bHerb <- pca_data2[[1]][pca_data2[[1]]$pa == 4 & group_pa==test,c("x1","x2")]
+
+me <- maxent(stackmini, p=train_pEOR, a=train_bEOR) #put maxent.jar into the java folder of dismo and changed  regedit.exe, navigate to HKEY_LOCAL_MACHINE\SOFTWARE\JavaSoft, right click and change permissions to full operation.
+
+
+#validate teh model
+e <- dismo::evaluate(test_pEOR, test_bEOR, me, stackmini)
+
+#Visulatize predictions
+pred_me <- dismo::predict(me, stackmini)
+thres <- dismo::threshold(e)
+
+plot(pred_me > thres$spec_sens, 1, cex=0.5, legend=T, mar=par("mar"), xaxt="n", yaxt="n", 
+     main=paste("Predicted presence of",g1g2names[[1]][1],sep=" "))
+plot(sw, add=TRUE)
 ```
 
-
+Steven J. Phillips, Miroslav Dudík, Robert E. Schapire. [Internet] Maxent software for modeling species niches and distributions (Version 3.4.1). Available from url: http://biodiversityinformatics.amnh.org/open_source/maxent/. Accessed on 2018-10-7.
 
 https://stackoverflow.com/questions/32915628/best-way-to-create-response-curves-for-a-glm-species-distribution-model-in-r 
 ```{r}
