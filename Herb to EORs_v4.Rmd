@@ -1886,27 +1886,44 @@ save(Maxent46species, file= "Q:/Research/Projects/alpine-phenology/Uncertainty i
 
 1: which group to withhold, 2: maxent for EOR, 3: maxent for Herbarium, 4: evaluate EOR, 5: evaluate Herbarium, 6: thresholds for EOR, 7: thresholds for Herbarium, 8: species
 ```{r}
-#list.condition <- sapply(Maxent46species, function(x) x[[8]]==g1g2names$AcceptedName[1])
-output.list  <- Maxent46species[sapply(Maxent46species, function(x) x[8]==g1g2names$AcceptedName[1])]
-
-EOR_AUC <- Maxent46species[which(sapply(Maxent46species, 
-                                        `[[`, 8) == g1g2names$AcceptedName[1])]
-
-EOR_AUC <- Maxent46species[which(sapply(Maxent46species, 
-                                        `[[`, 8) == g1g2names$AcceptedName[1] & 
-                                   !is.null(sapply(Maxent46species, `[[`, 2)))]
-
-#got thresholds
-AUC_EOR <- lapply(Maxent46species, function(x){ 
-                  specieslist <- x[which(sapply(x, `[[`, 8) == g1g2names$AcceptedName[1] &
-                                           !is.null(sapply(x, `[[`, 2)))]
-                  sapply(specieslist, '[[', 4)
-                  })
-
-#Get just the auc from the one species (but have empty lists where species name doesn't match)
-auc_sp <- sapply(AUC_EOR, function(x){
-  sapply(x, function(y) y@auc)
+#Specificy=Sensitivity or Kappa??
+#Make names match raster files
+thres_all <- lapply(Maxent46species[lapply(Maxent46species, length)>0], function(x){
+  species <- sapply(x, '[[', 8)
+  EOR_th <- sapply(x, '[[', 6)
+  Herb_th <- sapply(x, '[[', 7)
+  EOR_ss <- unlist(EOR_th[5,]) #1:kappa, 2:spec_sens, 3:no_omission, 4:prevalence, 5:equal_sens_spec, 6:sensitivity
+  HERB_ss <- unlist(Herb_th[5,])
+  eorout <- data.frame(threshold=EOR_ss,Species=paste("EOR",gsub(" ","_",species),1:10,sep=""))
+  herbout <- data.frame(threshold=HERB_ss,Species=paste("EOR",gsub(" ","_",species),1:10,sep=""))
+  rbind(eorout,herbout)
 })
+
+#20 species
+maxentspecies <- Maxent46species[lapply(Maxent46species, length)>0]
+spRasterEORvsHerb <- lapply(unlist(sapply(maxentspecies, '[[', 8)[8,]),
+                            function(sp){
+                              lapply(1:10, function(rep){
+                                lapply(c("EOR","Herb"), function(comp){
+        raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/",
+                     comp,sp,rep,".tif", sep=""))
+                                })
+                              })
+                            })
+
+  spRasterEORvsHerb[[1]][[1]][[1]]@file@name
+  #Need name to match up threshold with EOR or Herb and species and which map
+  spRasterEORvsHerb[[1]][[1]][[1]]@data@names   #!!! Yes!
+  
+  thres_all[[1]]$Species
+  
+  #Order of names, but can use which to match the correct threshold with its map
+  mapply(function(x,y) print(unique(unlist(sapply(x, function(x1){
+    sapply(x1, function(x2){
+      x2@data@names
+    })
+  }))), unique(y$Species)),
+  spRasterEORvsHerb,thres_all)
 
 auc_all <- sapply(Maxent46species, function(x){
   species <- sapply(x, '[[', 8)
@@ -1917,10 +1934,12 @@ auc_all <- sapply(Maxent46species, function(x){
   data.frame(AUC_EOR=EOR_auc, AUC_Herb=HERB_auc, Species=species)
 })
 
-auc_all[lapply(auc_all, length)>0]
-
-
-hist(AUC_EOR[[1]][[1]]@auc)
+#need to add number and EOR or Herb to threshold extract from raster name
+plot(spRasterEORvsHerb[[1]][[1]][[1]] > 
+       thres_all[which(sapply(thres_all, '[[', 2) == spRasterEORvsHerb[[1]][[1]][[1]]@data@names)], 
+     1, cex=0.5, legend=T, mar=par("mar"), xaxt="n", yaxt="n", 
+     main=paste("Predicted presence of",g1g2names[[1]][1],sep=" "))
+plot(sw, add=TRUE)
 
 ```
 
