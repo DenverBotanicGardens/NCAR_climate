@@ -1873,13 +1873,57 @@ Maxent46species <- lapply(1:length(pca_data2), function(i){
           gc()
           thres <- dismo::threshold(e) 
           thresHerb <- dismo::threshold(eHerb)
+          # 1: which group to withhold, 2: maxent for EOR, 3: maxent for Herbarium, 4: evaluate EOR, 5: evaluate Herbarium, 6: thresholds for EOR, 7: thresholds for Herbarium, 8: species
           out[[l]] <- list(test,me,meHerb,e,eHerb,thres,thresHerb,g1g2names$AcceptedName[i])#,pme,pmeHerb)
           gc()
       }
       out
   }
 })
+
+save(Maxent46species, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxent46species.Rda")
 ```
+
+1: which group to withhold, 2: maxent for EOR, 3: maxent for Herbarium, 4: evaluate EOR, 5: evaluate Herbarium, 6: thresholds for EOR, 7: thresholds for Herbarium, 8: species
+```{r}
+#list.condition <- sapply(Maxent46species, function(x) x[[8]]==g1g2names$AcceptedName[1])
+output.list  <- Maxent46species[sapply(Maxent46species, function(x) x[8]==g1g2names$AcceptedName[1])]
+
+EOR_AUC <- Maxent46species[which(sapply(Maxent46species, 
+                                        `[[`, 8) == g1g2names$AcceptedName[1])]
+
+EOR_AUC <- Maxent46species[which(sapply(Maxent46species, 
+                                        `[[`, 8) == g1g2names$AcceptedName[1] & 
+                                   !is.null(sapply(Maxent46species, `[[`, 2)))]
+
+#got thresholds
+AUC_EOR <- lapply(Maxent46species, function(x){ 
+                  specieslist <- x[which(sapply(x, `[[`, 8) == g1g2names$AcceptedName[1] &
+                                           !is.null(sapply(x, `[[`, 2)))]
+                  sapply(specieslist, '[[', 4)
+                  })
+
+#Get just the auc from the one species (but have empty lists where species name doesn't match)
+auc_sp <- sapply(AUC_EOR, function(x){
+  sapply(x, function(y) y@auc)
+})
+
+auc_all <- sapply(Maxent46species, function(x){
+  species <- sapply(x, '[[', 8)
+  EOR_eval <- sapply(x, '[[', 4)
+  Herb_eval <- sapply(x, '[[', 5)
+  EOR_auc <- sapply(EOR_eval, function(y) y@auc)
+  HERB_auc <- sapply(Herb_eval, function(y) y@auc)
+  data.frame(AUC_EOR=EOR_auc, AUC_Herb=HERB_auc, Species=species)
+})
+
+auc_all[lapply(auc_all, length)>0]
+
+
+hist(AUC_EOR[[1]][[1]]@auc)
+
+```
+
 
 Testing the loop for all 46 species
 ```{r}
