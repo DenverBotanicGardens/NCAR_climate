@@ -1826,6 +1826,7 @@ stackmini <- stack(winPrecipclip,winTmaxclip,winterMintempclip,
 # 
 # memory.limit()
 # memory.limit(size=memory.limit()+1000)
+# memory.limit(size=memory.limit()-1000) #take it back down a notch? oh, can't!?
 
 
 #Loop through all the species
@@ -1888,16 +1889,16 @@ save(Maxent46species, file= "Q:/Research/Projects/alpine-phenology/Uncertainty i
 ```{r}
 #Specificy=Sensitivity or Kappa??
 #Make names match raster files
-thres_all <- lapply(Maxent46species[lapply(Maxent46species, length)>0], function(x){
+thres_all <- do.call(rbind,lapply(Maxent46species[lapply(Maxent46species, length)>0], function(x){
   species <- sapply(x, '[[', 8)
   EOR_th <- sapply(x, '[[', 6)
   Herb_th <- sapply(x, '[[', 7)
   EOR_ss <- unlist(EOR_th[5,]) #1:kappa, 2:spec_sens, 3:no_omission, 4:prevalence, 5:equal_sens_spec, 6:sensitivity
   HERB_ss <- unlist(Herb_th[5,])
   eorout <- data.frame(threshold=EOR_ss,Species=paste("EOR",gsub(" ","_",species),1:10,sep=""))
-  herbout <- data.frame(threshold=HERB_ss,Species=paste("EOR",gsub(" ","_",species),1:10,sep=""))
+  herbout <- data.frame(threshold=HERB_ss,Species=paste("Herb",gsub(" ","_",species),1:10,sep=""))
   rbind(eorout,herbout)
-})
+}))
 
 #20 species
 maxentspecies <- Maxent46species[lapply(Maxent46species, length)>0]
@@ -1913,7 +1914,7 @@ spRasterEORvsHerb <- lapply(unlist(sapply(maxentspecies, '[[', 8)[8,]),
 
   spRasterEORvsHerb[[1]][[1]][[1]]@file@name
   #Need name to match up threshold with EOR or Herb and species and which map
-  spRasterEORvsHerb[[1]][[1]][[1]]@data@names   #!!! Yes!
+  spRasterEORvsHerb[[1]][[1]][[2]]@data@names   #!!! Yes!
   
   thres_all[[1]]$Species
   
@@ -1934,11 +1935,26 @@ auc_all <- sapply(Maxent46species, function(x){
   data.frame(AUC_EOR=EOR_auc, AUC_Herb=HERB_auc, Species=species)
 })
 
+#make raster bricks of EOR and Herbs for each species; just species that got done 
+speciesused <- unique(gsub('[[:digit:]]+', '', thres_all$Species))
+unlistspRaster <- unlist(spRasterEORvsHerb)
+rasterbricks <- lapply(speciesused, function(sp){
+  sp1 <- unlistspRaster[grep(sp,
+                               sapply(unlistspRaster, function(x) x@data@names))]
+  stack(sp1)
+  # eorout <- stack(sp1[grep("EOR", sapply(sp1,function(x) x@data@names))])
+  # herbout <- stack(sp1[grep("Herb", sapply(sp1,function(x) x@data@names))])
+  # list(eorout,herbout)
+})
+
+#Need to pick a way to make a consensus model and do same for both. 
+#Should also compare niche models of both to actual distribution defined by CNHP
+
 #need to add number and EOR or Herb to threshold extract from raster name
 plot(spRasterEORvsHerb[[1]][[1]][[1]] > 
-       thres_all[which(sapply(thres_all, '[[', 2) == spRasterEORvsHerb[[1]][[1]][[1]]@data@names)], 
+       thres_all$threshold[thres_all$Species == spRasterEORvsHerb[[1]][[1]][[1]]@data@names], 
      1, cex=0.5, legend=T, mar=par("mar"), xaxt="n", yaxt="n", 
-     main=paste("Predicted presence of",g1g2names[[1]][1],sep=" "))
+     main=paste("Predicted presence of",spRasterEORvsHerb[[1]][[1]][[1]]@data@names,sep=" "))
 plot(sw, add=TRUE)
 
 ```
