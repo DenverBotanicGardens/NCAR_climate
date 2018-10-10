@@ -1942,13 +1942,46 @@ rasterbricks <- lapply(speciesused, function(sp){
   sp1 <- unlistspRaster[grep(sp,
                                sapply(unlistspRaster, function(x) x@data@names))]
   stack(sp1)
-  # eorout <- stack(sp1[grep("EOR", sapply(sp1,function(x) x@data@names))])
-  # herbout <- stack(sp1[grep("Herb", sapply(sp1,function(x) x@data@names))])
-  # list(eorout,herbout)
 })
 
 #Need to pick a way to make a consensus model and do same for both. 
 #Should also compare niche models of both to actual distribution defined by CNHP
+sapply(1:length(rasterbricks), function(j){
+  #r <- raster() #to hold information
+  filename <- paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/MeanRasterstack",rasterbricks[[j]]@layers[[1]]@data@names,".tif", sep="")
+  x<-rasterbricks[[j]]
+  out <- raster(x)
+  bs <- blockSize(x)
+  out <- writeStart(out, filename, overwrite=TRUE)
+
+  # Loop over each block and do your calculation
+  for (i in 1:bs$n) {
+      v <- getValues(x, row=bs$row[i], nrows=bs$nrows[i] )
+     # mean
+        v <- rowMeans(v, na.rm=TRUE)
+        out <- writeValues(out, v, bs$row[i])
+     }
+  out <- writeStop(out)
+  return(out)
+  gc()
+})
+
+
+averageRaster <- lapply(rasterbricks, function(x){
+  gc()
+  writeRaster(calc(x, mean), paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/MeanRaster",x@layers[[1]]@data@names,".tif", sep=""),overwrite=TRUE)
+  gc()
+})
+
+rasterbricks[[1]]@layers[[1]]@data@names
+
+#Go for threshold of each and then overlap 
+thresholdrasters <- lapply(unlist(spRasterEORvsHerb), function(x){
+  gc()
+  writeRaster((x > thres_all$threshold[thres_all$Species==x@data@names]),
+              paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/Threshold",x@data@names,".tif", sep=""),overwrite=TRUE)
+  })
+
 
 #need to add number and EOR or Herb to threshold extract from raster name
 plot(spRasterEORvsHerb[[1]][[1]][[1]] > 
@@ -1956,6 +1989,50 @@ plot(spRasterEORvsHerb[[1]][[1]][[1]] >
      1, cex=0.5, legend=T, mar=par("mar"), xaxt="n", yaxt="n", 
      main=paste("Predicted presence of",spRasterEORvsHerb[[1]][[1]][[1]]@data@names,sep=" "))
 plot(sw, add=TRUE)
+
+```
+
+```{r}
+
+
+f8 <- function(x, a, filename='') {
+   out <- raster(x)
+   big <- ! canProcessInMemory(out, 3)
+   filename <- trim(filename)
+   if (big & filename == '') {
+     filename <- rasterTmpFile()
+     }
+   if (filename != '') {
+     out <- writeStart(out, filename, ...)
+     todisk <- TRUE
+   } else {
+     vv <- matrix(ncol=nrow(out), nrow=ncol(out))
+     todisk <- FALSE
+     }
+   bs <- blockSize(x)
+   pb <- pbCreate(bs$n, ...)
+   if (todisk) {
+     for (i in 1:bs$n) {
+       v <- getValues(x, row=bs$row[i], nrows=bs$nrows[i] )
+       v <- v + a
+       out <- writeValues(out, v, bs$row[i])
+       pbStep(pb, i)
+       }
+     out <- writeStop(out)
+     } else {
+       for (i in 1:bs$n) {
+         v <- getValues(x, row=bs$row[i], nrows=bs$nrows[i] )
+         v <- v + a
+         cols <- bs$row[i]:(bs$row[i]+bs$nrows[i]-1)
+         vv[,cols] <- matrix(v, nrow=out@ncols)
+         pbStep(pb, i)
+         }
+       out <- setValues(out, as.vector(vv))
+       }
+   pbClose(pb)
+   return(out)
+   }
+
 
 ```
 
