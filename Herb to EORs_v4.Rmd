@@ -1247,30 +1247,28 @@ ggplot(toplot[toplot$distXspbind<max(toplot$distXspbind)&
 
 ```{r}
 require(AICcmodavg)
-
-
-
-f1 <- lm(distNearEOR ~ New.Genus + year + institutionCode + Family + Area, data= colo.all.ll@data)
-f2 <- lm(distNearEOR ~ year + institutionCode + Family + Area, data= colo.all.ll)
-f3 <- lm(distNearEOR ~ year + Area, data= colo.all.ll)
-f4 <- lm(distNearEOR ~ year, data= colo.all.ll)
-f5 <- lm(distNearEOR ~ Area, data= colo.all.ll)
-f6 <- lm(distNearEOR ~ 1, data= colo.all.ll)
-f7 <- lm(distNearEOR ~ New.Genus, data= colo.all.ll)
-
-
-(lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7),
-       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7),formula)))))
-
-evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6,f7),
-                modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7),formula)))))
-
-sapply(1:length(lmresults$Delta_AICc), function(i){
-  exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
-})
-
-(er1 <- exp(0.5*lmresults$Delta_AICc[2]))
-(er2 <- exp(0.5*lmresults$Delta_AICc[3]))
+# 
+# f1 <- lm(distNearEOR ~ New.Genus + year + institutionCode + Family + Area, data= colo.all.ll@data)
+# f2 <- lm(distNearEOR ~ year + institutionCode + Family + Area, data= colo.all.ll)
+# f3 <- lm(distNearEOR ~ year + Area, data= colo.all.ll)
+# f4 <- lm(distNearEOR ~ year, data= colo.all.ll)
+# f5 <- lm(distNearEOR ~ Area, data= colo.all.ll)
+# f6 <- lm(distNearEOR ~ 1, data= colo.all.ll)
+# f7 <- lm(distNearEOR ~ New.Genus, data= colo.all.ll)
+# 
+# 
+# (lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7),
+#        modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7),formula)))))
+# 
+# evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6,f7),
+#                 modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7),formula)))))
+# 
+# sapply(1:length(lmresults$Delta_AICc), function(i){
+#   exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
+# })
+# 
+# (er1 <- exp(0.5*lmresults$Delta_AICc[2]))
+# (er2 <- exp(0.5*lmresults$Delta_AICc[3]))
 ```
 
 
@@ -1306,6 +1304,9 @@ HerbAreasDist_all <- do.call(rbind,HerbAreasDist)
 ind <- c(1:3,31:37,67:71,84:88)#names(HerbAreasDist_all)
 HAD_all <- HerbAreasDist_all
 HAD_all[ind] <- lapply(HAD_all[ind], function(x) as.numeric(as.character(x))) 
+HAD_all2 <- merge(g1g2names,HAD_all,by.x="Taxon", by.y="z.scientificName", all.y=TRUE)
+
+
 ```
 
 ```{r}
@@ -1339,35 +1340,44 @@ ggplot(HAD_all[HAD_all$y<500000&HAD_all$z.year>1800,], aes(x/1000000, y/1000))+
 dev.off()
 ```
 
-
 ```{r}
-local <- c("COLO","CS","DBG","FLD","MESA","RM","RMBL")
-Adjacent <- c("ASC","ASU","BRY","DES","NMC","RM","SJNM","UNM","USUUB","UVSC")
-far <- c("CM","F","MISSA","MO","NY","RENO","UCR")
-HAD_all$InstNear[HAD_all$z.institutionCode %in% local] <- "Local"
-HAD_all$InstNear[HAD_all$z.institutionCode %in% Adjacent] <- "Near"
-HAD_all$InstNear[HAD_all$z.institutionCode %in% far] <- "Far"
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/distanceXSpeciesRange.jpg",
+     width=150, height=100,units='mm', res=300)
 
-HAD_all2 <- merge(g1g2names,HAD_all,by.x="Taxon", by.y="z.scientificName", all.y=TRUE)
+# ggplot(HAD_all2[HAD_all2$y<500000&HAD_all2$z.year>1800&
+#                   !is.na(HAD_all2$New.Genus),], aes(as.factor(New.Genus), log(y/1000), colour=as.numeric(as.factor(New.Species))))+
+#   geom_boxplot()+
+#   theme_bw()+
+#   geom_jitter(position = position_jitter(0.2), pch=16, cex=0.5)+
+#   ylab("Distance log(km) to nearest EOR")+
+#   xlab("Genus")+
+#   theme(legend.position="none")+
+#   theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+#   scale_color_gradient(low = "brown", high = "darkgreen")
+# 
+# require(lme4)
 
-nrow(HAD_all);nrow(HAD_all2) #Whew!
+lattice::xyplot((y/1000) ~ z.year|as.factor(New.Genus), HAD_all2[HAD_all2$y<500000&HAD_all2$z.year>1800&
+                                                              !is.na(HAD_all2$New.Genus),],
+                ylab="Distance log(km) to nearest EOR",
+                type = c("g","p","r"),
+                index = function(x,y) coef(lm(y ~ x))[1],
+                xlab="Year")
 
-HAD_all2$z.year
 
-nrow(HAD_all2[HAD_all2$z.year>1800,]);nrow(HAD_all);nrow(HAD_all2) 
-table(HAD_all2$z.year)
-table(HAD_all2$InstNear)
-str(HAD_all2$InstNear)
+
+dev.off()
 ```
 
+Is there anything inherintly interesting about the genus? Maybe some genera are more likely to shift in range than others... so yes, keep in. 
 ```{r}
-f1 <- lm(y ~ as.factor(New.Genus) + z.year + as.factor(InstNear) + as.factor(Family) + x, data= HAD_all2)
-f2 <- lm(y ~ z.year + as.factor(InstNear) + as.factor(Family) + x, data= HAD_all2)
-f3 <- lm(y ~ z.year + x, data= HAD_all2)
-f4 <- lm(y ~ z.year, data= HAD_all2)
-f5 <- lm(y ~ x, data= HAD_all2)
-f6 <- lm(y ~ 1, data= HAD_all2)
-f7 <- lm(y ~ as.factor(New.Genus), data= HAD_all2)
+f1 <- lm(y ~ as.factor(New.Genus)*z.year + x, data= HAD_all2)
+f2 <- lm(y ~ z.year + x, data= HAD_all2)
+f3 <- lm(y ~ z.year, data= HAD_all2)
+f4 <- lm(y ~ x, data= HAD_all2) #x is the area of the species known range
+f5 <- lm(y ~ 1, data= HAD_all2)
+f6 <- lm(y ~ z.year*x, data= HAD_all2) #year given the range
+f7 <- lm(y ~ as.factor(New.Genus)*(z.year), data= HAD_all2)
 
 
 (lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7),
@@ -1383,74 +1393,8 @@ sapply(1:length(lmresults$Delta_AICc), function(i){
 (er1 <- exp(0.5*lmresults$Delta_AICc[2]))
 (er2 <- exp(0.5*lmresults$Delta_AICc[3]))
 
-table(HAD_all2$z.institutionCode)
+length(table(HAD_all2$New.Genus))
 ```
-
-
-#By herbarium 
-Maybe regional collections are much better?   
-FLD = Fort Lewis College    
-DES = Dessert Arizona   
-MESA = Colorado Mesa University   
-MISSA = Miss State Univ   
-NMC = New Mexico State University    
-SJNM = San Juan College, New Mexico   
-UCR = University of California Riverside    
-USUUB = Utah STate University Uintah Basin (probably is USU)   
-UVSC = Utah Valley University	U.S.A. Utah. Orem.      
-
-```{r}
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/distanceXSpeciesRange.jpg",
-     width=150, height=100,units='mm', res=300)
-
-ggplot(HAD_all2[HAD_all2$y<500000&HAD_all2$z.year>1800,], aes(InstNear, y/1000))+
-  geom_point()+
-  theme_bw()+
-  stat_smooth(method="lm")+
-  ylab("Distance (km) to nearest EOR")+
-  xlab(expression(paste("Species range (km"^"2",")")))
-
-dev.off()
-```
-
-
-```{r}
-
-local <- c("COLO","CS","DBG","FLD","MESA","RM","RMBL")
-Adjacent <- c("ASC","ASU","BRY","DES","NMC","RM","SJNM","UNM","USUUB","UVSC")
-far <- c("CM","F","MISSA","MO","NY","RENO","UCR")
-
-colo.all.ll@data$InstNear[colo.all.ll@data$institutionCode %in% local] <- "Local"
-colo.all.ll@data$InstNear[colo.all.ll@data$institutionCode %in% Adjacent] <- "Near"
-colo.all.ll@data$InstNear[colo.all.ll@data$institutionCode %in% far] <- "Far"
-
-colo.all.ll@data$InstNear <- factor(colo.all.ll@data$InstNear, levels = c("Far","Near","Local"))
-
-ggplot(colo.all.ll@data[colo.all.ll$distNearEOR<500000,], 
-       aes(InstNear, distNearEOR/1000))+
-  geom_jitter()+
-  stat_summary(fun.y=mean, geom="point", shape=18,
-                 size=3, color="red")+ 
-  geom_violin(trim = FALSE)+
-  theme_bw()+
-  ylab("Distance (km) to nearest EOR")+
-  xlab("Total EOR area")
-
-```
-
-```{r}
-colo.all.ll@data$verbatimCoordinates[colo.all.ll$distNearEOR>100]
-
-#How many gave 1/4 section
-colo.all.ll@data[grep("1/4", colo.all.ll$verbatimCoordinates),]
-mean(colo.all.ll@data$distNearEOR[grep("1/4", colo.all.ll$verbatimCoordinates)])
-sd(colo.all.ll@data$distNearEOR[grep("1/4", colo.all.ll$verbatimCoordinates)])
-
-
-mean(colo.all.ll@data$distNearEOR[grep("", colo.all.ll$verbatimCoordinates)])
-sd(colo.all.ll@data$distNearEOR[grep("1/4", colo.all.ll$verbatimCoordinates)])
-```
-
 
 
 #Convext hull or tiny circles around eors vs herbarium vs. both together, how much change?    
