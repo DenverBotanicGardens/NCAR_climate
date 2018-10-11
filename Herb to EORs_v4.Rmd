@@ -81,14 +81,15 @@ library(parallel)
 library(foreach)
 
 #Skip making these, takes a long time
-load("P:/hackathon/Simulations/circleEOR.Rda")
-load("P:/hackathon/Simulations/circleHerb.Rda")
-load("P:/hackathon/Simulations/EORgrid.thin.Rda")
-load("P:/hackathon/Simulations/circleEOR.Rda")
-load("P:/hackathon/Simulations/envs.backgEOR.Rda")
-load("P:/hackathon/Simulations/envs.backgHerb.Rda")
-load("P:/hackathon/Simulations/Herb.thin1000.Rda")
-load("P:/hackathon/Simulations/EORgrid.thin.Rda")
+# load("P:/hackathon/Simulations/circleEOR.Rda")
+# load("P:/hackathon/Simulations/circleHerb.Rda")
+# load("P:/hackathon/Simulations/EORgrid.thin.Rda")
+# load("P:/hackathon/Simulations/circleEOR.Rda")
+# load("P:/hackathon/Simulations/envs.backgEOR.Rda")
+# load("P:/hackathon/Simulations/envs.backgHerb.Rda")
+# load("P:/hackathon/Simulations/Herb.thin1000.Rda")
+# load("P:/hackathon/Simulations/EORgrid.thin.Rda")
+
 load("P:/hackathon/Simulations/coloradosps.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorsinglecell.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb.Rda")
@@ -97,6 +98,7 @@ load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/p
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorpost1980.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data2.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxent46species.Rda")
 
 ScaleBar <- function(reference_raster_utm, round_to_nearest_km, width_percent, y_percent_from_bottom, x_percent_from_left, y_text_percent_from_bottom, ...) {
     # Round by max to nearest... e.g. 5 km 
@@ -317,7 +319,8 @@ nrow(coloradosps.g1g2)
 hist(as.numeric(as.character(coloradosps.g1g2$decimalLatitude)))
 #write.table(sort(unique(coloradosps.g1g2$scientificName)), "clipboard", sep="\t", row.names=FALSE)
 plot(as.numeric(as.character(coloradosps.g1g2$decimalLongitude)),
-     as.numeric(as.character(coloradosps.g1g2$decimalLatitude)))
+     as.numeric(as.character(coloradosps.g1g2$decimalLatitude)),
+     xlab="Longitude",ylab="Latitude",pch=16,cex=0.5)
 ```
 How many are within 0.01 decimals of each other, round to two decimals - per Soltis 
 ```{r}
@@ -382,13 +385,14 @@ projected <- spTransform(projected, CRS("+proj=utm +zone=13 +datum=NAD83 +units=
 ```
 
 
-There seems to be lots of points in Denver but no EOs!
+There seems to be lots of points in Denver but no EOs!    
+gray60 or 80, black dots for publication   , col="midnightblue"
 ```{r}
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/HerbPntsEORs_CO.jpg",
      width=250, height=225,units='mm', res=300)
 
-plot(colocounties.UTM,border="gray30") #colocounties is in WGS84, not in same datum as l1G1G2
-plot(l1G1G2, border="gray80", add=TRUE, lwd=5) #
+plot(colocounties.UTM,border="gray50") #colocounties is in WGS84, not in same datum as l1G1G2
+plot(l1G1G2, border="gray60", add=TRUE, lwd=5) #
 plot(projected, add=TRUE, pch=20, cex=0.5)
 
 dev.off()
@@ -444,7 +448,8 @@ dev.off()
       "The latest revision is WGS 84 (also known as WGS 1984, EPSG:4326), established in 1984 and last revised in 2004.[1] Earlier schemes included WGS 72, WGS 66, and WGS 60. WGS 84 is the reference coordinate system used by the Global Positioning System."
 
 
-#Test to make distXsp
+#Test to make distXsp   
+need distXspbind later  
 ```{r}
 us <- getData('GADM', country = 'US', level = 1)
 colorado <- us[us$NAME_1 == "Colorado",]
@@ -593,6 +598,19 @@ plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[1],g1g2names$Taxon[1]),],
      border = "red", add=TRUE, lwd=4)
 points(distXsp[[1]][[1]], pch=16, cex=0.25)
 ScaleBar(raster(colocounties.UTM), 100, .20, .10, .75, .07, lwd=2)
+# 
+# #install.packages("ggsn")
+# library(ggsn)
+# proj4string(l1G1G2) <- CRS(proj4string(colocounties.UTM))
+# coordinates(colocounties.UTM)
+# polygons(l1G1G2)
+# 
+# 
+# ggplot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[1],g1g2names$Taxon[1]),])+
+#   aes([,1],[,2], group=ID)+
+#   geom_polygon()+
+#   geom_path(color="black")+
+#   scale_fill_brewer("EOR")
 ```
 
 
@@ -750,7 +768,7 @@ save(pca_eorpost1980, file= "Q:/Research/Projects/alpine-phenology/Uncertainty i
 
 ```
 
-Visual checks of data
+
 ```{r}
 
 #make into spatialpointsdataframes, make in UTM like EORs
@@ -779,7 +797,10 @@ polys <- lapply(1:nrow(g1g2names), function(i){
                                          g1g2names$Taxon[i]),]
      polys
      })
+```
 
+Visual checks of data
+```{r}
 for(j in 10:13){
   for(i in 1:length(polys[[j]])){
     plot(polys[[j]][i,], border="blue",lwd=3, main=polys[[j]][i,]@data$LASTOBS)
@@ -912,7 +933,8 @@ First published: 02 July 2018
 
 
  From VisTrails   
-Need to test overlap amount.  
+Need to test overlap amount.   
+Calculate the amount of overlap between rasters
 ```{r}
 DrEx_EOR <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/NicheModels/Draba exunguiculata_EOR/Maxent_EORvHerb_1/maxent_bin_map.tif")
 
@@ -989,7 +1011,8 @@ sum(outcat2[] == 3)*res(outcat2)[1]^2
 
 
 
-layout plot   
+layout plot     
+Plot the Herb and the EOR and then the overlap
 ```{r}
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/EOR_Herb_EORthin_AsMi.jpg",
      width=700, height=170,units='mm', res=300)
@@ -1053,11 +1076,13 @@ dd <- gDistance(localroads.latlon, as(r, "SpatialPoints"), byid=TRUE)
 ```
 
 
-#No recollection of what I'm doing here...   
+Geographic distance from herbarium points to EORs  
 ```{r}
 
-hist(distXspbind/1000, main = "Distance (km) from points to nearest EOR",
-     xlab="km", breaks=1000, xlim=c(1,500))
+hist(distXspbind[distXspbind<700000]/1000, main = "Distance (km) from points to nearest EOR",
+     xlab="km", breaks=50)#, xlim=c(1,612))
+
+plot(density(distXspbind/1000))
 
 vals <- density(distXspbind)
 pStar <- vals$x[which(vals$y==max(vals$y))]
@@ -1079,7 +1104,8 @@ ctrl95CI <- sd(rand.diff)/sqrt(ssize)*qt(0.975,df=ssize)
 ctrl95CI.l <- sd(rand.diff)/sqrt(ssize)*qt(0.025,df=ssize)
 
 
-hist(rand.diff)
+hist(rand.diff, main="Median distance from points to nearest EOR",
+     xlab="meters")
 abline(v=mean(rand.diff)+ctrl95CI, col="red")
 abline(v=mean(rand.diff)+ctrl95CI.l, col="red")
 
@@ -1209,12 +1235,13 @@ colo.all.ll@data <- merge(colo.all.ll@data,areaxsp,
 toplot[which(toplot$area_distxsp==max(toplot$area_distxsp)),]
 
 
-ggplot(toplot[toplot$distXspbind<200000,], aes(area_distxsp, distXspbind/1000))+
+ggplot(toplot[toplot$distXspbind<max(toplot$distXspbind)&
+                toplot$area_distxsp<max(toplot$area_distxsp),], aes(area_distxsp, distXspbind/1000))+
   geom_point()+
   theme_bw()+
   stat_smooth(method="lm")+
   ylab("Distance (km) to nearest EOR")+
-  xlab("Total EOR area")
+  xlab(expression(paste("Species range (km"^"2",")")))
 
 ```
 
@@ -1229,12 +1256,14 @@ f3 <- lm(distNearEOR ~ year + Area, data= colo.all.ll)
 f4 <- lm(distNearEOR ~ year, data= colo.all.ll)
 f5 <- lm(distNearEOR ~ Area, data= colo.all.ll)
 f6 <- lm(distNearEOR ~ 1, data= colo.all.ll)
+f7 <- lm(distNearEOR ~ New.Genus, data= colo.all.ll)
 
-(lmresults <- aictab(list(f1,f2,f3,f4,f5,f6),
-       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6),formula)))))
 
-evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6),
-                modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6),formula)))))
+(lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7),
+       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7),formula)))))
+
+evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6,f7),
+                modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7),formula)))))
 
 sapply(1:length(lmresults$Delta_AICc), function(i){
   exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
@@ -1245,18 +1274,117 @@ sapply(1:length(lmresults$Delta_AICc), function(i){
 ```
 
 
-#how many are in the county they say they should be in? Check Jessie's code for help
+#how many are in the county they say they should be in? Check Jessie's code for help     
+Distance from herbarium to EOR by year  
 ```{r}
-ggplot(colo.all[colo.all$distNearEOR<50000,], aes(as.numeric(year), distNearEOR))+
-  geom_point()+
-  stat_smooth(se=FALSE)+
-  theme_bw()+
-  xlab("Year")+
-  ylab("Distance from nearest EOR")+
-#  labs(color='Georeference Method')+
-   theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+#list(g1g2now, distnow, areanow, EORpnts)
+#distxsp list
+areas <- lapply(sapply(distXsp, '[[', 3), function(x) sum(x))
+distances <- sapply(distXsp, '[[', 2)
+Herbpoints <- sapply(distXsp, '[[', 1)
+#The species with no herbarium collections come out as blank and are thus class(x) == "logical"; to subset go with those that aren't 'logical'
+Herbpointsout <- do.call(rbind,Herbpoints[sapply(Herbpoints, function(x) class(x)!= "logical")])
+#But I want to cbind the areas adn distances with the herbarium points. 
+which(sapply(Herbpoints, function(x) class(x)!= "logical"))
+Herbpointsout@data
+
+
+# HerbAreasDist <- mapply(function(x,y,z){ 
+#   zout <- z@data
+#   data.frame(z,Dist=y,Area=x)
+#   }, 
+#   x=areas[which(sapply(Herbpoints, function(x) class(x)!= "logical"))],
+#   y=distances[which(sapply(Herbpoints, function(x) class(x)!= "logical"))],
+#   z=Herbpoints[which(sapply(Herbpoints, function(x) class(x)!= "logical"))])
+
+HerbAreasDist <- Map(data.frame, 
+  x=areas[which(sapply(Herbpoints, function(x) class(x)!= "logical"))],
+  y=distances[which(sapply(Herbpoints, function(x) class(x)!= "logical"))],
+  z=Herbpoints[which(sapply(Herbpoints, function(x) class(x)!= "logical"))])
+
+HerbAreasDist_all <- do.call(rbind,HerbAreasDist)
+ind <- c(1:3,31:37,67:71,84:88)#names(HerbAreasDist_all)
+HAD_all <- HerbAreasDist_all
+HAD_all[ind] <- lapply(HAD_all[ind], function(x) as.numeric(as.character(x))) 
 ```
 
+```{r}
+#get rid of the three that are out of the state issues
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/distanceXyear.jpg",
+     width=150, height=100,units='mm', res=300)
+ggplot(HAD_all[HAD_all$y<500000&HAD_all$z.year>1800,], aes(z.year, y/1000))+
+  geom_point()+
+  stat_smooth(method="lm")+
+  theme_bw()+
+  xlab("Year")+
+  ylab("Distance (km) to nearest EOR")+
+#  labs(color='Georeference Method')+
+   theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+
+dev.off()
+```
+
+
+```{r}
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/distanceXSpeciesRange.jpg",
+     width=150, height=100,units='mm', res=300)
+
+ggplot(HAD_all[HAD_all$y<500000&HAD_all$z.year>1800,], aes(x/1000000, y/1000))+
+  geom_point()+
+  theme_bw()+
+  stat_smooth(method="lm")+
+  ylab("Distance (km) to nearest EOR")+
+  xlab(expression(paste("Species range (km"^"2",")")))
+
+dev.off()
+```
+
+
+```{r}
+local <- c("COLO","CS","DBG","FLD","MESA","RM","RMBL")
+Adjacent <- c("ASC","ASU","BRY","DES","NMC","RM","SJNM","UNM","USUUB","UVSC")
+far <- c("CM","F","MISSA","MO","NY","RENO","UCR")
+HAD_all$InstNear[HAD_all$z.institutionCode %in% local] <- "Local"
+HAD_all$InstNear[HAD_all$z.institutionCode %in% Adjacent] <- "Near"
+HAD_all$InstNear[HAD_all$z.institutionCode %in% far] <- "Far"
+
+HAD_all2 <- merge(g1g2names,HAD_all,by.x="Taxon", by.y="z.scientificName", all.y=TRUE)
+
+nrow(HAD_all);nrow(HAD_all2) #Whew!
+
+HAD_all2$z.year
+
+nrow(HAD_all2[HAD_all2$z.year>1800,]);nrow(HAD_all);nrow(HAD_all2) 
+table(HAD_all2$z.year)
+table(HAD_all2$InstNear)
+str(HAD_all2$InstNear)
+```
+
+```{r}
+f1 <- lm(y ~ as.factor(New.Genus) + z.year + as.factor(InstNear) + as.factor(Family) + x, data= HAD_all2)
+f2 <- lm(y ~ z.year + as.factor(InstNear) + as.factor(Family) + x, data= HAD_all2)
+f3 <- lm(y ~ z.year + x, data= HAD_all2)
+f4 <- lm(y ~ z.year, data= HAD_all2)
+f5 <- lm(y ~ x, data= HAD_all2)
+f6 <- lm(y ~ 1, data= HAD_all2)
+f7 <- lm(y ~ as.factor(New.Genus), data= HAD_all2)
+
+
+(lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7),
+       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7),formula)))))
+
+evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6,f7),
+                modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7),formula)))))
+
+sapply(1:length(lmresults$Delta_AICc), function(i){
+  exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
+})
+
+(er1 <- exp(0.5*lmresults$Delta_AICc[2]))
+(er2 <- exp(0.5*lmresults$Delta_AICc[3]))
+
+table(HAD_all2$z.institutionCode)
+```
 
 
 #By herbarium 
@@ -1271,7 +1399,19 @@ UCR = University of California Riverside
 USUUB = Utah STate University Uintah Basin (probably is USU)   
 UVSC = Utah Valley University	U.S.A. Utah. Orem.      
 
+```{r}
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/distanceXSpeciesRange.jpg",
+     width=150, height=100,units='mm', res=300)
 
+ggplot(HAD_all2[HAD_all2$y<500000&HAD_all2$z.year>1800,], aes(InstNear, y/1000))+
+  geom_point()+
+  theme_bw()+
+  stat_smooth(method="lm")+
+  ylab("Distance (km) to nearest EOR")+
+  xlab(expression(paste("Species range (km"^"2",")")))
+
+dev.off()
+```
 
 
 ```{r}
@@ -1917,14 +2057,7 @@ spRasterEORvsHerb <- lapply(unlist(sapply(maxentspecies, '[[', 8)[8,]),
   spRasterEORvsHerb[[1]][[1]][[2]]@data@names   #!!! Yes!
   
   thres_all[[1]]$Species
-  
-  #Order of names, but can use which to match the correct threshold with its map
-  mapply(function(x,y) print(unique(unlist(sapply(x, function(x1){
-    sapply(x1, function(x2){
-      x2@data@names
-    })
-  }))), unique(y$Species)),
-  spRasterEORvsHerb,thres_all)
+
 
 auc_all <- sapply(Maxent46species, function(x){
   species <- sapply(x, '[[', 8)
@@ -1992,49 +2125,6 @@ plot(sw, add=TRUE)
 
 ```
 
-```{r}
-
-
-f8 <- function(x, a, filename='') {
-   out <- raster(x)
-   big <- ! canProcessInMemory(out, 3)
-   filename <- trim(filename)
-   if (big & filename == '') {
-     filename <- rasterTmpFile()
-     }
-   if (filename != '') {
-     out <- writeStart(out, filename, ...)
-     todisk <- TRUE
-   } else {
-     vv <- matrix(ncol=nrow(out), nrow=ncol(out))
-     todisk <- FALSE
-     }
-   bs <- blockSize(x)
-   pb <- pbCreate(bs$n, ...)
-   if (todisk) {
-     for (i in 1:bs$n) {
-       v <- getValues(x, row=bs$row[i], nrows=bs$nrows[i] )
-       v <- v + a
-       out <- writeValues(out, v, bs$row[i])
-       pbStep(pb, i)
-       }
-     out <- writeStop(out)
-     } else {
-       for (i in 1:bs$n) {
-         v <- getValues(x, row=bs$row[i], nrows=bs$nrows[i] )
-         v <- v + a
-         cols <- bs$row[i]:(bs$row[i]+bs$nrows[i]-1)
-         vv[,cols] <- matrix(v, nrow=out@ncols)
-         pbStep(pb, i)
-         }
-       out <- setValues(out, as.vector(vv))
-       }
-   pbClose(pb)
-   return(out)
-   }
-
-
-```
 
 
 Testing the loop for all 46 species
