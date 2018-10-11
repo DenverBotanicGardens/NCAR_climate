@@ -1881,15 +1881,17 @@ pca_all <- lapply(1:length(pca_data2), function(i){
 
 anim_all <- do.call(rbind, pca_all)
 table(anim_all$PoV1)
+```
 
+```{r}
 animatePCA <- list()
 for(i in 1:46){
   animatePCA[[i]] <- ggplot(anim_all[anim_all$SpeciesID == i,], aes(Comp.1, Comp.2, 
                                  colour=as.factor(pa), 
                                  shape=as.factor(pa),
                                  frame=SpeciesID))+
-    
-                    geom_point()+
+    ggtitle(anim_all$GNAME[anim_all$SpeciesID == i][1])+
+    geom_point()+
                     stat_ellipse()+
                     theme_bw()+
                     xlab(paste("PC1 (",round(anim_all$PoV1[anim_all$SpeciesID == i][1],2)*100,"%)",sep=""))+
@@ -1897,16 +1899,24 @@ for(i in 1:46){
                     theme(plot.title=element_text(hjust=0))+
                     theme(legend.justification=c(0,1), legend.position=c(0,1),
                           legend.background = element_rect(fill=alpha('white', 0.1)))+
-                    labs(color = "Presence/Background", shape = "Presence/Background")
+                    #labs(color = "Presence/Background", shape = "Presence/Background")+
+    scale_shape_manual(name = "Presence/Background", 
+                       labels=c("EOR presence",
+                              "Herbarium presence",
+                              "EOR background",
+                              "Herbarium background"),
+                       values=c(16,17,1,2)) +               
+    scale_colour_manual(name = "Presence/Background",
+                       labels=c("EOR presence",
+                              "Herbarium presence",
+                              "EOR background",
+                              "Herbarium background"),
+                       values=c("indianred4","hotpink3","lightslategray","lightsteelblue3")) #("darkolivegreen4","green4","lightgrey","ivory4"))
 }
-                  # scale_color_manual("Presence/Background",
-                  #                    labels = c("EOR pr","Herb pr","EOR bg","Herb bg"),
-                  #                    values = c("darkorchid1","coral","darkorchid4","chocolate1"))+
-                  # scale_shape_manual("Presence/Background", values=c(16,4,16,4))
 
-gganimate(animatePCA, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/PCA_animate.gif", ani.width = 600, ani.height = 450, interval = 0.5)
-
-animatePCA[[2]]
+for(i in 1:46){
+  print(animatePCA[[i]])
+}
 ```
 
 
