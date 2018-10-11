@@ -80,6 +80,8 @@ library(doParallel)
 library(parallel)
 library(foreach)
 
+require(AICcmodavg)
+
 #Skip making these, takes a long time
 # load("P:/hackathon/Simulations/circleEOR.Rda")
 # load("P:/hackathon/Simulations/circleHerb.Rda")
@@ -1245,33 +1247,6 @@ ggplot(toplot[toplot$distXspbind<max(toplot$distXspbind)&
 
 ```
 
-```{r}
-require(AICcmodavg)
-# 
-# f1 <- lm(distNearEOR ~ New.Genus + year + institutionCode + Family + Area, data= colo.all.ll@data)
-# f2 <- lm(distNearEOR ~ year + institutionCode + Family + Area, data= colo.all.ll)
-# f3 <- lm(distNearEOR ~ year + Area, data= colo.all.ll)
-# f4 <- lm(distNearEOR ~ year, data= colo.all.ll)
-# f5 <- lm(distNearEOR ~ Area, data= colo.all.ll)
-# f6 <- lm(distNearEOR ~ 1, data= colo.all.ll)
-# f7 <- lm(distNearEOR ~ New.Genus, data= colo.all.ll)
-# 
-# 
-# (lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7),
-#        modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7),formula)))))
-# 
-# evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6,f7),
-#                 modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7),formula)))))
-# 
-# sapply(1:length(lmresults$Delta_AICc), function(i){
-#   exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
-# })
-# 
-# (er1 <- exp(0.5*lmresults$Delta_AICc[2]))
-# (er2 <- exp(0.5*lmresults$Delta_AICc[3]))
-```
-
-
 #how many are in the county they say they should be in? Check Jessie's code for help     
 Distance from herbarium to EOR by year  
 ```{r}
@@ -1286,15 +1261,6 @@ Herbpointsout <- do.call(rbind,Herbpoints[sapply(Herbpoints, function(x) class(x
 which(sapply(Herbpoints, function(x) class(x)!= "logical"))
 Herbpointsout@data
 
-
-# HerbAreasDist <- mapply(function(x,y,z){ 
-#   zout <- z@data
-#   data.frame(z,Dist=y,Area=x)
-#   }, 
-#   x=areas[which(sapply(Herbpoints, function(x) class(x)!= "logical"))],
-#   y=distances[which(sapply(Herbpoints, function(x) class(x)!= "logical"))],
-#   z=Herbpoints[which(sapply(Herbpoints, function(x) class(x)!= "logical"))])
-
 HerbAreasDist <- Map(data.frame, 
   x=areas[which(sapply(Herbpoints, function(x) class(x)!= "logical"))],
   y=distances[which(sapply(Herbpoints, function(x) class(x)!= "logical"))],
@@ -1305,7 +1271,7 @@ ind <- c(1:3,31:37,67:71,84:88)#names(HerbAreasDist_all)
 HAD_all <- HerbAreasDist_all
 HAD_all[ind] <- lapply(HAD_all[ind], function(x) as.numeric(as.character(x))) 
 HAD_all2 <- merge(g1g2names,HAD_all,by.x="Taxon", by.y="z.scientificName", all.y=TRUE)
-
+HAD_all2[c(1:8,12:21)] <- lapply(HAD_all2[c(1:8,12:21)], function(x) as.factor(x)) 
 
 ```
 
@@ -1319,8 +1285,7 @@ ggplot(HAD_all[HAD_all$y<500000&HAD_all$z.year>1800,], aes(z.year, y/1000))+
   theme_bw()+
   xlab("Year")+
   ylab("Distance (km) to nearest EOR")+
-#  labs(color='Georeference Method')+
-   theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
 
 dev.off()
 ```
@@ -1341,29 +1306,22 @@ dev.off()
 ```
 
 ```{r}
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/distanceXSpeciesRange.jpg",
-     width=150, height=100,units='mm', res=300)
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/distanceXYear_SpeciesRange.jpg",
+     width=275, height=200,units='mm', res=300)
 
-# ggplot(HAD_all2[HAD_all2$y<500000&HAD_all2$z.year>1800&
-#                   !is.na(HAD_all2$New.Genus),], aes(as.factor(New.Genus), log(y/1000), colour=as.numeric(as.factor(New.Species))))+
-#   geom_boxplot()+
-#   theme_bw()+
-#   geom_jitter(position = position_jitter(0.2), pch=16, cex=0.5)+
-#   ylab("Distance log(km) to nearest EOR")+
-#   xlab("Genus")+
-#   theme(legend.position="none")+
-#   theme(axis.text.x = element_text(angle = 90, hjust = 1))+
-#   scale_color_gradient(low = "brown", high = "darkgreen")
-# 
-# require(lme4)
-
-lattice::xyplot((y/1000) ~ z.year|as.factor(New.Genus), HAD_all2[HAD_all2$y<500000&HAD_all2$z.year>1800&
-                                                              !is.na(HAD_all2$New.Genus),],
-                ylab="Distance log(km) to nearest EOR",
-                type = c("g","p","r"),
-                index = function(x,y) coef(lm(y ~ x))[1],
-                xlab="Year")
-
+ggplot(HAD_all2[which(HAD_all2$y<500000&HAD_all2$z.year>1800&
+                  !is.na(HAD_all2$New.Genus)),], aes(z.year, y/1000, colour=as.numeric(New.Species)))+
+  geom_point()+
+  theme_bw()+
+  ylim(c(-1,max(HAD_all2$y[which(HAD_all2$y<500000&HAD_all2$z.year>1800&
+                  !is.na(HAD_all2$New.Genus))]/1000)+1))+
+  stat_smooth(method="lm")+
+  facet_wrap(~New.Genus)+
+  ylab("Distance (km) to nearest EOR")+
+  xlab("Year")+
+  theme(legend.position="none")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_color_gradientn(colours = rainbow(length( table(HAD_all2$Taxon))))
 
 
 dev.off()
@@ -1394,6 +1352,7 @@ sapply(1:length(lmresults$Delta_AICc), function(i){
 (er2 <- exp(0.5*lmresults$Delta_AICc[3]))
 
 length(table(HAD_all2$New.Genus))
+table(HAD_all2$Taxon)
 ```
 
 
@@ -1771,11 +1730,11 @@ save(pca_data2, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in nich
 
 ```
 
+
+
+
 Model Fitting, AIC, GLM   
 ```{r}
-require(AICcmodavg)
-library(lme4)
-library(lattice)
 library(psych)
 
 #predictor variables and eliminated one variable from each pair that was strongly correlated (Pearson or Spearman correlation, r > 0.70 — Elith et al., 2006). - Hayes et al 2015
@@ -1899,6 +1858,55 @@ stackmini <- stack(winPrecipclip,winTmaxclip,winterMintempclip,
                    #fallPrecipclip, 
                    fallTmaxclip) #, fallMintempclip)
                    #, summerPrecipclip)
+```
+
+
+Reference stackmini to have same environmental variables in PCA as in the maxent models
+```{r}
+
+animatepca_data <- Map(data.frame, pca_data2, SpeciesID=as.list(seq(1,length(pca_data2),1)))
+
+pca_all <- lapply(1:length(pca_data2), function(i){
+  x <- animatepca_data[[1]]
+  x.pca <- princomp(x[,c("WinterPrecip","SummerPrecip","WinterMinTemp","WinterMaxTemp","FallMaxTemp")], cor=TRUE)
+  # x.load <- loadings(x.pca)
+  x.pc1 <- predict(x.pca)
+  x.pc <- data.frame(x.pc1,x) #x$pa where 1=EOR presence, 3=EOR background; 2=Herb presence, 4=herb background
+  # x.PoV <- x.pca$sdev^2/sum(x.pca$sdev^2) #Percent of variance explained by the components
+  x.pc
+})
+# 
+# pca_all[[1]][[1]]
+# 
+# what <- unlist(pca_all, recursive = FALSE)
+# animate_all <- do.call(rbind, lapply(pca_all, function(i){
+#   x.pc <- sapply(i,'[[',1)
+#   x.pc
+#   }))
+
+anim_all <- do.call(rbind, pca_all)
+
+animatePCA <- ggplot(x.pc, aes(Comp.1, Comp.2, 
+                               colour=as.factor(pa), 
+                               shape=as.factor(pa),
+                               frame=SpeciesID))+
+                  geom_point()+
+                  stat_ellipse()+
+                  theme_bw()+
+                  xlab(paste("PC1 (",round(x.PoV[1],2)*100,"%)",sep=""))+
+                  ylab(paste("PC2 (",round(x.PoV[2],2)*100,"%)",sep=""))+
+                  theme(plot.title=element_text(hjust=0))+
+                  theme(legend.justification=c(0,1), legend.position=c(0,1),
+                        legend.background = element_rect(fill=alpha('white', 0.1)))+
+                  labs(color = "Presence/Background", shape = "Presence/Background")
+                  # scale_color_manual("Presence/Background",
+                  #                    labels = c("EOR pr","Herb pr","EOR bg","Herb bg"),
+                  #                    values = c("darkorchid1","coral","darkorchid4","chocolate1"))+
+                  # scale_shape_manual("Presence/Background", values=c(16,4,16,4))
+
+gganimate(animatePCA, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/PCA_animate.gif", ani.width = 600, ani.height = 450, interval = 0.75)
+
+
 ```
 
 
