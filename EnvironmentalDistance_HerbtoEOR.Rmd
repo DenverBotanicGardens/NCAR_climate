@@ -5,13 +5,62 @@ date: "October 11, 2018"
 output: html_document
 ---
 
+Not doing genetic clustering so probably don't need Thibaut's package...
 ```{r}
-library(adegenet)
-library(pegas)
-library(strataG)
+library(devtools)
+# install_github("thibautjombart/adegenet")
+# install.packages("metricsgraphics")
+# library("adegenet")
+# library(ade4)
+# library(pegas)
+# library(strataG)
+library(ggplot2)
+library(dplyr)
+library(htmltools)
+library(htmlwidgets)
+library(metricsgraphics)
+library(RColorBrewer)
+library(randomForest)
+library(maptools)
+library(Taxonstand)
 
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data2.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp.Rda")
 
+l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
+#Each polygon might be made of multiple disconnected polygons. Need to separate and label
+l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
+l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
+                                       function(x){
+              x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
+              x
+              }))
+
+# Could take all the synonyms and names of l1G1G2 to make the list of names to pull from SEINet big list
+namesg1g2 <- table(l1G1G2$GNAME)
+#length(namesg1g2[namesg1g2 > 0]) #60 species
+g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
+
+areas <- lapply(sapply(distXsp, '[[', 3), function(x) sum(x))
+distances <- sapply(distXsp, '[[', 2)
+Herbpoints <- sapply(distXsp, '[[', 1)
+#The species with no herbarium collections come out as blank and are thus class(x) == "logical"; to subset go with those that aren't 'logical'
+Herbpointsout <- do.call(rbind,Herbpoints[sapply(Herbpoints, function(x) class(x)!= "logical")])
+#But I want to cbind the areas adn distances with the herbarium points. 
+which(sapply(Herbpoints, function(x) class(x)!= "logical"))
+Herbpointsout@data
+
+HerbAreasDist <- Map(data.frame, 
+  x=areas[which(sapply(Herbpoints, function(x) class(x)!= "logical"))],
+  y=distances[which(sapply(Herbpoints, function(x) class(x)!= "logical"))],
+  z=Herbpoints[which(sapply(Herbpoints, function(x) class(x)!= "logical"))])
+
+HerbAreasDist_all <- do.call(rbind,HerbAreasDist)
+ind <- c(1:3,31:37,67:71,84:88)#names(HerbAreasDist_all)
+HAD_all <- HerbAreasDist_all
+HAD_all[ind] <- lapply(HAD_all[ind], function(x) as.numeric(as.character(x))) 
+HAD_all2 <- merge(g1g2names,HAD_all,by.x="Taxon", by.y="z.scientificName", all.y=TRUE)
+HAD_all2[c(1:8,12:21)] <- lapply(HAD_all2[c(1:8,12:21)], function(x) as.factor(x)) 
 
 ```
 
@@ -34,7 +83,6 @@ pca_all <- lapply(1:length(pca_data2), function(i){
 })
 
 anim_all <- do.call(rbind, pca_all)
-table(anim_all$PoV1)
 ```
 
 ```{r}
@@ -72,3 +120,99 @@ for(i in 1:46){
   print(animatePCA[[i]])
 }
 ```
+
+https://rpubs.com/gabrielmartos/ClusterAnalysis  
+https://nishanthu.github.io/articles/ClusteringUsingRandomForest.html  
+
+```{r}
+x<-pca_all[[1]]
+
+km.cluster <- kmeans(x[,c("WinterPrecip","SummerPrecip","WinterMinTemp","WinterMaxTemp","FallMaxTemp")], centers = 3, iter.max = 20, nstart = 2)
+
+x$kmeans.cluster <- km.cluster$cluster
+table(x$pa, km.cluster$cluster) #seems like the two presences eor(1) and herb(2) are mostly in group 2 and a little in 1, background are in group 3
+
+mjs_plot(x, x=Comp.1, y=Comp.2) %>%
+  mjs_point(color_accessor=kmeans.cluster) %>%
+  mjs_labs(x="principal comp 1", y="principal comp 2")
+
+```
+
+animatepca_data which is pca_data2 with a species id identifier... Could add that identifier to HAD_all2 to merge them. 
+```{r}
+rf.fit <- randomForest(x = x[,c("WinterPrecip","SummerPrecip","WinterMinTemp","WinterMaxTemp","FallMaxTemp")], 
+                       y = NULL, ntree = 10000, proximity = TRUE, oob.prox = TRUE)
+hclust.rf <- hclust(as.dist(1-rf.fit$proximity), method = "ward.D2")
+rf.cluster = cutree(hclust.rf, k=4)
+x$rf.clusters <- rf.cluster
+table(rf.cluster, x$pa) # so the 1:4 along the top are the herb and eor presence and backgrounds
+
+#How far away are the herbarium collections that didn't fall into the 1st or second cluster (the present clusters)?
+x$[x$rf.clusters==1]
+
+names(HAD_all2);names(x)
+table(x$GNAME)[table(x$GNAME)>0] #the accepted and synonym 
+
+table(HAD_all2$Taxon)
+length(table(HAD_all2$Species))
+length(table(HAD_all2$Taxon))
+
+#merge one, then the other, then rbind?
+x$Taxon <- 
+
+foo <- merge(x,HAD_all2)
+
+```
+
+```{r}
+mjs_plot(x, x=Comp.1, y=Comp.2) %>%
+  mjs_point(color_accessor=rf.clusters) %>%
+  mjs_labs(x="principal comp 1", y="principal comp 2")
+
+```
+
+
+Are the points beyond the 95% CI of the cluster (all the presence points) herbarium specimens that are also far away, so what's the distribution of distance form EOR information   
+```{r}
+a <- mean(x$Comp.1[x$pa<3])
+s <- sd(x$Comp.1[x$pa<3])
+n <- length(x$Comp.1)
+error <- qnorm(0.975)*s/sqrt(n)
+
+
+a2 <- mean(x$Comp.2[x$pa<3])
+s2 <- sd(x$Comp.2[x$pa<3])
+n2 <- length(x$Comp.2)
+error2 <- qnorm(0.975)*s2/sqrt(n2)
+
+
+x[which(x$Comp.1>(a+error)&(x$Comp.2>(a2+error2))&x$pa <3|
+        x$Comp.1<(a-error)&x$Comp.2<(a2-error2)&x$pa<3),]
+
+hist(x$Comp.1[])
+abline(v=a)
+```
+
+Find points inside and outside the ellipse
+```{r}
+
+# Build the plot first
+p <- ggplot(faithful, aes(waiting, eruptions)) +
+  geom_point() +
+  stat_ellipse()
+
+# Extract components
+build <- ggplot_build(p)$data
+points <- build[[1]]
+ell <- build[[2]]
+
+# Find which points are inside the ellipse, and add this to the data
+dat <- data.frame(points[1:2], 
+                  in.ell = as.logical(point.in.polygon(points$x, points$y, ell$x, ell$y)))
+
+# Plot the result
+ggplot(dat, aes(x, y)) +
+  geom_point(aes(col = in.ell)) +
+  stat_ellipse()
+```
+
