@@ -55,12 +55,34 @@ HerbAreasDist <- Map(data.frame,
   y=distances[which(sapply(Herbpoints, function(x) class(x)!= "logical"))],
   z=Herbpoints[which(sapply(Herbpoints, function(x) class(x)!= "logical"))])
 
+#Would like to add a unique number to these so they match... 
+# HAD_all_id <- Map(data.frame, HerbAreasDist, SpeciesID=as.list(seq(1,length(HerbAreasDist),1)))
+# HAD_all_id[[1]]
+# HerbAreasDist_all <- do.call(rbind,HAD_all_id)
 HerbAreasDist_all <- do.call(rbind,HerbAreasDist)
+
+
+#Numbr orders don't match
+# speciesxnum <- lapply(1:46, function(p){
+#   data.frame(HerbAreasDist[[p]]$z.scientificName, SpeciesID=p)
+# })
+# speciesxnum_pca <- lapply(animatepca_data , function(p){
+#   p[,c("GNAME","SpeciesID")]
+# })
+# sxn <- do.call(rbind,speciesxnum);sxnpca <- do.call(rbind,speciesxnum_pca)
+# unique(sxn);unique(sxnpca)
+# merge(unique(sxn),unique(sxnpca), by="SpeciesID")
+# #pca_data2 --> animatepca_data when added SpeciesID 
+# names(animatepca_data [[1]])
+
+
 ind <- c(1:3,31:37,67:71,84:88)#names(HerbAreasDist_all)
 HAD_all <- HerbAreasDist_all
 HAD_all[ind] <- lapply(HAD_all[ind], function(x) as.numeric(as.character(x))) 
 HAD_all2 <- merge(g1g2names,HAD_all,by.x="Taxon", by.y="z.scientificName", all.y=TRUE)
 HAD_all2[c(1:8,12:21)] <- lapply(HAD_all2[c(1:8,12:21)], function(x) as.factor(x)) 
+
+
 
 ```
 
@@ -138,7 +160,8 @@ mjs_plot(x, x=Comp.1, y=Comp.2) %>%
 
 ```
 
-animatepca_data which is pca_data2 with a species id identifier... Could add that identifier to HAD_all2 to merge them. 
+animatepca_data which is pca_data2 with a species id identifier... Could add that identifier to HAD_all2 to merge them.   
+HAD_all2 is the herbarium data from distXsp, the area of EORs from distXsp, and the distance from herbarium points from distXsp to their closest EOR, and the _all2 is all species merged with  
 ```{r}
 rf.fit <- randomForest(x = x[,c("WinterPrecip","SummerPrecip","WinterMinTemp","WinterMaxTemp","FallMaxTemp")], 
                        y = NULL, ntree = 10000, proximity = TRUE, oob.prox = TRUE)
