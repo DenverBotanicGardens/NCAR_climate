@@ -64,8 +64,6 @@ library(RCurl)
 library(taxize)
 library(ggmap)
 
-library(gganimate)
-
 library(dismo)
 library(ENMeval)
 library(biomod2)
@@ -92,15 +90,15 @@ require(AICcmodavg)
 # load("P:/hackathon/Simulations/Herb.thin1000.Rda")
 # load("P:/hackathon/Simulations/EORgrid.thin.Rda")
 
-load("P:/hackathon/Simulations/coloradosps.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorsinglecell.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herbpost1980.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorpost1980.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data2.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxent46species.Rda")
+# load("P:/hackathon/Simulations/coloradosps.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorsinglecell.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herbpost1980.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorpost1980.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data2.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxent46species.Rda")
 
 ScaleBar <- function(reference_raster_utm, round_to_nearest_km, width_percent, y_percent_from_bottom, x_percent_from_left, y_text_percent_from_bottom, ...) {
     # Round by max to nearest... e.g. 5 km 
@@ -478,12 +476,10 @@ proj4string(l1G1G2) <- CRS(proj4string(l1eor))
 coloradosps.dist <- coloradosps.g1g2
 coloradosps.dist$distNearEOR <- NA
 
-distXspbind <- do.call(c,mapply('[[', distXsp, 2))
- 
-length(distXspbind[is.na(distXspbind)]) #14 don't have any data
-distXspbind <- distXspbind[!is.na(distXspbind)]
-coloradosps.dist$distNearEOR[which(rownames(coloradosps.dist) %in%
-                                         names(distXspbind))] <-unname(distXspbind)
+    utm_crs <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
+latlong_crs <- CRS("+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0")
+
+proj4string(l1G1G2)<-utm_crs
 ```
 
 
@@ -501,22 +497,24 @@ distXsp <- lapply(1:nrow(g1g2names), function(i){
   if(nrow(EORpnts)>0){
     coordinates(EORpnts) <- ~ x1+x2
     proj4string(EORpnts) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
-    EORpnts <- spTransform(EORpnts, CRS("+proj=longlat +datum=WGS84"))
+    EORpnts <- spTransform(EORpnts, latlong_crs) # CRS("+proj=longlat +datum=WGS84"))
   } else {
     EORpnts <- NA
   }
      
   g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in%
-                                c(g1g2names$Taxon[i],g1g2names$AcceptedName[i]),]
-  
+                                c(g1g2names$Taxon[i],g1g2names$AcceptedName[i])&
+                                !is.na(coloradosps.g1g2$decimalLatitude),]
+  #g1g2now <- g1g2now[!is.na(g1g2now$decimalLatitude),]
+  #area of each polygon
   areanow <- sapply(slot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
                                          g1g2names$Taxon[i]),], "polygons"), 
          slot, "area")
 
-  g1g2now$decimalLatitude <- as.numeric(as.character(g1g2now$decimalLatitude))
-  g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
-  g1g2now <- g1g2now[!is.na(g1g2now$decimalLatitude),]
-  g1g2now <- g1g2now[!is.na(g1g2now$decimalLongitude),]
+  # g1g2now$decimalLatitude <- as.numeric(as.character(g1g2now$decimalLatitude))
+  # g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
+  # g1g2now <- g1g2now[!is.na(g1g2now$decimalLatitude),]
+  # g1g2now <- g1g2now[!is.na(g1g2now$decimalLongitude),]
   if(nrow(g1g2now)>0){
     #turn into spatialpointsdataframe for individual species
     coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
@@ -526,38 +524,36 @@ distXsp <- lapply(1:nrow(g1g2names), function(i){
                                l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
                                                           g1g2names$Taxon[i]),], byid=TRUE),
                      2,min)
-    
-    
+    g1g2now$SpeciesID <- i
+    g1g2now$dist <- distnow
+    g1g2now$area <- sum(areanow)
+    g1g2now$numpolys <- length(areanow)
     out <- list(g1g2now, distnow, areanow, EORpnts)
   } else {
+  #   g1g2now$dist <- NA
+  #   g1g2now$area <- sum(areanow)
+  #   g1g2now$numpolys <- length(areanow)    
       out <- list(NA,NA, areanow, EORpnts)
     }
   out
   })
 
-  
-save(distXsp, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp.Rda")
+  save(distXsp, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
 ```
 
 ```{r}
-
-plot(distNearEOR~as.factor(scientificName), coloradosps.dist[coloradosps.dist$distNearEOR<500000,], las=2)
-
-nrow(coloradosps.dist) #2451
-colo.merged <- merge(coloradosps.dist, g1g2names, by.x = "scientificName", by.y="AcceptedName")
-nrow(colo.merged) #2251
-colo.merged.taxon <- merge(coloradosps.dist, g1g2names, by.x = "scientificName", by.y="Taxon")
-nrow(colo.merged.taxon) #2121
-## Want the ones that are only in the first and only the second and one copy of the middle ones... 
-colo.all <- unique(rbind(colo.merged[,-grep("^Taxon$", names(colo.merged))], 
-                         colo.merged.taxon[,-grep("^AcceptedName$",names(colo.merged.taxon))]))
-nrow(colo.all) #2451
-#Names that aren't in TPL
-unique(colo.all$scientificName[colo.all$Family==""]) #"Gutierrezia elegans"
-colo.all$Family[colo.all$Family==""] <- "Asteraceae"
+str(coloradosps.dist)
+distXsp1 <- do.call(c,mapply('[[', distXsp, 1))
+distXsp1 <- do.call(rbind,distXsp1[!is.na(distXsp1)])
+plot(dist~as.factor(scientificName), distXsp1[distXsp1$dist<500000,], las=2)
 
 
-plot(distNearEOR~as.factor(Family), colo.all[colo.all$distNearEOR<500000,], las=2,
+distXsp1_tpl <- TPL(distXsp1$scientificName)
+nrow(distXsp1);nrow(distXsp1_tpl)
+
+distXsp1 <- data.frame(distXsp1,distXsp1_tpl)
+
+plot(dist~as.factor(Family), distXsp1[distXsp1$dist<500000,], las=2,
      xlab="",ylab="")
 require(lme4)
 require(lattice)
@@ -738,7 +734,7 @@ pca_eorandherb <- lapply(1:nrow(g1g2names), function(sp){
                             Bestcrs=mergedEORs$BESTSRC, firstobs=mergedEORs$FIRSTOBS, 
                             GRANK=mergedEORs$GRANK,
                             GNAME=mergedEORs$GNAME,ENDEMIC=mergedEORs$ENDEMIC, 
-                            Lastobs=mergedEORs$LASTOBS,
+                            Lastobs=mergedEORs$LASTOBS,dist=NA,area=NA,
                             extract(rasterstack, mergedEORs))
      data_eor
 })
@@ -859,13 +855,16 @@ for(i in 1:length(polys)){
 speciesNoHerb <- do.call(c,mapply('[[', distXsp, 1))
 want <- which(do.call(c,lapply(speciesNoHerb, function(x) !is.na(x))))
 
+class(distXsp[[1]][[1]])
+
 pca_herb <- lapply(want, function(x){
-  out <- spTransform(distXsp[[x]][[1]], CRS(paste(rscrs)))
+#  transdf <- data.frame(distXsp[[x]][[1]],dist=distXsp[[x]][[2]],area=distXsp[[x]][[3]])
+  out <- spTransform(distXsp[[x]][[1], CRS(paste(rscrs)))
   pca_herbout <- data.frame(coordinates(out),id=out$id,polyid=NA,
                             Bestcrs=out$institutionCode, firstobs=out$eventDate, 
                             GRANK=NA,
                             GNAME=out$scientificName,ENDEMIC=NA, 
-                            Lastobs=out$eventDate,
+                            Lastobs=out$eventDate,dist=out$dist,area=out$area,
                             extract(rasterstack, out))
   pca_herbout
 })
@@ -1160,7 +1159,7 @@ length(colo.all$coordinateUncertaintyInMeters[!is.na(colo.all$coordinateUncertai
 
 colo.all[is.na(colo.all$coordinateUncertaintyInMeters),]
 
-colo.all[colo.all$distNearEOR>50000 & !is.na(colo.all$distNearEOR),c(56,57,83,61,63,66,67)] #611551meters is width of colorado about
+colo.all[colo.all$dist>50000 & !is.na(colo.all$dist),c(56,57,83,61,63,66,67)] #611551meters is width of colorado about
 
 #Can't have missing data
 colo.all.ll <- colo.all[!is.na(colo.all$decimalLatitude)&
