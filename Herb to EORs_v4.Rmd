@@ -550,7 +550,6 @@ plot(dist~as.factor(scientificName), distXsp1[distXsp1$dist<500000,], las=2)
 
 distXsp1_tpl <- TPL(distXsp1$scientificName)
 nrow(distXsp1);nrow(distXsp1_tpl)
-
 distXsp1 <- data.frame(distXsp1,distXsp1_tpl)
 
 plot(dist~as.factor(Family), distXsp1[distXsp1$dist<500000,], las=2,
@@ -559,73 +558,23 @@ require(lme4)
 require(lattice)
 
 
-length(table(colo.merged$Taxon)) #58 species with some data
-
-
 #Write table for VisTrails field data
 #nrow(seinet_TPL)
-seinet_TPL.cc <- seinet_TPL[seinet_TPL$decimalLongitude > -110,]
-seinet_TPL.cc <- seinet_TPL.cc[seinet_TPL.cc$decimalLatitude > 35, ]
-
-plot(seinet_TPL.cc$decimalLongitude,seinet_TPL.cc$decimalLatitude)
+# seinet_TPL.cc <- seinet_TPL[seinet_TPL$decimalLongitude > -110,]
+# seinet_TPL.cc <- seinet_TPL.cc[seinet_TPL.cc$decimalLatitude > 35, ]
+# 
+# plot(seinet_TPL.cc$decimalLongitude,seinet_TPL.cc$decimalLatitude)
 # 
 # write.csv(seinet_TPL.cc, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORG1G2.csv")
 # 
 # write.csv(seinet_TPL.cc, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/FieldData_EORG1G2.csv")
 
-herbspecimennumxsp<-table(seinet_TPL.cc$scientificNameAccpt)
-
-
-whoswho <- data.frame(table(seinet_TPL.cc$scientificNameAccpt,seinet_TPL.cc$scientificName))
-whoswho[whoswho$Freq>0,]  
-
-
-
 ```
 
-
-
-#Animate maps over each species with points and polygons, animation isn't working    
-
-```{r}
-all.g1g2now <- do.call(c,mapply('[[', distXsp, 1)) #all the transformed to UTM species points
-all.g1g2now <- all.g1g2now[!is.na(all.g1g2now)]
-
-plot(colocounties.UTM, border="grey80", main=g1g2names$AcceptedName[1])
-plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[1],g1g2names$Taxon[1]),],
-     border = "red", add=TRUE, lwd=4)
-points(distXsp[[1]][[1]], pch=16, cex=0.25)
-ScaleBar(raster(colocounties.UTM), 100, .20, .10, .75, .07, lwd=2)
-# 
-# #install.packages("ggsn")
-# library(ggsn)
-# proj4string(l1G1G2) <- CRS(proj4string(colocounties.UTM))
-# coordinates(colocounties.UTM)
-# polygons(l1G1G2)
-# 
-# 
-# ggplot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[1],g1g2names$Taxon[1]),])+
-#   aes([,1],[,2], group=ID)+
-#   geom_polygon()+
-#   geom_path(color="black")+
-#   scale_fill_brewer("EOR")
-```
 
 
 Get the coordiates from each saved to use as csvs in VisTrails. 
 ```{r}
-# distXsp[[1]][[2]] #The distances from each herbarium point to the nearest EOR
-# distXsp[[1]][[3]] #The areas of each EOR polygon for that species
-# distXsp[[1]][[4]] #The 100 meter grid points within EORs
-
-#lat/lon WGS 84
-# plot(colocounties)
-# points(distXsp[[1]][[4]], pch=20, col="blue", cex=0.5)
-
-#AsMi
-# plot(colocounties)
-# points(distXsp[[4]][[4]]) 
-
 
 #distXsp[[i]][[1]] are the herbarium points, SpatialPointsDataFrame
 speciesNoHerb <- do.call(c,mapply('[[', distXsp, 1))
@@ -691,6 +640,10 @@ pca_eorandherb <- lapply(1:nrow(g1g2names), function(sp){
   #put grid points across colorado, sample from it for each polygons
      polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[sp],
                                          g1g2names$Taxon[sp]),] 
+      #area of each polygon
+      areanow <- sapply(slot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                             g1g2names$Taxon[i]),], "polygons"), 
+                        slot, "area")
 
      cellsize <- 100
      grid <- lapply(1:length(polys), function(i){
@@ -734,7 +687,7 @@ pca_eorandherb <- lapply(1:nrow(g1g2names), function(sp){
                             Bestcrs=mergedEORs$BESTSRC, firstobs=mergedEORs$FIRSTOBS, 
                             GRANK=mergedEORs$GRANK,
                             GNAME=mergedEORs$GNAME,ENDEMIC=mergedEORs$ENDEMIC, 
-                            Lastobs=mergedEORs$LASTOBS,dist=NA,area=NA,
+                            Lastobs=mergedEORs$LASTOBS,dist=NA,area=sum(areanow),
                             extract(rasterstack, mergedEORs))
      data_eor
 })
@@ -851,13 +804,9 @@ for(i in 1:length(polys)){
 #The first in all these are the herbarium records
 (distXsp[[1]][[1]]) #+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0   Need to transform
 
-#distXsp[[i]][[1]] are the herbarium points, SpatialPointsDataFrame
-speciesNoHerb <- do.call(c,mapply('[[', distXsp, 1))
-want <- which(do.call(c,lapply(speciesNoHerb, function(x) !is.na(x))))
 
-class(distXsp[[1]][[1]])
 
-pca_herb <- lapply(want, function(x){
+pca_herb <- lapply(distXsp[distXsp], function(x){
 #  transdf <- data.frame(distXsp[[x]][[1]],dist=distXsp[[x]][[2]],area=distXsp[[x]][[3]])
   out <- spTransform(distXsp[[x]][[1], CRS(paste(rscrs)))
   pca_herbout <- data.frame(coordinates(out),id=out$id,polyid=NA,
