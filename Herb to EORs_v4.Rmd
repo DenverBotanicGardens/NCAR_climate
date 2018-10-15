@@ -445,7 +445,6 @@ dev.off()
 
 
 #Test to make distXsp   
-need distXspbind later  
 ```{r}
 us <- getData('GADM', country = 'US', level = 1)
 colorado <- us[us$NAME_1 == "Colorado",]
@@ -1034,28 +1033,27 @@ dd <- gDistance(localroads.latlon, as(r, "SpatialPoints"), byid=TRUE)
 
 Geographic distance from herbarium points to EORs  
 ```{r}
-
-hist(distXspbind[distXspbind<700000]/1000, main = "Distance (km) from points to nearest EOR",
+hist(distXsp1$dist[distXsp1$dist<700000]/1000, main = "Distance (km) from points to nearest EOR",
      xlab="km", breaks=50)#, xlim=c(1,612))
 
-plot(density(distXspbind/1000))
+plot(density(distXsp1$dist[distXsp1$dist<700000]/1000))
 
-vals <- density(distXspbind)
+vals <- density(distXsp1$dist)
 pStar <- vals$x[which(vals$y==max(vals$y))]
 
-plot(density(distXspbind), xlim=c(0,50000))
+plot(density(distXsp1$dist), xlim=c(0,50000))
 abline(v=pStar, col="red")
 abline(h=max(vals$y)-qlnorm(0.95))
 
-length(distXspbind[distXspbind>100]) #816
+length(distXsp1$dist[distXsp1$dist>100]) #816
 
-length(distXspbind[distXspbind<=100]) #275
+length(distXsp1$dist[distXsp1$dist<=100]) #275
 
-median(distXspbind)
+median(distXsp1$dist)
 
 reps <- 50000
 ssize <- 500
-rand.diff <- unlist(lapply(1:reps, function(x) median(sample(distXspbind,ssize))))
+rand.diff <- unlist(lapply(1:reps, function(x) median(sample(distXsp1$dist,ssize))))
 ctrl95CI <- sd(rand.diff)/sqrt(ssize)*qt(0.975,df=ssize) 
 ctrl95CI.l <- sd(rand.diff)/sqrt(ssize)*qt(0.025,df=ssize)
 
@@ -1166,80 +1164,38 @@ colo.all.ll@data[!(colo.all.ll$countyclean %in%colo.all.ll$InCounty),]
 
 Total area of EOR polygons per spcies for the the 46 species with mapped herbarium records 
 ```{r}
-speciesNoEOR <- lapply(want, function(x){
-  out <- sum(distXsp[[x]][[3]])
-  out
-})
-
-areaxsp <- unlist(lapply(want, function(x) sum(distXsp[[x]][[3]])))
-areaxsp <- data.frame(Area = areaxsp, AccName = g1g2names$AcceptedName[want])
-
-mediandistxsp <- unlist(lapply(want, function(x) median(distXsp[[x]][[2]])))
-
-area_distxsp <- rep(areaxsp$Area, times= unlist(lapply(want,function(x) length(distXsp[[x]][[2]]))))
-sp_distxsp <- rep(areaxsp$AccName, times= unlist(lapply(want,function(x) length(distXsp[[x]][[2]]))))
-
-toplot <- data.frame(area_distxsp, sp_distxsp, distXspbind)
-
-#One is factor, but they are the same! 46 species
-areaxsp$AccName <- as.character(areaxsp$AccName) 
-
-colo.all.ll$AcceptedName <- paste(colo.all.ll$New.Genus,colo.all.ll$New.Species)
-colo.all.ll@data <- merge(colo.all.ll@data,areaxsp, 
-                          by.x ="AcceptedName", by.y="AccName")
-
-toplot[which(toplot$area_distxsp==max(toplot$area_distxsp)),]
-
-
-ggplot(toplot[toplot$distXspbind<max(toplot$distXspbind)&
-                toplot$area_distxsp<max(toplot$area_distxsp),], aes(area_distxsp, distXspbind/1000))+
+#n <- length(x); sort(x,partial=n-1)[n-1]   for the second to largest value
+ggplot(distXsp1[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
+                distXsp1$area<=max(distXsp1$area),], aes(area, dist/1000))+
   geom_point()+
   theme_bw()+
   stat_smooth(method="lm")+
   ylab("Distance (km) to nearest EOR")+
   xlab(expression(paste("Species range (km"^"2",")")))
 
-```
-
-#how many are in the county they say they should be in? Check Jessie's code for help     
-Distance from herbarium to EOR by year  
-```{r}
-#list(g1g2now, distnow, areanow, EORpnts)
-#distxsp list
-areas <- lapply(sapply(distXsp, '[[', 3), function(x) sum(x))
-distances <- sapply(distXsp, '[[', 2)
-Herbpoints <- sapply(distXsp, '[[', 1)
-#The species with no herbarium collections come out as blank and are thus class(x) == "logical"; to subset go with those that aren't 'logical'
-Herbpointsout <- do.call(rbind,Herbpoints[sapply(Herbpoints, function(x) class(x)!= "logical")])
-#But I want to cbind the areas adn distances with the herbarium points. 
-which(sapply(Herbpoints, function(x) class(x)!= "logical"))
-Herbpointsout@data
-
-HerbAreasDist <- Map(data.frame, 
-  x=areas[which(sapply(Herbpoints, function(x) class(x)!= "logical"))],
-  y=distances[which(sapply(Herbpoints, function(x) class(x)!= "logical"))],
-  z=Herbpoints[which(sapply(Herbpoints, function(x) class(x)!= "logical"))])
-
-HerbAreasDist_all <- do.call(rbind,HerbAreasDist)
-ind <- c(1:3,31:37,67:71,84:88)#names(HerbAreasDist_all)
-HAD_all <- HerbAreasDist_all
-HAD_all[ind] <- lapply(HAD_all[ind], function(x) as.numeric(as.character(x))) 
-HAD_all2 <- merge(g1g2names,HAD_all,by.x="Taxon", by.y="z.scientificName", all.y=TRUE)
-HAD_all2[c(1:8,12:21)] <- lapply(HAD_all2[c(1:8,12:21)], function(x) as.factor(x)) 
+#to do year next need to get as many years out as possible from character strings
+distXsp1$year <- (as.numeric(gsub("([0-9]+).*$", "\\1", distXsp1$year)))
 
 ```
+
+
 
 ```{r}
 #get rid of the three that are out of the state issues
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/distanceXyear.jpg",
      width=150, height=100,units='mm', res=300)
-ggplot(HAD_all[HAD_all$y<500000&HAD_all$z.year>1800,], aes(z.year, y/1000))+
-  geom_point()+
-  stat_smooth(method="lm")+
+
+
+
+ggplot(distXsp1[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
+                distXsp1$area<=max(distXsp1$area),], aes(year, dist/1000))+
+  geom_point(pch=16)+
   theme_bw()+
-  xlab("Year")+
+  stat_smooth(method="lm")+
   ylab("Distance (km) to nearest EOR")+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+  xlab("Year")# +
+  # theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+
 
 dev.off()
 ```
@@ -1249,12 +1205,16 @@ dev.off()
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/distanceXSpeciesRange.jpg",
      width=150, height=100,units='mm', res=300)
 
-ggplot(HAD_all[HAD_all$y<500000&HAD_all$z.year>1800,], aes(x/1000000, y/1000))+
-  geom_point()+
+
+
+ggplot(distXsp1[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
+                distXsp1$area<=max(distXsp1$area),], aes(area/1000000, dist/1000))+
+  geom_point(pch=16)+
   theme_bw()+
   stat_smooth(method="lm")+
   ylab("Distance (km) to nearest EOR")+
   xlab(expression(paste("Species range (km"^"2",")")))
+
 
 dev.off()
 ```
@@ -1263,33 +1223,32 @@ dev.off()
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/distanceXYear_SpeciesRange.jpg",
      width=275, height=200,units='mm', res=300)
 
-ggplot(HAD_all2[which(HAD_all2$y<500000&HAD_all2$z.year>1800&
-                  !is.na(HAD_all2$New.Genus)),], aes(z.year, y/1000, colour=as.numeric(New.Species)))+
+
+ggplot(distXsp1[which(distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
+                distXsp1$area<=max(distXsp1$area) & !is.na(distXsp1$New.Genus)),], 
+       aes(year, dist/1000, color=as.numeric(as.factor(New.Species))))+
   geom_point()+
   theme_bw()+
-  ylim(c(-1,max(HAD_all2$y[which(HAD_all2$y<500000&HAD_all2$z.year>1800&
-                  !is.na(HAD_all2$New.Genus))]/1000)+1))+
   stat_smooth(method="lm")+
   facet_wrap(~New.Genus)+
   ylab("Distance (km) to nearest EOR")+
-  xlab("Year")+
+  xlab("Year")+ 
+  scale_color_gradientn(colours = rainbow(length( table(distXsp1$Taxon))))+
   theme(legend.position="none")+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
-  scale_color_gradientn(colours = rainbow(length( table(HAD_all2$Taxon))))
-
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 dev.off()
 ```
 
 Is there anything inherintly interesting about the genus? Maybe some genera are more likely to shift in range than others... so yes, keep in. 
 ```{r}
-f1 <- lm(y ~ as.factor(New.Genus)*z.year + x, data= HAD_all2)
-f2 <- lm(y ~ z.year + x, data= HAD_all2)
-f3 <- lm(y ~ z.year, data= HAD_all2)
-f4 <- lm(y ~ x, data= HAD_all2) #x is the area of the species known range
-f5 <- lm(y ~ 1, data= HAD_all2)
-f6 <- lm(y ~ z.year*x, data= HAD_all2) #year given the range
-f7 <- lm(y ~ as.factor(New.Genus)*(z.year), data= HAD_all2)
+f1 <- lm(dist ~ as.factor(New.Genus)*year + area, data= distXsp1)
+f2 <- lm(dist ~ year + area, data= distXsp1)
+f3 <- lm(dist ~ year, data= distXsp1)
+f4 <- lm(dist ~ area, data= distXsp1) #x is the area of the species known range
+f5 <- lm(dist ~ 1, data= distXsp1)
+f6 <- lm(dist ~ year*area, data= distXsp1) #year given the range
+f7 <- lm(dist ~ as.factor(New.Genus)*(year), data= distXsp1)
 
 
 (lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7),
@@ -1305,8 +1264,6 @@ sapply(1:length(lmresults$Delta_AICc), function(i){
 (er1 <- exp(0.5*lmresults$Delta_AICc[2]))
 (er2 <- exp(0.5*lmresults$Delta_AICc[3]))
 
-length(table(HAD_all2$New.Genus))
-table(HAD_all2$Taxon)
 ```
 
 
@@ -1470,47 +1427,7 @@ save(envs.backg.herb, file= "P:/hackathon/Simulations/envs.backgHerb.Rda")
 ```
 
 
-
-```{r}
-#The item in the list that matches the number, i, is the the match(i, want) or match(i, wantEOR) but some are missing (want and envs.backg.herb are 46 long, wantEOR and envs.backg are 59 long )
-
-g1g2names$Taxon[41] #Packera mancosana - new species
-g1g2names$AcceptedName[41] #Packera mancosana
-
-
-#need back to lat long
-pointsXsp.latlon <- list()
-for(i in 1:length(want)){
-  pointsXsp.latlon[[i]] <- spTransform(distXsp[[want[1]]][[1]], CRS("+proj=longlat +datum=WGS84"))
-}
-
-wantWOPaMa <- want[-which(want==41)] #now 45 names
-
-
-#gets thrown off after Packera mancosana but can't tell why
-for(i in 1:length(want)){
-  if(want[i]!=41){
-
-    plot(colocounties,
-         main=g1g2names$AcceptedName[want[i]])
-    plot(envs.backg.herb[[i]][[1]], #just the first bioclim, 46 of them. 
-         add=TRUE, col=rgb(0,1,1,0.25),border="black")
-    plot(envs.backg[[want[i]]][[1]], col=rgb(1,0,0,0.25), # there are 59 with EORs
-         add=TRUE, legend=FALSE) #from the EORs
-    points(pointsXsp.latlon[[i]], pch=17, col="purple") #herb points, need to skip 41...
-    points(distXsp[[want[i]]][[4]]@coords, col="red", pch=16)   #this gets off one after Packera mancosana, 60 of them 
-
-  }
-}
-
-#Penstemon degeneri and after are off, must be after Packera mancosana, got rid of the 34th one
-#Now error after Oreoxis which is 41, Packera mancosana
-
-which(g1g2names$AcceptedName == "Oreoxis humilis") #40
-g1g2names$AcceptedName[41]
-
-
-```
+### NEED TO LOAD STUFF UP TOP TO DO THIS!
 
 ```{r}
 #Plot presence points
