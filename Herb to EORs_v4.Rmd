@@ -812,10 +812,11 @@ pca_herb <- lapply(distXsp1_pca, function(x){
   pca_herbout
 })
 
-pca_herb[[1]]
+
+save(pca_herb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herb.Rda")
 
 # since sampling bias is known issue, only one point per climate raster value (columns 11:length) are kept; don't know if sampling density is due to bias or higher area of suitability. hummm. 
-pca_herbpost1980 <- lapply(pca_herb, function(x){
+pca_herbpost1980single <- lapply(pca_herb, function(x){
   colnames(x) <- c("x1","x2",colnames(x)[3:length(x)])
   x <- x[(which(nchar(as.character(x$Lastobs)) == 10)),]
   x <- x[!grepl("-99",x$Lastobs),]
@@ -824,7 +825,17 @@ pca_herbpost1980 <- lapply(pca_herb, function(x){
   out
 })
 
+pca_herbpost1980 <- lapply(pca_herb, function(x){
+  colnames(x) <- c("x1","x2",colnames(x)[3:length(x)])
+  x <- x[(which(nchar(as.character(x$Lastobs)) == 10)),]
+  x <- x[!grepl("-99",x$Lastobs),]
+  x <- x[(as.Date(x$Lastobs)>"1980-12-31"),]
+  x
+})
+
 save(pca_herbpost1980, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herbpost1980.Rda")
+
+save(pca_herbpost1980single, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herbpost1980single.Rda")
 
 ```
 

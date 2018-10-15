@@ -42,31 +42,6 @@ namesg1g2 <- table(l1G1G2$GNAME)
 #length(namesg1g2[namesg1g2 > 0]) #60 species
 g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
 
-areas <- lapply(sapply(distXsp, '[[', 3), function(x) sum(x))
-distances <- sapply(distXsp, '[[', 2)
-Herbpoints <- sapply(distXsp, '[[', 1)
-Herbpoints[[1]]@data
-#The species with no herbarium collections come out as blank and are thus class(x) == "logical"; to subset go with those that aren't 'logical'
-Herbpointsout <- do.call(rbind,Herbpoints[sapply(Herbpoints, function(x) class(x)!= "logical")])
-#But I want to cbind the areas adn distances with the herbarium points. 
-which(sapply(Herbpoints, function(x) class(x)!= "logical"))
-Herbpointsout@data
-# Don't need to Map becuase put dist and area in data frame
-# HerbAreasDist <- Map(data.frame, 
-#   x=areas[which(sapply(Herbpoints, function(x) class(x)!= "logical"))],
-#   y=distances[which(sapply(Herbpoints, function(x) class(x)!= "logical"))],
-#   z=Herbpoints[which(sapply(Herbpoints, function(x) class(x)!= "logical"))])
-# 
-# HerbAreasDist_all <- do.call(rbind,HerbAreasDist)
-# HerbAreasDist_all[[1]]
-# ind <- c(1:3,31:37,67:71,84:88)#names(HerbAreasDist_all)
-# HAD_all <- HerbAreasDist_all
-# HAD_all[ind] <- lapply(HAD_all[ind], function(x) as.numeric(as.character(x))) 
-# HAD_all2 <- merge(g1g2names,HAD_all,by.x="Taxon", by.y="z.scientificName", all.y=TRUE)
-# HAD_all2[c(1:8,12:21)] <- lapply(HAD_all2[c(1:8,12:21)], function(x) as.factor(x)) 
-
-
-
 ```
 
 Reference stackmini to have same environmental variables in PCA as in the maxent models
