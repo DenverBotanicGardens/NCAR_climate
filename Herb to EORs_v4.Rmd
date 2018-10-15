@@ -77,7 +77,8 @@ library(prism)
 library(doParallel)
 library(parallel)
 library(foreach)
-
+require(lme4)
+require(lattice)
 require(AICcmodavg)
 
 #Skip making these, takes a long time
@@ -90,15 +91,15 @@ require(AICcmodavg)
 # load("P:/hackathon/Simulations/Herb.thin1000.Rda")
 # load("P:/hackathon/Simulations/EORgrid.thin.Rda")
 
-# load("P:/hackathon/Simulations/coloradosps.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorsinglecell.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herbpost1980.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorpost1980.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data2.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxent46species.Rda")
+load("P:/hackathon/Simulations/coloradosps.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorsinglecell.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herbpost1980.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorpost1980.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data2.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxent46species.Rda")
 
 ScaleBar <- function(reference_raster_utm, round_to_nearest_km, width_percent, y_percent_from_bottom, x_percent_from_left, y_text_percent_from_bottom, ...) {
     # Round by max to nearest... e.g. 5 km 
@@ -229,8 +230,6 @@ ggplot(herbariumxyear[herbariumxyear$Freq>0,],aes(Var1, Freq, colour=Var2 ))+
   geom_point()+
   theme_bw()
 
-#unique(seinet_TPL$geodeticDatum)
-#seinet_TPL[seinet_TPL$geodeticDatum == "27",]
 ```
 
 Cite MODIS data: <https://lpdaac.usgs.gov/citing_our_data>   
@@ -242,9 +241,6 @@ library(ncdf4)
 #library(maptools)
 #library(extRemes)
 library(fields)
-library(parallel)
-library(doParallel)
-library(foreach)
 library(abind)
 library(prism)
 
@@ -274,7 +270,7 @@ repeat distance analysis in R
 Only G1G2 EORs (to limit range of species)
 "colonames" == TPL synonomy for all coloradosps names
 ```{r}
-#coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences.csv")
+coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences.csv")
 
 #save(coloradosps, file= "P:/hackathon/Simulations/coloradosps.Rda")
 #nrow(coloradosps) #567328
@@ -539,14 +535,14 @@ distXsp <- lapply(1:nrow(g1g2names), function(i){
   })
 
   save(distXsp, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
+
 ```
 
 ```{r}
-str(coloradosps.dist)
-distXsp1 <- do.call(c,mapply('[[', distXsp, 1))
+
+distXsp1 <- mapply('[[', distXsp, 1)
 distXsp1 <- do.call(rbind,distXsp1[!is.na(distXsp1)])
 plot(dist~as.factor(scientificName), distXsp1[distXsp1$dist<500000,], las=2)
-
 
 distXsp1_tpl <- TPL(distXsp1$scientificName)
 nrow(distXsp1);nrow(distXsp1_tpl)
@@ -554,9 +550,6 @@ distXsp1 <- data.frame(distXsp1,distXsp1_tpl)
 
 plot(dist~as.factor(Family), distXsp1[distXsp1$dist<500000,], las=2,
      xlab="",ylab="")
-require(lme4)
-require(lattice)
-
 
 #Write table for VisTrails field data
 #nrow(seinet_TPL)
@@ -577,20 +570,9 @@ Get the coordiates from each saved to use as csvs in VisTrails.
 ```{r}
 
 #distXsp[[i]][[1]] are the herbarium points, SpatialPointsDataFrame
-speciesNoHerb <- do.call(c,mapply('[[', distXsp, 1))
-want <- which(do.call(c,lapply(speciesNoHerb, function(x) !is.na(x))))
-wantEOR <- which(do.call(c,lapply(mapply('[[', distXsp, 4),
-                         function(x) !is.na(x))))
+want <- which(!is.na(mapply('[[', distXsp, 1)))
+wantEOR <- which(!is.na(mapply('[[', distXsp, 4)))
 
-bboxes <- lapply(want, function(i){
-  speciesNoHerb[[i]]@bbox
-  })
-
-#If there are multiple names/synonyms
-# unique(speciesNoHerb[[1]]@data$scientificName)
-
-#All the points
-# speciesNoHerb[[1]]@coords
 
 #points in the EORs
 EORsxsp <- mapply('[[', distXsp, 4)
@@ -692,7 +674,8 @@ pca_eorandherb <- lapply(1:nrow(g1g2names), function(sp){
      data_eor
 })
 
-  
+ save(pca_eorandherb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb.Rda") 
+
 ```
 
 
@@ -701,20 +684,30 @@ get rid of repeted values for all the climate things, do only one row for each c
 Column 4 is each polygon's id so there's only one point for each raster grid over a polygon but at least one point per polygon.   
 #Already loaded, skip!
 ```{r}
+
+pca_eorandherb[[1]][!duplicated(pca_eorandherb[[1]][,grep("PRISM",colnames(pca_eorandherb[[1]]))]),]
+
 pca_eorsinglecell <- lapply(pca_eorandherb, function(x){
-  x[!duplicated(x[,c(4,11:length(x))]),]
+  x[!duplicated(x[,grep("PRISM",colnames(x))]),]
 })
 
-pca_eorpost1980 <- lapply(pca_eorandherb, function(x){
+pca_eorpost1980single <- lapply(pca_eorandherb, function(x){
   x <- x[!grepl("-99",x$Lastobs),]
   x <- x[(as.Date(x$Lastobs)>"1980-12-31"),]
   out <- x[!duplicated(x[,c(4,11:length(x))]),]
   out
 })
 
+pca_eorpost1980 <- lapply(pca_eorandherb, function(x){
+  x <- x[!grepl("-99",x$Lastobs),]
+  x <- x[(as.Date(x$Lastobs)>"1980-12-31"),]
+  x
+})
+
 save(pca_eorsinglecell, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorsinglecell.Rda")
 save(pca_eorandherb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb.Rda")
 save(pca_eorpost1980, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorpost1980.Rda")
+save(pca_eorpost1980single, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorpost1980.Rda")
 
 
 ```
@@ -804,11 +797,12 @@ for(i in 1:length(polys)){
 #The first in all these are the herbarium records
 (distXsp[[1]][[1]]) #+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0   Need to transform
 
+distXsp1_pca <- do.call(c,mapply('[[', distXsp, 1))
+distXsp1_pca <- distXsp1_pca[!is.na(distXsp1_pca)]
 
-
-pca_herb <- lapply(distXsp[distXsp], function(x){
+pca_herb <- lapply(distXsp1_pca, function(x){
 #  transdf <- data.frame(distXsp[[x]][[1]],dist=distXsp[[x]][[2]],area=distXsp[[x]][[3]])
-  out <- spTransform(distXsp[[x]][[1], CRS(paste(rscrs)))
+  out <- spTransform(x, CRS(paste(rscrs)))
   pca_herbout <- data.frame(coordinates(out),id=out$id,polyid=NA,
                             Bestcrs=out$institutionCode, firstobs=out$eventDate, 
                             GRANK=NA,
@@ -818,6 +812,7 @@ pca_herb <- lapply(distXsp[distXsp], function(x){
   pca_herbout
 })
 
+pca_herb[[1]]
 
 # since sampling bias is known issue, only one point per climate raster value (columns 11:length) are kept; don't know if sampling density is due to bias or higher area of suitability. hummm. 
 pca_herbpost1980 <- lapply(pca_herb, function(x){
