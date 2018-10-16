@@ -81,13 +81,13 @@ require(lme4)
 require(lattice)
 require(AICcmodavg)
 
-#Skip making these, takes a long time
+# #Skip making these, takes a long time
 # load("P:/hackathon/Simulations/circleEOR.Rda")
 # load("P:/hackathon/Simulations/circleHerb.Rda")
 # load("P:/hackathon/Simulations/EORgrid.thin.Rda")
 # load("P:/hackathon/Simulations/circleEOR.Rda")
-# load("P:/hackathon/Simulations/envs.backgEOR.Rda")
-# load("P:/hackathon/Simulations/envs.backgHerb.Rda")
+load("P:/hackathon/Simulations/envs.backgEOR.Rda")
+load("P:/hackathon/Simulations/envs.backgHerb.Rda")
 # load("P:/hackathon/Simulations/Herb.thin1000.Rda")
 # load("P:/hackathon/Simulations/EORgrid.thin.Rda")
 
@@ -706,7 +706,7 @@ pca_eorpost1980 <- lapply(pca_eorandherb, function(x){
 save(pca_eorsinglecell, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorsinglecell.Rda")
 save(pca_eorandherb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb.Rda")
 save(pca_eorpost1980, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorpost1980.Rda")
-save(pca_eorpost1980single, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorpost1980.Rda")
+save(pca_eorpost1980single, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorpost1980single.Rda")
 
 
 ```
@@ -1456,6 +1456,7 @@ bg <- lapply(1:length(wantEOR), function(i){
                                           0.25*(nrow(EORsxsp[[wantEOR[i]]]@coords))))
   out <- data.frame(x1 = background$x, x2 = background$y, id = NA, polyid=NA, Bestcrs=NA, firstobs=NA,
                            GRANK=NA, GNAME=g1g2names$AcceptedName[i], ENDEMIC=NA, Lastobs=NA,
+                    dist=NA,area=NA,
                     raster::extract(rasterstack, background))
   out
 })
@@ -1479,6 +1480,7 @@ bg.herb <- lapply(1:length(want), function(i){
                                           0.25*(nrow(pointsXsp.latlon[[i]]@coords))))
   out <- data.frame(x1 = background$x, x2 = background$y, id = NA, polyid=NA, Bestcrs=NA, firstobs=NA,
                            GRANK=NA, GNAME=g1g2names$AcceptedName[i],ENDEMIC=NA, Lastobs=NA,
+                    dist=NA,area=NA,
                     raster::extract(rasterstack, background))
   out
 })
@@ -1562,6 +1564,7 @@ pca_data <- lapply(1:length(want), function(x){
   rbind(eor, herb, background.eor, background.herb)
 })
 
+pca_data[[1]]
 ```
 
 

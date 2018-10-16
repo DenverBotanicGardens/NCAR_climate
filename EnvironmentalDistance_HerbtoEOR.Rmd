@@ -49,8 +49,7 @@ Reference stackmini to have same environmental variables in PCA as in the maxent
 
 animatepca_data <- Map(data.frame, pca_data2, SpeciesID=as.list(seq(1,length(pca_data2),1)))
 
-pca_all <- lapply(1:length(pca_data2), function(i){
-  x <- animatepca_data[[i]]
+pca_all <- lapply(animatepca_data, function(x){
   x.pca <- princomp(~WinterPrecip+SummerPrecip+WinterMinTemp+WinterMaxTemp+FallMaxTemp, 
                     data = x[,c("WinterPrecip","SummerPrecip","WinterMinTemp","WinterMaxTemp","FallMaxTemp")], 
                     na.action = na.omit, cor=TRUE)
@@ -112,7 +111,8 @@ x<-pca_all[[1]]
 km.cluster <- kmeans(x[,c("WinterPrecip","SummerPrecip","WinterMinTemp","WinterMaxTemp","FallMaxTemp")], centers = 3, iter.max = 20, nstart = 2)
 
 x$kmeans.cluster <- km.cluster$cluster
-table(x$pa, km.cluster$cluster) #seems like the two presences eor(1) and herb(2) are mostly in group 2 and a little in 1, background are in group 3
+table(x$pa, km.cluster$cluster)
+#seems like the two presences eor(1) and herb(2) are mostly in group 1 and a little in 2, background are in group 3
 
 mjs_plot(x, x=Comp.1, y=Comp.2) %>%
   mjs_point(color_accessor=kmeans.cluster) %>%
@@ -131,7 +131,9 @@ x$rf.clusters <- rf.cluster
 table(rf.cluster, x$pa) # so the 1:4 along the top are the herb and eor presence and backgrounds
 
 #How far away are the herbarium collections that didn't fall into the 1st or second cluster (the present clusters)?
-x$[x$rf.clusters==1]
+x$dist[x$rf.clusters==1]
+
+x[x$rf.clusters==1&x$pa<3,]
 
 names(HAD_all2);names(x)
 table(x$GNAME)[table(x$GNAME)>0] #the accepted and synonym 
