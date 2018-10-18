@@ -14,6 +14,8 @@ library(devtools)
 # library(ade4)
 # library(pegas)
 # library(strataG)
+
+library(sp)
 library(ggplot2)
 library(dplyr)
 library(htmltools)
@@ -23,10 +25,19 @@ library(RColorBrewer)
 library(randomForest)
 library(maptools)
 library(Taxonstand)
+require(AICcmodavg)
+require(lme4)
+library(lattice)
 
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data2.Rda")
+
 # load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
+
+
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data2.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/stackmini.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
 #Each polygon might be made of multiple disconnected polygons. Need to separate and label
@@ -38,9 +49,12 @@ l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
               }))
 
 # Could take all the synonyms and names of l1G1G2 to make the list of names to pull from SEINet big list
-namesg1g2 <- table(l1G1G2$GNAME)
+# namesg1g2 <- table(l1G1G2$GNAME)
 #length(namesg1g2[namesg1g2 > 0]) #60 species
-g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
+# g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
+
+length(table(g1g2names$Family))
+g1g2names[g1g2names$Family=="",] #Add the Family for Gutierrezia  and Oonopsis
 
 ```
 
@@ -64,9 +78,7 @@ pca_all <- lapply(animatepca_data, function(x){
 
 
 anim_all <- do.call(rbind, pca_all)
-```
 
-```{r}
 animatePCA <- list()
 for(i in 1:46){
   animatePCA[[i]] <- ggplot(anim_all[anim_all$SpeciesID == i,], aes(Comp.1, Comp.2, 
@@ -100,6 +112,79 @@ for(i in 1:46){
 for(i in 1:46){
   print(animatePCA[[i]])
 }
+
+```
+
+
+
+##CRASHING! skip to cluster analysis for now
+Which herbarium speciens fall outside the EOR 95% CI for environmental space?
+```{r}
+Testone <- 4
+# Build the plot first
+p <- animatePCA
+x <- pca_all[[Testone]] #pca_all is the list that goes into making the plots so should match
+any(table(x$pa)<3)
+
+for(Testone in 1:5){
+    x <- pca_all[[Testone]] #pca_all is the list that goes into making the plots so should match
+  
+  # Extract components for the first, the EOR ellipse
+    build <- ggplot_build(p[[Testone]])$data
+    points <- build[[1]] # [build[[1]]$group==1,] # want to check all points can subset later
+    ell <- build[[2]][build[[1]]$group==1,]  # just want one ellipse of the four made
+    
+    # Find which points are inside the ellipse, and add this to the data
+    dat <- data.frame(points[1:2], 
+                      in.ell = as.logical(point.in.polygon(points$x, points$y, ell$x, ell$y)))
+    
+    x[which(dat$in.ell),]
+    x[which(!dat$in.ell & x$pa==2),]
+    nrow(x[x$pa==2,]);nrow(ell)
+    
+    hist(x$dist[which(!dat$in.ell & x$pa==2)]/1000, breaks=10)
+}
+x <- pca_all[[Testone]] #pca_all is the list that goes into making the plots so should match
+
+any(table(x$pa)<3)
+
+# Extract components for the first, the EOR ellipse
+  build <- ggplot_build(p[[Testone]])$data
+  points <- build[[1]] # [build[[1]]$group==1,] # want to check all points can subset later
+  ell <- build[[2]][build[[1]]$group==1,]  # just want one ellipse of the four made
+  
+  # Find which points are inside the ellipse, and add this to the data
+  dat <- data.frame(points[1:2], 
+                    in.ell = as.logical(point.in.polygon(points$x, points$y, ell$x, ell$y)))
+  
+  x[which(dat$in.ell),]
+  x[which(!dat$in.ell & x$pa==2),]
+  nrow(x[x$pa==2,]);nrow(ell)
+  
+  hist(x$dist[which(!dat$in.ell & x$pa==2)]/1000, breaks=10)
+```
+
+  
+#AAHHH crashing, don't do yet!  
+```{r}  
+outsideEORellipse <- mapply(function(plt, x){
+  # Extract components for the first, the EOR ellipse
+  if(any(table(x$pa)<3)){
+    NA
+  } else {
+    build <- ggplot_build(plt)$data
+    points <- build[[1]] #the EOR presence group
+    ell <- build[[2]][build[[1]]$group==1,]    #the EOR presence group
+    
+    # Find which points are inside the ellipse, and add this to the data
+    dat <- data.frame(points[1:2], 
+                      in.ell = as.logical(point.in.polygon(points$x, points$y, ell$x, ell$y)))
+    #Points that are herbarium specimens outside of the EOR ellipse
+    x[which(!dat$in.ell & x$pa==2),]
+  }
+}, plt = p, x = pca_all)
+
+
 ```
 
 https://rpubs.com/gabrielmartos/ClusterAnalysis  
@@ -108,15 +193,258 @@ https://nishanthu.github.io/articles/ClusteringUsingRandomForest.html
 ```{r}
 x<-pca_all[[1]]
 
-km.cluster <- kmeans(x[,c("WinterPrecip","SummerPrecip","WinterMinTemp","WinterMaxTemp","FallMaxTemp")], centers = 3, iter.max = 20, nstart = 2)
+#Do two groups, in and out? ie. presence and background
+km.cluster <- kmeans(x[,c("WinterPrecip","SummerPrecip","WinterMinTemp","WinterMaxTemp","FallMaxTemp")], centers = 2, iter.max = 20, nstart = 10)
 
 x$kmeans.cluster <- km.cluster$cluster
 table(x$pa, km.cluster$cluster)
+table(x$pa, x$kmeans.cluster)
 #seems like the two presences eor(1) and herb(2) are mostly in group 1 and a little in 2, background are in group 3
 
 mjs_plot(x, x=Comp.1, y=Comp.2) %>%
   mjs_point(color_accessor=kmeans.cluster) %>%
   mjs_labs(x="principal comp 1", y="principal comp 2")
+
+```
+
+
+# clustering of k-means - partition points into k groups such that the sum of squares from points to assigned cluster centers is minimized Hartigan and Wong (1979)
+Should be able to use Jombart et al. 2010 Discriminant Analysis of Principal Components find.clusters() to see if the herbarium specimens are clustering differently from EORs. For now just run several random starts in kmeans()    
+```{r}
+kmeansEORHerb <- lapply(pca_all, function(x){
+  km.cluster <- kmeans(x[,c("WinterPrecip","SummerPrecip","WinterMinTemp","WinterMaxTemp","FallMaxTemp")],
+                       centers = 2, iter.max = 20, nstart = 100)
+
+  x$kmeans.cluster <- km.cluster$cluster
+  x
+  })
+
+#is the first cluster always the most EORs and Herb presences? Nope, need the one with
+for(i in 1:length(kmeansEORHerb)){
+  tabl <- table(kmeansEORHerb[[i]]$pa, kmeansEORHerb[[i]]$kmeans.cluster)
+ print(tabl)
+  if(tabl[1,1]>tabl[1,2]){
+    print("1")
+  } else {
+    print("2")
+  }
+  
+}
+
+#want linear model of in group cluster 1 or 2 as determined by what
+#Want all, not just the outliers 
+kmall <- do.call(rbind,kmeansEORHerb)
+
+distoutliers <- lapply(kmeansEORHerb, function(x){
+  tbl <- table(x$pa,x$kmeans.cluster)
+  #Want the outliers so after determining which cluster most EOR presence points went, then pull the other group for the presence group 2 $pa==2 are the Herb points
+  if(tbl[1,1]>tbl[1,2]){
+    x[x$pa==2 & x$kmeans.cluster==2,]
+  } else {
+    x[x$pa==2 & x$kmeans.cluster==1,]
+  }
+})
+
+distout <- do.call(rbind, distoutliers)
+is.factor(distout$kmeans.cluster) #needs to be categorical
+distout$kmeans.cluster <- factor(distout$kmeans.cluster)
+
+
+kmall$kmeans.cluster <- factor(kmall$kmeans.cluster)
+contrasts(kmall$kmeans.cluster) #so in cluster 2 will get a 1 and in cluster 1 will get a 0; cluster2==1, cluster1==0
+
+table(as.factor(distout$kmeans.cluster))
+str(distout$Lastobs)
+kmall$Lastobs <- as.Date(kmall$Lastobs, format="%Y-%m-%d")
+distout$Lastobs <- as.Date(distout$Lastobs, format="%Y-%m-%d")
+kmall$Year <- format(as.Date(kmall$Lastobs, format="%Y-%m-%d"),"%Y")
+kmall[!is.na(kmall$Year),]
+str(kmall$Year)
+kmall$Year <- as.numeric(kmall$Year)
+
+#Model fitting? Should I use some train and testing data? 
+model <- glm(factor(kmeans.cluster) ~ Year + area, family=binomial(link="logit"),data= kmall[kmall$pa==2,])
+summary(model)
+
+#Make a new column that figures out which is the presence factor for kmeans.cluster, 1 or 2 depending on which has more EOR points, label it 0 for out, 1 for in
+InorOut <- do.call(rbind,lapply(kmeansEORHerb, function(x){
+  x$InOut <- 0
+  tbl <- table(x$pa,x$kmeans.cluster)
+  #Want the outliers so after determining which cluster most EOR presence points went, then pull the other group for the presence group 2 $pa==2 are the Herb points
+  if(tbl[1,1]>tbl[1,2]){
+    x$InOut[x$kmeans.cluster==1] <- 1
+    x
+  } else {
+    x$InOut[x$kmeans.cluster==2] <- 1
+    x
+  }
+}))
+
+InorOut$kmeans.cluster <- factor(InorOut$kmeans.cluster)
+InorOut$Lastobs <- as.Date(InorOut$Lastobs, format="%Y-%m-%d")
+InorOut$Year <- format(as.Date(InorOut$Lastobs, format="%Y-%m-%d"),"%Y")
+InorOut$Year <- as.numeric(InorOut$Year)
+```
+Now just look at the in or out of a cluster for the herbarium specimens; $pa==2
+```{r}
+f1 <- glm(InOut ~ as.factor(SpeciesID)*Year + area, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
+f2 <- glm(InOut ~ Year + area, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
+f3 <- glm(InOut ~ Year, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
+f4 <- glm(InOut ~ area, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,]) #x is the area of the species known range
+f5 <- glm(InOut ~ 1, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
+f6 <- glm(InOut ~ Year*area, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,]) #year given the range
+f7 <- glm(InOut ~ as.factor(SpeciesID)*Year, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
+
+
+(lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7),
+       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7),formula)))))
+
+evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6,f7),
+                modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7),formula)))))
+
+sapply(1:length(lmresults$Delta_AICc), function(i){
+  exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
+})
+
+(er1 <- exp(0.5*lmresults$Delta_AICc[2]))
+(er2 <- exp(0.5*lmresults$Delta_AICc[3]))
+
+
+
+```
+This is different than before so different distances for what puts the presence in or out of the EOR in cluster
+```{r}
+f1 <- glm(InOut ~ as.factor(SpeciesID)*Year + area + dist, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
+f2 <- glm(InOut ~ Year * area * dist, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
+f3 <- glm(InOut ~ Year*dist, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
+f4 <- glm(InOut ~ area, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
+f5 <- glm(InOut ~ 1, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
+f6 <- glm(InOut ~ Year*area, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,]) #year given the range
+f7 <- glm(InOut ~ as.factor(SpeciesID)*Year, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
+f8 <- glm(InOut ~ dist, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,]) 
+
+
+(lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7,f8),
+       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8),formula)))))
+
+evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6,f7,f8),
+                modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8),formula)))))
+
+sapply(1:length(lmresults$Delta_AICc), function(i){
+  exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
+})
+
+(er1 <- exp(0.5*lmresults$Delta_AICc[2]))
+(er2 <- exp(0.5*lmresults$Delta_AICc[3]))
+
+table(InorOut$Year[InorOut$pa==2])
+str(InorOut$Year)
+```
+
+```{r}
+datapost1980 <- InorOut[InorOut$pa==2 & InorOut$Year>1980,]
+
+f1 <- glm(InOut ~ as.factor(SpeciesID)*Year + area + dist, family=binomial(link="logit"), data= datapost1980)
+f2 <- glm(InOut ~ Year * area * dist, family=binomial(link="logit"), data= datapost1980)
+f3 <- glm(InOut ~ Year*dist, family=binomial(link="logit"), data= datapost1980)
+f4 <- glm(InOut ~ area, family=binomial(link="logit"), data= datapost1980)
+f5 <- glm(InOut ~ 1, family=binomial(link="logit"), data= datapost1980)
+f6 <- glm(InOut ~ Year*area, family=binomial(link="logit"), datapost1980) #year given the range
+f7 <- glm(InOut ~ as.factor(SpeciesID)*Year, family=binomial(link="logit"), data= datapost1980)
+f8 <- glm(InOut ~ dist, family=binomial(link="logit"), data= datapost1980) 
+
+
+(lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7,f8),
+       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8),formula)))))
+
+evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6,f7,f8),
+                modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8),formula)))))
+
+sapply(1:length(lmresults$Delta_AICc), function(i){
+  exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
+})
+
+(er1 <- exp(0.5*lmresults$Delta_AICc[2]))
+(er2 <- exp(0.5*lmresults$Delta_AICc[3]))
+
+table(datapost1980$Year)
+
+```
+
+```{r}
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/HerbPA.jpg",
+     width=450, height=125,units='mm', res=300)
+
+ggplot(InorOut[InorOut$pa==2,], aes(Year,InOut,colour=GNAME))+
+  stat_smooth(method="loess", formula=y~x,
+              alpha=0.2, size=2, aes(fill=GNAME)) +  # area/(1000^2)
+   geom_point()+ #position=position_jitter(height=0.003, width=0)
+  # facet_wrap(~SpeciesID)+
+  theme_bw()+
+  facet_wrap(~GNAME, ncol = 18)+
+  ylab("Herbarium presence out (0) or in (1)")+
+  xlab("Year")+
+  theme(legend.position="none")
+  # scale_colour_gradient2(name= expression(paste("Species range (km"^"2",")")),
+  #                        low='red',mid='violet',high='blue')
+
+dev.off()
+
+str(as.factor(InorOut$InOut))
+
+```
+
+
+```{r}
+ggplot(InorOut[InorOut$pa==2,], aes(factor(InOut), Year, colour= area/(1000^2)))+
+  geom_boxplot() +
+  theme_bw()+
+  xlab("Herbarium presence out (0) or in (1)")+
+  geom_jitter(position=position_jitter(0.25))+
+  scale_colour_gradient2(name= expression(paste("Species range (km"^"2",")")),
+                         low='red',mid='violet',high='blue')
+
+ggplot(InorOut[InorOut$pa==2,], aes(factor(InOut), area/(1000^2), colour= as.numeric(Year)))+
+  geom_boxplot() +
+  theme_bw()+
+  xlab("Herbarium presence out (0) or in (1)")+
+  geom_jitter(position=position_jitter(0.25))+
+  scale_colour_gradient2(name= "Year",
+                         low='green',mid='violet',high='blue')
+
+ggplot(InorOut[InorOut$pa==2,], aes(factor(InOut), Year, colour= area/(1000^2)))+
+  geom_boxplot() +
+  facet_wrap(~SpeciesID)+
+  theme_bw()+
+  xlab("Herbarium presence out (0) or in (1)")+
+  geom_jitter(position=position_jitter(0.25))+
+  scale_colour_gradient2(name= "Species Range (km2)",
+                         low='green',mid='violet',high='blue')
+
+boxplot(Year ~ InOut, data = InorOut[InorOut$pa==2,])
+stripchart(Year ~ InOut, vertical = TRUE, data = InorOut[InorOut$pa==2,], 
+    method = "jitter", add = TRUE, pch = 20, col = 'blue')
+
+#Oh crap but for each species the presence group and the background group differ
+
+boxplot(log(dist/1000) ~ (InOut), data = InorOut[InorOut$pa==2,],
+        xlab = "Cluster", ylab="Geographic distance log(km) to EOR")
+stripchart(log(dist/1000) ~ InOut, vertical = TRUE, data = InorOut[InorOut$pa==2,], 
+    method = "jitter", add = TRUE, pch = 20, col = 'blue')
+
+
+
+boxplot(log(dist/1000) ~ (InOut), data = InorOut[InorOut$pa==2,],
+        xlab = "Cluster", ylab="Geographic distance log(km) to EOR")
+stripchart(log(dist/1000) ~ InOut, vertical = TRUE, data = InorOut[InorOut$pa==2,], 
+    method = "jitter", add = TRUE, pch = 20, col = 'blue')
+
+xyplot(InOut ~ Year|as.factor(SpeciesID), InorOut[InorOut$pa==2,],
+       # maybe g:'reference grid' 'point' and r: linear 'regression', a:panel.average for interaction plots
+       type = c("p","spline"),
+       #index = function(x,y) coef(lm(y~x))[[1]],
+       xlab = "Colleciton Year",
+       ylab = "Clustered with presence (1) or background (0)")
 
 ```
 
@@ -133,22 +461,8 @@ table(rf.cluster, x$pa) # so the 1:4 along the top are the herb and eor presence
 #How far away are the herbarium collections that didn't fall into the 1st or second cluster (the present clusters)?
 x$dist[x$rf.clusters==1]
 
-x[x$rf.clusters==1&x$pa<3,]
+x[x$rf.clusters==1&x$pa==2,] #2 are herbarium that have distances
 
-names(HAD_all2);names(x)
-table(x$GNAME)[table(x$GNAME)>0] #the accepted and synonym 
-
-table(HAD_all2$Taxon)
-length(table(HAD_all2$Species))
-length(table(HAD_all2$Taxon))
-
-# $x=areas; $y=distances; $z. ...=herb points HAD_all2
-# Want to add $x and $dist to anim_all
-foo1 <-HAD_all2[which(c(HAD_all2$Taxon,HAD_all2,HAD_all2$z.specificEpithet) %in% anim_all$GNAME), 
-     
-                                       c("x","y")] #next "z.specificEpithet" 
-
-testlength <- lapply(animatepca_data, function())
 ```
 
 ```{r}
@@ -178,6 +492,8 @@ x[which(x$Comp.1>(a+error)&(x$Comp.2>(a2+error2))&x$pa <3|
 
 hist(x$Comp.1[])
 abline(v=a)
+
+?pointsToEl
 ```
 
 Find points inside and outside the ellipse

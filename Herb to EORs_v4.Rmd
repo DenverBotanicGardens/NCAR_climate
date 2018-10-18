@@ -172,9 +172,11 @@ l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
 # Could take all the synonyms and names of l1G1G2 to make the list of names to pull from SEINet big list
 namesg1g2 <- table(l1G1G2$GNAME)
 #length(namesg1g2[namesg1g2 > 0]) #60 species
-g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
+#g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
 #table(g1g2names$Taxonomic.status) 
 #2 not in there, "Gutierrezia elegans" "Oonopsis sp. 1", 10 synonyms, 3 unresolved
+save(g1g2names, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
+
 
 #g1g2names[g1g2names$Taxonomic.status == "Unresolved",]
 #Gilia sedifolia
@@ -1550,7 +1552,7 @@ sort(unique(g1g2names$Taxon)) #60 names, why no Astragalus anisus??
 ```
 
 
-
+#Skip already loaded
 ```{r}
 pca_data <- lapply(1:length(want), function(x){
   eor <- pca_eorpost1980[[want[x]]]
@@ -1732,6 +1734,8 @@ stackmini <- stack(winPrecipclip,winTmaxclip,winterMintempclip,
                    #fallPrecipclip, 
                    fallTmaxclip) #, fallMintempclip)
                    #, summerPrecipclip)
+
+save(stackmini, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/stackmini.Rda")
 ```
 
 
