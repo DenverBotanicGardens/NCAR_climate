@@ -78,7 +78,7 @@ for(sp in 1:length(sp20)){
   herbs[[sp]] <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/MeanRasterstackHerb",gsub(" ","_",sp20[sp]),"1.tif", sep=""))
 }
 
-lapply(sp20[1:2], function(x){
+lapply(sp20, function(x){
   eorin <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/MeanRasterstackEOR",gsub(" ","_",x),"1.tif", sep=""))
   herbin <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/MeanRasterstackHerb",gsub(" ","_",x),"1.tif", sep=""))
   
@@ -100,15 +100,6 @@ lapply(sp20[1:2], function(x){
 
 })
   
-  #Where there is overlap between AsMiEormatchss and AsMi assign a 2 instead of 1 to AsMiEormatchss
-  herbs[herbs>0.5] <- 1
-  herbs[herbs<=0.5] <- 0
-  
-  #to see overlap (3) and differentiate from only EOR (2), only herb (1) 
-  eorin[eorin>0.5] <- 2
-  eorin[eorin<=0.5] <- 0
-  
-  out <- herbs+eorin
 
 
 

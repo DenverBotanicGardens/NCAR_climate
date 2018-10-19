@@ -284,6 +284,7 @@ InorOut$kmeans.cluster <- factor(InorOut$kmeans.cluster)
 InorOut$Lastobs <- as.Date(InorOut$Lastobs, format="%Y-%m-%d")
 InorOut$Year <- format(as.Date(InorOut$Lastobs, format="%Y-%m-%d"),"%Y")
 InorOut$Year <- as.numeric(InorOut$Year)
+InorOut$Genus <- sapply(strsplit(as.character(InorOut$GNAME), " "), '[',1)
 ```
 Now just look at the in or out of a cluster for the herbarium specimens; $pa==2
 ```{r}
@@ -313,21 +314,25 @@ sapply(1:length(lmresults$Delta_AICc), function(i){
 ```
 This is different than before so different distances for what puts the presence in or out of the EOR in cluster
 ```{r}
-f1 <- glm(InOut ~ as.factor(SpeciesID)*Year + area + dist, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
+
+
+f1 <- glm(InOut ~ as.factor(Genus)*Year + area + dist, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
 f2 <- glm(InOut ~ Year * area * dist, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
 f3 <- glm(InOut ~ Year*dist, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
 f4 <- glm(InOut ~ area, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
 f5 <- glm(InOut ~ 1, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
 f6 <- glm(InOut ~ Year*area, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,]) #year given the range
-f7 <- glm(InOut ~ as.factor(SpeciesID)*Year, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
+f7 <- glm(InOut ~ as.factor(Genus)*Year, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,])
 f8 <- glm(InOut ~ dist, family=binomial(link="logit"), data= InorOut[InorOut$pa==2,]) 
+f9 <- glm(InOut ~ as.factor(Genus), family=binomial(link="logit"), data= InorOut[InorOut$pa==2,]) 
 
 
-(lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7,f8),
-       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8),formula)))))
 
-evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6,f7,f8),
-                modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8),formula)))))
+(lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7,f8,f9),
+       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8,f9),formula)))))
+
+evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6,f7,f8,f9),
+                modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8,f9),formula)))))
 
 sapply(1:length(lmresults$Delta_AICc), function(i){
   exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
@@ -336,28 +341,36 @@ sapply(1:length(lmresults$Delta_AICc), function(i){
 (er1 <- exp(0.5*lmresults$Delta_AICc[2]))
 (er2 <- exp(0.5*lmresults$Delta_AICc[3]))
 
-table(InorOut$Year[InorOut$pa==2])
-str(InorOut$Year)
 ```
 
 ```{r}
 datapost1980 <- InorOut[InorOut$pa==2 & InorOut$Year>1980,]
 
-f1 <- glm(InOut ~ as.factor(SpeciesID)*Year + area + dist, family=binomial(link="logit"), data= datapost1980)
-f2 <- glm(InOut ~ Year * area * dist, family=binomial(link="logit"), data= datapost1980)
-f3 <- glm(InOut ~ Year*dist, family=binomial(link="logit"), data= datapost1980)
-f4 <- glm(InOut ~ area, family=binomial(link="logit"), data= datapost1980)
-f5 <- glm(InOut ~ 1, family=binomial(link="logit"), data= datapost1980)
-f6 <- glm(InOut ~ Year*area, family=binomial(link="logit"), datapost1980) #year given the range
-f7 <- glm(InOut ~ as.factor(SpeciesID)*Year, family=binomial(link="logit"), data= datapost1980)
-f8 <- glm(InOut ~ dist, family=binomial(link="logit"), data= datapost1980) 
+f1 <- glm(InOut ~ as.factor(Genus)*Year + area + dist, 
+          family=binomial(link="logit"), data= datapost1980)
+f2 <- glm(InOut ~ Year * area * dist, 
+          family=binomial(link="logit"), data= datapost1980)
+f3 <- glm(InOut ~ Year*dist, 
+          family=binomial(link="logit"), data= datapost1980)
+f4 <- glm(InOut ~ area, 
+          family=binomial(link="logit"), data= datapost1980)
+f5 <- glm(InOut ~ 1, 
+          family=binomial(link="logit"), data= datapost1980)
+f6 <- glm(InOut ~ Year*area, 
+          family=binomial(link="logit"), datapost1980) #year given the range
+f7 <- glm(InOut ~ as.factor(Genus)*Year, 
+          family=binomial(link="logit"), data= datapost1980)
+f8 <- glm(InOut ~ dist, 
+          family=binomial(link="logit"), data= datapost1980) 
+f9 <- glm(InOut ~ Year, 
+          family=binomial(link="logit"), data= datapost1980) 
 
 
-(lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7,f8),
-       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8),formula)))))
+(lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7,f8,f9),
+       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8,f9),formula)))))
 
-evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6,f7,f8),
-                modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8),formula)))))
+evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6,f7,f8,f9),
+                modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8,f9),formula)))))
 
 sapply(1:length(lmresults$Delta_AICc), function(i){
   exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
@@ -366,27 +379,49 @@ sapply(1:length(lmresults$Delta_AICc), function(i){
 (er1 <- exp(0.5*lmresults$Delta_AICc[2]))
 (er2 <- exp(0.5*lmresults$Delta_AICc[3]))
 
-table(datapost1980$Year)
+# table(datapost1980$Year)
+
+summary(f1)
+summary(f4) #area
+summary(f9)
 
 ```
 
 ```{r}
+InorOut$areabin <- 100
+InorOut$areabin[InorOut$area < max(InorOut$area)] <- 95
+InorOut$areabin[InorOut$area < quantile(InorOut$area, .75, na.rm=TRUE)] <- 75
+InorOut$areabin[InorOut$area < quantile(InorOut$area, .5, na.rm=TRUE)] <- 50
+InorOut$areabin[InorOut$area < quantile(InorOut$area, .25, na.rm=TRUE)] <- 25
+InorOut$areabin[InorOut$area == min(InorOut$area, na.rm=TRUE)] <- 1
+
+InorOut$distbin <- 100
+InorOut$distbin[InorOut$dist < max(InorOut$dist, na.rm=TRUE)] <- 95
+InorOut$distbin[InorOut$dist < quantile(InorOut$dist, .75, na.rm=TRUE)] <- 75
+InorOut$distbin[InorOut$dist < quantile(InorOut$dist, .5, na.rm=TRUE)] <- 50
+InorOut$distbin[InorOut$dist < quantile(InorOut$dist, .25, na.rm=TRUE)] <- 25
+InorOut$distbin[InorOut$dist == min(InorOut$dist, na.rm=TRUE)] <- 1
+
+```
+
+
+```{r}
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/HerbPA.jpg",
-     width=450, height=225,units='mm', res=300)
+     width=450, height=275,units='mm', res=300)
 
 ggplot(InorOut[InorOut$pa==2,], aes(Year,InOut,colour=InOut))+
   stat_smooth(method="loess", formula=y~x,
-              alpha=0.2, size=2, aes(fill=GNAME)) +  # area/(1000^2)
-   geom_point()+ #position=position_jitter(height=0.003, width=0)
+              alpha=0.2, size=2, aes(fill=Genus)) +  # area/(1000^2)
+   geom_point(aes(shape=as.factor(areabin), size=as.factor(distbin)))+ #position=position_jitter(height=0.003, width=0)
   # facet_wrap(~SpeciesID)+
   theme_bw()+
-  ylim(-0.05,1.05)+
-  facet_wrap(~GNAME, ncol = 9)+
+  ylim(-0.15,1.15)+
+  facet_wrap(~Genus, ncol = 6)+
   ylab("Herbarium presence out (0) or in (1)")+
   xlab("Year")+
   theme(legend.position="none")+
   theme(axis.text.x = element_text(angle = 90, hjust = 1))+
-  scale_color_manual(values = c(""))
+  scale_color_gradient(low="#FF0000", high="#FFA500")
 
   # scale_colour_gradient2(name= expression(paste("Species range (km"^"2",")")),
   #                        low='red',mid='violet',high='blue')
