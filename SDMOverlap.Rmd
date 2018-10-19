@@ -7,12 +7,17 @@ output: html_document
 
 ```{r}
 library(raster)
-
+library(Rmisc)
 
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
+colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
 
+
+distXsp1 <- mapply('[[', distXsp, 1)
+distXsp1 <- do.call(rbind,distXsp1[!is.na(distXsp1)])
 want <- which(!is.na(mapply('[[', distXsp, 1)))
+
 
 ```
 
@@ -28,7 +33,7 @@ plot(testin)
 ```
 
 ```{r}
-want[c(1,2,4,7,8,9,15,)]
+
 
 #really only have 20 species 
 sp20 <- g1g2names$AcceptedName[c(1,2,7,10,11,12,16,19,21,22,24,27,35,36,38,41,42,43,45,46)]
@@ -61,42 +66,114 @@ Herbrasters <- lapply(sp20, function(sp){
   outdf
 })
 
-overlapall <- do.call(rbind, Herbrasters)
 
 
 ```
 
 ```{r}
+eors <- list()
+herbs <- list()
+for(sp in 1:length(sp20)){
+  eors[[sp]] <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/MeanRasterstackEOR",gsub(" ","_",sp20[sp]),"1.tif", sep=""))
+  herbs[[sp]] <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/MeanRasterstackHerb",gsub(" ","_",sp20[sp]),"1.tif", sep=""))
+}
 
+lapply(sp20[1:2], function(x){
+  eorin <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/MeanRasterstackEOR",gsub(" ","_",x),"1.tif", sep=""))
+  herbin <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/MeanRasterstackHerb",gsub(" ","_",x),"1.tif", sep=""))
+  
+  #Where there is overlap between AsMiEormatchss and AsMi assign a 2 instead of 1 to AsMiEormatchss
+  herbin[herbin>0.5] <- 1
+  herbin[herbin<=0.5] <- 0
+  #to see overlap (3) and differentiate from only EOR (2), only herb (1) 
+  eorin[eorin>0.5] <- 2
+  eorin[eorin<=0.5] <- 0
+  out <- herbin+eorin
+  
+  jpeg(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Map_",x,".jpg", sep=""),
+     width=250, height=225,units='mm', res=300)
+     
+     plot(out, main=x, xlim=c(-109.5,-101),ylim=c(37,41),col=c("white","#900090","#00a0a0","#707030"))
+     plot(colocounties, add=TRUE)
+     
+     dev.off()
+
+})
+  
+  #Where there is overlap between AsMiEormatchss and AsMi assign a 2 instead of 1 to AsMiEormatchss
+  herbs[herbs>0.5] <- 1
+  herbs[herbs<=0.5] <- 0
+  
+  #to see overlap (3) and differentiate from only EOR (2), only herb (1) 
+  eorin[eorin>0.5] <- 2
+  eorin[eorin<=0.5] <- 0
+  
+  out <- herbs+eorin
+
+
+
+```
+
+
+```{r}
+overlapall <- do.call(rbind, Herbrasters)
 overlapall$totalarea <- rowSums(overlapall)
 overlapall$Species <- sp20
 
 #Want to add a distance average and SD and total area for each species
-distXsp1 <- mapply('[[', distXsp, 1)
-#go by speciesID??
-distXsp1 <- do.call(rbind,distXsp1[!is.na(distXsp1)])
-# distXsp1[!duplicated(distXsp1[,c("scientificName","SpeciesID")]),]
 specnum <- as.data.frame(table(distXsp1$SpeciesID,distXsp1$scientificName))
-specnum[specnum$Freq>0,]
+overlapall <- merge(overlapall, specnum[specnum$Freq>0,], by.x = "Species", by.y = "Var2")
 distXsp1[distXsp1$scientificName %in% sp20,]@data
 
+summarydistXsp1 <- Rmisc::summarySE(data=distXsp1@data, measurevar = "dist", groupvars = c("SpeciesID"), na.rm=TRUE)
+#summaryareaXsp1 <- Rmisc::summarySE(data=distXsp1@data, measurevar = "area", groupvars = c("SpeciesID"), na.rm=TRUE)
+
+overlapall <- merge(overlapall, summarydistXsp1, by.x = "Var1", by.y = "SpeciesID")
+#overlapall <- merge(overlapall, summaryareaXsp1, by.x = "Var1", by.y = "SpeciesID")
+overlapall$proporOverlap <- overlapall$Overlap/overlapall$totalarea
+overlapall$propHerb <- overlapall$Herbonly/overlapall$totalarea
+overlapall$propEOR <- overlapall$EORonly/overlapall$totalarea
+
+
+overlapall
+```
+
+
+
+```{r}
+boxplot(overlapall$propHerb, 1,1, border=c("black","white","white"))
+boxplot(1, overlapall$propEOR,1, border=c("white","black","white"), add=T)
+boxplot(1, 1, overlapall$proporOverlap, border=c("white","white","black"), add=T)
+stripchart(list(overlapall$propHerb, overlapall$propEOR,overlapall$proporOverlap), 
+                pch=1, method="jitter", vertical = TRUE, 
+           col=rep(as.numeric(as.factor(overlapall$Species)),3),add=TRUE)
 
 ```
 
 
 ```{r}
-areaoutcat2 <- outcat2
-areaoutcat2[areaoutcat2!=3] <- NA
-#tryagain<- projectRaster(outcat, crs = "+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0", method="ngb")
-raster::area(areaoutcat2, na.rm=TRUE)
+library(reshape2)
+overlapmelt <- reshape2::melt(overlapall)
 
-areaoutcat2raster <- rasterToPolygons(areaoutcat2)
-out2proj <- spTransform(areaoutcat2raster, CRS(proj4string(colocounties.UTM)))
-sum(gArea(out2proj, byid=TRUE))/(1000^2) #divided by 1km squared: 1043.532 square km
 
-#Sum rasters that are overlap ==3 and multiply by cell size, but this is in decimal seconds at this latitude so about 1km is 1 and this is 0.00083 or whatevers
-sum(outcat[] == 3)*res(outcat)[1]^2
-sum(outcat2[] == 3)*res(outcat2)[1]^2
+ggplot(overlapmelt[grep("prop",overlapmelt$variable),], aes(variable, value))+
+  geom_boxplot()+
+  theme_bw() + 
+  geom_jitter(position=position_jitter(0.2), aes(colour=Species))
+              
 
+ggplot(overlapmelt[grep("only",overlapmelt$variable),], aes(variable, value))+
+  geom_boxplot()+
+  theme_bw() + 
+  geom_jitter(position=position_jitter(0.2), aes(colour=Species))
+              
+    
+ggplot(overlapall, aes(dist,propHerb))+
+  theme_bw() + 
+  geom_point(aes(colour=Species))+
+  stat_smooth(method="lm")
 ```
+
+
+
 

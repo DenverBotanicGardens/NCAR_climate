@@ -310,7 +310,6 @@ sapply(1:length(lmresults$Delta_AICc), function(i){
 (er2 <- exp(0.5*lmresults$Delta_AICc[3]))
 
 
-
 ```
 This is different than before so different distances for what puts the presence in or out of the EOR in cluster
 ```{r}
@@ -373,18 +372,22 @@ table(datapost1980$Year)
 
 ```{r}
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/HerbPA.jpg",
-     width=450, height=125,units='mm', res=300)
+     width=450, height=225,units='mm', res=300)
 
-ggplot(InorOut[InorOut$pa==2,], aes(Year,InOut,colour=GNAME))+
+ggplot(InorOut[InorOut$pa==2,], aes(Year,InOut,colour=InOut))+
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2, aes(fill=GNAME)) +  # area/(1000^2)
    geom_point()+ #position=position_jitter(height=0.003, width=0)
   # facet_wrap(~SpeciesID)+
   theme_bw()+
-  facet_wrap(~GNAME, ncol = 18)+
+  ylim(-0.05,1.05)+
+  facet_wrap(~GNAME, ncol = 9)+
   ylab("Herbarium presence out (0) or in (1)")+
   xlab("Year")+
-  theme(legend.position="none")
+  theme(legend.position="none")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_color_manual(values = c(""))
+
   # scale_colour_gradient2(name= expression(paste("Species range (km"^"2",")")),
   #                        low='red',mid='violet',high='blue')
 

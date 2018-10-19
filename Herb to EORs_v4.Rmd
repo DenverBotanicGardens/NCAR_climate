@@ -4,46 +4,6 @@ author: "Michelle DePrenger-Levin"
 date: "December 4, 2017"
 output: html_document
 ---
-Use Jessie's cool mapping code: "Q:\Research\All_Herbaria\KHD\Projects\exploring_herbarium_with_maps" 
-
-Rick says don't need quotes for table or column names
-
-MySQL query
-
-#There are only rows in the synonym_links table when the names are synonyms, if it's not in synonym_links, it's the accepted name; taxonomic_units is the main table, if it's a synonym it's linked by synonym_links
-SELECT `synonym_links`.*, `taxonomic_units`.* , `taxon_authors_lkp`.*, `geographic_div`.*
-FROM `taxonomic_units` 
-LEFT JOIN `synonym_links` ON `synonym_links`.`tsn` = `taxonomic_units`.`tsn` 
-LEFT JOIN `taxon_authors_lkp` ON `taxon_authors_lkp`.`taxon_author_id` = `taxonomic_units`.`taxon_author_id` 
-LEFT JOIN `geographic_div` ON `geographic_div`.`tsn` = `taxonomic_units`.`tsn`
-WHERE `taxonomic_units`.`kingdom_id` = 3 AND `taxonomic_units`.`rank_id` = 220 AND `geographic_div`.`geographic_value` IN ('North America')
-
-
-
-#The authorities are giving me trouble right now; can do NOT IN (0,3,9999) or whatever
-SELECT `synonym_links`.*, `taxonomic_units`.* , `taxon_authors_lkp`.*
-FROM `taxonomic_units` 
-JOIN `synonym_links` ON `synonym_links`.`tsn` = `taxonomic_units`.`tsn` 
-JOIN `taxon_authors_lkp` ON `taxon_authors_lkp`.`taxon_author_id` = `taxonomic_units`.`taxon_author_id` 
-WHERE `taxonomic_units`.`kingdom_id` = 3 AND `taxonomic_units`.`rank_id` = 220 AND `taxonomic_units`.`unaccept_reason` IS NULL AND `taxonomic_units`.`taxon_author_id` NOT IN (0) AND `taxonomic_units`.`name_usage` NOT IN ('invalid') AND `taxonomic_units`.`n_usage` IN ('accepted')
-
-
-
-#the taxon_authors_lkp.taxon_author_id isn't the tsn, it's the taxonomic_units.taxon_author_id!!!
-SELECT `synonym_links`.*, `taxon_authors_lkp`.*, `taxonomic_units`.* 
-FROM `taxonomic_units` 
-LEFT JOIN `synonym_links` ON `synonym_links`.`tsn` = `taxonomic_units`.`tsn`
-LEFT JOIN `taxon_authors_lkp` ON `taxon_authors_lkp`.`taxon_author_id` = `taxonomic_units`.`taxon_author_id` 
-WHERE `taxonomic_units`.`kingdom_id` = 3 AND `taxonomic_units`.`rank_id` = 220 
-
-
-
-SELECT `synonym_links`.*, `taxon_authors_lkp`.*, `taxonomic_units`.* 
-FROM `taxonomic_units` 
-LEFT JOIN `synonym_links` ON `synonym_links`.`tsn` = `taxonomic_units`.`tsn`
-LEFT JOIN `taxon_authors_lkp` ON `taxon_authors_lkp`.`taxon_author_id` = `taxonomic_units`.`tsn` 
-WHERE `taxonomic_units`.`kingdom_id` = 3 AND `taxonomic_units`.`rank_id` = 220 
-
 
 
 cd /p/hackathon/Simulations/
@@ -90,6 +50,8 @@ load("P:/hackathon/Simulations/envs.backgEOR.Rda")
 load("P:/hackathon/Simulations/envs.backgHerb.Rda")
 # load("P:/hackathon/Simulations/Herb.thin1000.Rda")
 # load("P:/hackathon/Simulations/EORgrid.thin.Rda")
+
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 
 load("P:/hackathon/Simulations/coloradosps.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorsinglecell.Rda")
@@ -171,11 +133,11 @@ l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
 
 # Could take all the synonyms and names of l1G1G2 to make the list of names to pull from SEINet big list
 namesg1g2 <- table(l1G1G2$GNAME)
-#length(namesg1g2[namesg1g2 > 0]) #60 species
-#g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
-#table(g1g2names$Taxonomic.status) 
-#2 not in there, "Gutierrezia elegans" "Oonopsis sp. 1", 10 synonyms, 3 unresolved
-save(g1g2names, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
+# length(namesg1g2[namesg1g2 > 0]) #60 species
+# g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
+# table(g1g2names$Taxonomic.status)
+# 2 not in there, "Gutierrezia elegans" "Oonopsis sp. 1", 10 synonyms, 3 unresolved
+# save(g1g2names, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 
 
 #g1g2names[g1g2names$Taxonomic.status == "Unresolved",]
@@ -545,7 +507,10 @@ distXsp1 <- mapply('[[', distXsp, 1)
 distXsp1 <- do.call(rbind,distXsp1[!is.na(distXsp1)])
 plot(dist~as.factor(scientificName), distXsp1[distXsp1$dist<500000,], las=2)
 
-distXsp1_tpl <- TPL(distXsp1$scientificName)
+ # distXsp1_tpl <- TPL(distXsp1$scientificName)
+# save(distXsp1_tpl, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1_tpl.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1_tpl.Rda")
+
 nrow(distXsp1);nrow(distXsp1_tpl)
 distXsp1 <- data.frame(distXsp1,distXsp1_tpl)
 
@@ -1244,6 +1209,10 @@ dev.off()
 
 Is there anything inherintly interesting about the genus? Maybe some genera are more likely to shift in range than others... so yes, keep in. 
 ```{r}
+
+#to do year next need to get as many years out as possible from character strings
+distXsp1$year <- (as.numeric(gsub("([0-9]+).*$", "\\1", distXsp1$year)))
+
 f1 <- lm(dist ~ as.factor(New.Genus)*year + area, data= distXsp1)
 f2 <- lm(dist ~ year + area, data= distXsp1)
 f3 <- lm(dist ~ year, data= distXsp1)
@@ -1266,9 +1235,41 @@ sapply(1:length(lmresults$Delta_AICc), function(i){
 (er1 <- exp(0.5*lmresults$Delta_AICc[2]))
 (er2 <- exp(0.5*lmresults$Delta_AICc[3]))
 
+summary(f2)
 ```
 
+```{r}
+distXsp1$areabin <- 100
+distXsp1$areabin[distXsp1$area < max(distXsp1$area)] <- 95
+distXsp1$areabin[distXsp1$area < quantile(distXsp1$area, .75)] <- 75
+distXsp1$areabin[distXsp1$area < quantile(distXsp1$area, .5)] <- 50
+distXsp1$areabin[distXsp1$area < quantile(distXsp1$area, .25)] <- 25
+distXsp1$areabin[distXsp1$area == min(distXsp1$area)] <- 1
+table(distXsp1$areabin)
 
+ggplot(distXsp1[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
+                distXsp1$area<=max(distXsp1$area),], aes(year, dist/1000))+
+  geom_jitter(position=position_jitter(1), aes(colour=area/(1000^2)), size=4, alpha=0.95, pch=16)+  # geom_point(aes(colour=year))+
+  stat_smooth(method="lm")+
+  theme_bw()+
+  facet_wrap(~areabin, nrow=2)+
+  xlab("Species Range")+
+  ylab("Distance (km) to nearest EOR")+
+  scale_colour_gradientn(colours = rev(c("#FF0000", "#FFA500", "#FFFF00", "#008000", "#9999ff", "#000066"))) # (low="black",high="lightgreen")+
+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+```{r}
+ggplot(distXsp1[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
+                distXsp1$area<=max(distXsp1$area),], aes(area/1000000, dist/1000))+
+  geom_jitter(position=position_jitter(1), aes(colour=year), size=4, alpha=0.95, pch=16)+  # geom_point(aes(colour=year))+
+  stat_smooth(method="lm")+
+  theme_bw()+
+  xlab("Species Range")+
+  ylab("Distance (km) to nearest EOR")+
+  scale_colour_gradientn(colours = rev(c("#FF0000", "#FFA500", "#FFFF00", "#008000", "#9999ff", "#000066"))) # (low="black",high="lightgreen")
+
+```
 #Convext hull or tiny circles around eors vs herbarium vs. both together, how much change?    
 
 The Weber example of an out of state person mapping a collection to Gray's Peak from Chicago Lake that should be Mount Evans.     
@@ -1729,6 +1730,7 @@ summerMaxtempclip <- mask(summerMaxtemp,sw) #error
 summerMintempclip <- mask(summerMintemp, sw) #error
 
 
+
 # winter temps and precip important to give moisture to plants in spring, melt, and to hit germination needs, fall temp is not coorelated and should impact most fruit produciton for most species, too hot and it'll all dry up too much. 
 stackmini <- stack(winPrecipclip,winTmaxclip,winterMintempclip, 
                    #fallPrecipclip, 
@@ -1738,6 +1740,33 @@ stackmini <- stack(winPrecipclip,winTmaxclip,winterMintempclip,
 save(stackmini, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/stackmini.Rda")
 ```
 
+```{r}
+
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/EnvironVariables.jpg",
+     width=200, height=200, units='mm', res=300)
+
+layout(matrix(c(1,2,3,4), 2,2, byrow=FALSE),
+       width = c(5,5), height=c(5,5))
+
+plot(winPrecipclip, xlim=c(-109,-103),ylim=c(35,42),
+     xlab="lon", ylab="lat",
+     main="Winter Precipitation")
+
+plot(winTmaxclip, xlim=c(-109,-103),ylim=c(35,42),
+     xlab="lon", ylab="lat",
+     main="Maximum Winter Temperature")
+
+plot(winterMintempclip, xlim=c(-109,-103),ylim=c(35,42),
+     xlab="lon", ylab="lat",
+     main="Minimum Winter Temperature")
+     
+plot(fallTmaxclip, xlim=c(-109,-103),ylim=c(35,42),
+     xlab="lon", ylab="lat",
+     main="Maximum Fall Temperature")
+
+dev.off()
+
+```
 
 Reference stackmini to have same environmental variables in PCA as in the maxent models
 ```{r}
