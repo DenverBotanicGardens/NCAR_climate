@@ -12,8 +12,14 @@ load( "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/
 
 
 ```{r}
-
+plot(colocounties)
+points(pca_eorandherb_SAE[[2]]$x1,pca_eorandherb_SAE[[2]]$x2,pch=16)
 
 ```
 
 
+```{r}
+pca_eorandherb_SAE[[1]]
+
+
+```
