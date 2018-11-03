@@ -570,7 +570,7 @@ EORsxsp <- mapply('[[', distXsp, 4)
 
 #Instead of PRISM, use the elevation, slope, and aspect   
 ```{r}
-
+rasterstack_2 <- stack(list(coElev, coAspect, coSlope))
 
 
 ```
