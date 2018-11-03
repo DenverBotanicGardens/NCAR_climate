@@ -1,0 +1,19 @@
+---
+title: "SDM_Herbtrain_EORtest"
+author: "Michelle DePrenger-Levin"
+date: "November 3, 2018"
+output: html_document
+---
+
+```{r}
+load( "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb_SAE.Rda" )
+
+```
+
+
+```{r}
+
+
+```
+
+
