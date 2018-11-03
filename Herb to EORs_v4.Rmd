@@ -89,13 +89,17 @@ ScaleBar <- function(reference_raster_utm, round_to_nearest_km, width_percent, y
 
 
 ```
-#Resample elevation (and others) to the bioclim sized grid, 30km grid is way to small, computer can't handle 
+
+Want to use elevation, slope and aspect. Could look at ruggedness too but don't have that yet. 
 ```{r}
 
 coElev <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Elevation_VT/CO_Mosaic_Elevation_VT/co_elev_VT_WGS84.tif")
 
 coElev_biosize <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Elevation_VT/co_elev_WGS84_30sec.tif")
 
+coAspect <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Aspect_VT/co_aspect_VT_WGS84.tif")
+
+coSlope <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Slope_VT/co_slope_VT_WGS84.tif")
 
 plot(coElev)
 ```
@@ -563,7 +567,15 @@ EORsxsp <- mapply('[[', distXsp, 4)
 ```
 
     
-    
+
+#Instead of PRISM, use the elevation, slope, and aspect   
+```{r}
+
+
+
+```
+
+  
 
 Test a PCoA for all grid EOR points and all Herb points. Then limit by year, can we figure out which EOR are historic points? 
 ```{r}

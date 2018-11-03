@@ -53,9 +53,11 @@ l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
 #length(namesg1g2[namesg1g2 > 0]) #60 species
 # g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
 
-length(table(g1g2names$Family))
-g1g2names[g1g2names$Family=="",] #Add the Family for Gutierrezia  and Oonopsis
-
+(table(g1g2names$Family))
+g1g2names[g1g2names$Family=="Plantaginaceae",]#Add the Family for Gutierrezia: Asteraceae  and Oonopsis: Asteraceae
+g1g2names$Family[g1g2names$Family==""] <- "Asteraceae"
+g1g2names$Family[g1g2names$Family=="Compositae"] <- "Asteraceae"
+g1g2names$Family[g1g2names$Family=="Leguminosae"] <- "Fabaceae"
 ```
 
 Reference stackmini to have same environmental variables in PCA as in the maxent models
@@ -235,6 +237,25 @@ for(i in 1:length(kmeansEORHerb)){
 #Want all, not just the outliers 
 kmall <- do.call(rbind,kmeansEORHerb)
 
+specnum <- as.data.frame(table(distXsp1$SpeciesID,distXsp1$scientificName))
+spnumone2ond <- specnum[specnum$Freq>0,c(1:2)]
+Number2species <- spnumone2ond[!duplicated(spnumone2ond$Var1),]
+
+
+groupproportions <- lapply(kmeansEORHerb, function(x){
+  tbl <- table(x$pa,x$kmeans.cluster)
+  tblprop <- data.frame(matrix(tbl,4,2))
+  tblprop$all <- rowSums(tbl)
+  tblprop$group1 <- tblprop$X1/tblprop$all
+  tblprop$group2 <- tblprop$X2/tblprop$all
+  tblprop$SpeciesID <- unique(x$SpeciesID)
+  out <- merge(tblprop,Number2species, by.x="SpeciesID",by.y="Var1") #species numbers don't match
+})
+
+grprop <- do.call(rbind,groupproportions)
+
+
+
 distoutliers <- lapply(kmeansEORHerb, function(x){
   tbl <- table(x$pa,x$kmeans.cluster)
   #Want the outliers so after determining which cluster most EOR presence points went, then pull the other group for the presence group 2 $pa==2 are the Herb points
@@ -387,6 +408,20 @@ summary(f9)
 
 ```
 
+
+Do the proportions match some pattern? Can't look at age, unless kept only 1980 or later.. earlier but didn't do that. 
+```{r}
+
+chisqs <- lapply(groupproportions[!is.na(groupproportions)], function(x){
+  if(sum(x[1,2:3]>0)==2){
+    chisq.test(x[1:2,2:3]) #the two presences rows 1: EOR, 2: Herb for the first cluster to second cols 2:3
+  }
+  })
+
+chisq.test(groupproportions[[1]][1:2,2:3])
+
+```
+
 ```{r}
 InorOut$areabin <- 100
 InorOut$areabin[InorOut$area < max(InorOut$area)] <- 95
@@ -441,6 +476,15 @@ ggplot(InorOut[InorOut$pa==2,], aes(factor(InOut), Year, colour= area/(1000^2)))
   geom_jitter(position=position_jitter(0.25))+
   scale_colour_gradient2(name= expression(paste("Species range (km"^"2",")")),
                          low='red',mid='violet',high='blue')
+
+ggplot(InorOut[InorOut$pa==2,], aes(factor(Genus), Year, colour= area/(1000^2)))+
+  geom_boxplot() +
+  theme_bw()+
+  xlab("Species")+
+  geom_jitter(position=position_jitter(0.25))+
+  scale_colour_gradient2(name= expression(paste("Species range (km"^"2",")")),
+                         low='red',mid='violet',high='blue')+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 ggplot(InorOut[InorOut$pa==2,], aes(factor(InOut), area/(1000^2), colour= as.numeric(Year)))+
   geom_boxplot() +

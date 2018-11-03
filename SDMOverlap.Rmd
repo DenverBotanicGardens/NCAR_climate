@@ -8,11 +8,17 @@ output: html_document
 ```{r}
 library(raster)
 library(Rmisc)
+library(rgdal)
+library(ggplot2)
 
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
 colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
-
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
+g1g2names$Family[g1g2names$Family==""] <- "Asteraceae"
+g1g2names$Family[g1g2names$Family=="Compositae"] <- "Asteraceae"
+g1g2names$Family[g1g2names$Family=="Leguminosae"] <- "Fabaceae"
+g1g2names$AcceptedName <- paste(g1g2names$New.Genus,g1g2names$New.Species)
 
 distXsp1 <- mapply('[[', distXsp, 1)
 distXsp1 <- do.call(rbind,distXsp1[!is.na(distXsp1)])
@@ -77,7 +83,7 @@ for(sp in 1:length(sp20)){
   eors[[sp]] <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/MeanRasterstackEOR",gsub(" ","_",sp20[sp]),"1.tif", sep=""))
   herbs[[sp]] <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/MeanRasterstackHerb",gsub(" ","_",sp20[sp]),"1.tif", sep=""))
 }
-
+z
 lapply(sp20, function(x){
   eorin <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/MeanRasterstackEOR",gsub(" ","_",x),"1.tif", sep=""))
   herbin <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/MeanRasterstackHerb",gsub(" ","_",x),"1.tif", sep=""))
@@ -117,14 +123,14 @@ overlapall <- merge(overlapall, specnum[specnum$Freq>0,], by.x = "Species", by.y
 distXsp1[distXsp1$scientificName %in% sp20,]@data
 
 summarydistXsp1 <- Rmisc::summarySE(data=distXsp1@data, measurevar = "dist", groupvars = c("SpeciesID"), na.rm=TRUE)
-#summaryareaXsp1 <- Rmisc::summarySE(data=distXsp1@data, measurevar = "area", groupvars = c("SpeciesID"), na.rm=TRUE)
+summaryareaXsp1 <- Rmisc::summarySE(data=distXsp1@data, measurevar = "area", groupvars = c("SpeciesID"), na.rm=TRUE)
 
 overlapall <- merge(overlapall, summarydistXsp1, by.x = "Var1", by.y = "SpeciesID")
-#overlapall <- merge(overlapall, summaryareaXsp1, by.x = "Var1", by.y = "SpeciesID")
+overlapall <- merge(overlapall, summaryareaXsp1, by.x = "Var1", by.y = "SpeciesID")
 overlapall$proporOverlap <- overlapall$Overlap/overlapall$totalarea
 overlapall$propHerb <- overlapall$Herbonly/overlapall$totalarea
 overlapall$propEOR <- overlapall$EORonly/overlapall$totalarea
-
+overlapall <- merge(overlapall, g1g2names[,-which(names(g1g2names) %in% c("Species"))], by.x="Species", by.y="AcceptedName")
 
 overlapall
 ```
@@ -139,6 +145,8 @@ stripchart(list(overlapall$propHerb, overlapall$propEOR,overlapall$proporOverlap
                 pch=1, method="jitter", vertical = TRUE, 
            col=rep(as.numeric(as.factor(overlapall$Species)),3),add=TRUE)
 
+
+
 ```
 
 
@@ -146,6 +154,19 @@ stripchart(list(overlapall$propHerb, overlapall$propEOR,overlapall$proporOverlap
 library(reshape2)
 overlapmelt <- reshape2::melt(overlapall)
 
+anovatest <- overlapmelt[overlapmelt$variable %in% unique(grep(paste(c("over","only"),collapse="|"),
+                   overlapmelt$variable, value=TRUE)),]
+
+proptest <- overlapmelt[grep("prop", overlapmelt$variable),]
+
+summary(glm(value~variable, data=proptest))
+summary(glm(value~variable, data=anovatest))
+
+ggplot(proptest, aes(variable, value))+
+  geom_boxplot()+
+  geom_jitter(position=position_jitter(0.2), aes(colour=Family))
+
+table(overlapall$Family)
 
 ggplot(overlapmelt[grep("prop",overlapmelt$variable),], aes(variable, value))+
   geom_boxplot()+
@@ -163,6 +184,16 @@ ggplot(overlapall, aes(dist,propHerb))+
   theme_bw() + 
   geom_point(aes(colour=Species))+
   stat_smooth(method="lm")
+
+
+ggplot(overlapall, aes(area/(1000^2),propHerb))+
+  theme_bw() + 
+  geom_point(aes(colour=Species))+
+  stat_smooth(method="lm")+
+  xlab("Square km")
+
+summary(lm(propHerb~area, data=overlapall))
+
 ```
 
 
