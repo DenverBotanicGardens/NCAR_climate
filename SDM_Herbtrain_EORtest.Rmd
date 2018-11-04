@@ -142,6 +142,11 @@ eorGnames[want];herbGnames
 #Loop through all the species
 Maxent20species <- lapply(1:length(want), function(i){
   checkrecords <- pca_herb_SAE[want[i]]
+  for(i in 1:length(want)){
+    herbpoints[[i]] <- spTransform((distXsp[[want[i]]][[1]]), CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+    eorpoints[[i]] <- spTransform(distXsp[[want[i]]][[4]], CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+    
+    rscrs_2
    
   # to keep at least 5 records per group
   if(sum(checkrecords<10)>0){

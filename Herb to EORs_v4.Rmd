@@ -576,68 +576,7 @@ rscrs_2 <- rasterstack_2@crs@projargs # "+proj=longlat +datum=WGS84 +no_defs +el
 
 ```
 
-# Already loaded, skip!
-```{r, eval=FALSE}
 
-pca_eorandherb_SAE <- lapply(1:nrow(g1g2names), function(sp){
-  #put grid points across colorado, sample from it for each polygons
-     polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[sp],
-                                         g1g2names$Taxon[sp]),] 
-      #area of each polygon
-      areanow <- sapply(slot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-                                             g1g2names$Taxon[i]),], "polygons"), 
-                        slot, "area")
-
-     cellsize <- 100
-     grid <- lapply(1:length(polys), function(i){
-       if(sqrt((polys[i,]@bbox[3]-polys[i,]@bbox[1])*(polys[i,]@bbox[4]-polys[i,]@bbox[2]))/cellsize < 1){
-         grid <- makegrid(polys[i,], cellsize = 10, pretty=FALSE) #0.1km
-         gridout <- SpatialPointsDataFrame(grid, data.frame(id=1:nrow(grid),polyid=i,
-                                                            polys@data$PolyID@data[i,]),
-                                             proj4string = CRS(proj4string(polys[i,])))
-           gridout
-         } else {
-           grid <- makegrid(polys[i,], cellsize = cellsize, pretty=FALSE) #1km 
-           gridout <- SpatialPointsDataFrame(grid, data.frame(id=1:nrow(grid),polyid=i,
-                                                              polys@data$PolyID@data[i,]),
-                                             proj4string = CRS(proj4string(polys[i,])))
-           gridout
-           }
-       })
-     
-
-     ov <- lapply(1:length(polys), function(i){
-         out <- grid[[i]][polys[i,],]
-         out
-         })
-
-     eor_data <- lapply(1:length(ov), function(x){
-       if(nrow(ov[[x]]@data)==0){
-         center <- gCentroid(polys[i,])
-         centerout <- SpatialPointsDataFrame(center, data.frame(id=1,polyid=x,
-                                                                polys@data$PolyID@data[i,]),
-                                             proj4string = CRS(proj4string(polys[i,])))
-         out <- spTransform(centerout, CRS(paste(rscrs_2)))
-         out
-       } else {
-         out <- spTransform(ov[[x]], CRS(paste(rscrs_2)))
-         out
-       }
-     })
-     
-     mergedEORs <- do.call(rbind,eor_data)
-     data_eor <- data.frame(coordinates(mergedEORs),id=mergedEORs$id,polyid=mergedEORs$polyid,
-                            Bestcrs=mergedEORs$BESTSRC, firstobs=mergedEORs$FIRSTOBS, 
-                            GRANK=mergedEORs$GRANK,
-                            GNAME=mergedEORs$GNAME,ENDEMIC=mergedEORs$ENDEMIC, 
-                            Lastobs=mergedEORs$LASTOBS,dist=NA,area=sum(areanow),
-                            extract(rasterstack_2, mergedEORs))
-     data_eor
-})
-
- save(pca_eorandherb_SAE, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb_SAE.Rda") 
-
-```
   
 
 Test a PCoA for all grid EOR points and all Herb points. Then limit by year, can we figure out which EOR are historic points? 
