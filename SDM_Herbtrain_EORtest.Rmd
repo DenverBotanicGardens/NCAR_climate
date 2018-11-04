@@ -6,20 +6,191 @@ output: html_document
 ---
 
 ```{r}
+library(ENMeval)
+
 load( "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb_SAE.Rda" )
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herb_SAE.Rda")
+
+polys <- lapply(1:nrow(g1g2names), function(i){
+     polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                         g1g2names$Taxon[i]),]
+     polys <- spTransform(polys, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+     polys
+     })
 
 ```
 
 
 ```{r}
-plot(colocounties)
-points(pca_eorandherb_SAE[[2]]$x1,pca_eorandherb_SAE[[2]]$x2,pch=16)
+herbpoints <- list()
+eorpoints <- list()
+
+for(i in 1:length(want)){
+    herbpoints[[i]] <- spTransform((distXsp[[want[i]]][[1]]), CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+    eorpoints[[i]] <- spTransform(distXsp[[want[i]]][[4]], CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+    
+    plot(colocounties.UTM)
+    plot(herbpoints[[i]], add=TRUE, col="blue", pch=16)
+    plot(eorpoints[[i]], add=TRUE)
+    plot(polys[[want[i]]], add=TRUE, border="red", lwd=4)
+}
+```
+
+
+# Already loaded, skip!
+```{r, eval=FALSE}
+
+pca_eor_SAE <- lapply(1:nrow(g1g2names), function(sp){
+  #put grid points across colorado, sample from it for each polygons
+     polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[sp],
+                                         g1g2names$Taxon[sp]),] 
+      #area of each polygon
+      areanow <- sapply(slot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                             g1g2names$Taxon[i]),], "polygons"), 
+                        slot, "area")
+
+     cellsize <- 100
+     grid <- lapply(1:length(polys), function(i){
+       if(sqrt((polys[i,]@bbox[3]-polys[i,]@bbox[1])*(polys[i,]@bbox[4]-polys[i,]@bbox[2]))/cellsize < 1){
+         grid <- makegrid(polys[i,], cellsize = 10, pretty=FALSE) #0.1km
+         gridout <- SpatialPointsDataFrame(grid, data.frame(id=1:nrow(grid),polyid=i,
+                                                            polys@data$PolyID@data[i,]),
+                                             proj4string = CRS(proj4string(polys[i,])))
+           gridout
+         } else {
+           grid <- makegrid(polys[i,], cellsize = cellsize, pretty=FALSE) #1km 
+           gridout <- SpatialPointsDataFrame(grid, data.frame(id=1:nrow(grid),polyid=i,
+                                                              polys@data$PolyID@data[i,]),
+                                             proj4string = CRS(proj4string(polys[i,])))
+           gridout
+           }
+       })
+     
+
+     ov <- lapply(1:length(polys), function(i){
+         out <- grid[[i]][polys[i,],]
+         out
+         })
+
+     eor_data <- lapply(1:length(ov), function(x){
+       if(nrow(ov[[x]]@data)==0){
+         center <- gCentroid(polys[i,])
+         centerout <- SpatialPointsDataFrame(center, data.frame(id=1,polyid=x,
+                                                                polys@data$PolyID@data[i,]),
+                                             proj4string = CRS(proj4string(polys[i,])))
+         out <- spTransform(centerout, CRS(paste(rscrs_2)))
+         out
+       } else {
+         out <- spTransform(ov[[x]], CRS(paste(rscrs_2)))
+         out
+       }
+     })
+     
+     mergedEORs <- do.call(rbind,eor_data)
+     data_eor <- data.frame(coordinates(mergedEORs),id=mergedEORs$id,polyid=mergedEORs$polyid,
+                            Bestcrs=mergedEORs$BESTSRC, firstobs=mergedEORs$FIRSTOBS, 
+                            GRANK=mergedEORs$GRANK,
+                            GNAME=mergedEORs$GNAME,ENDEMIC=mergedEORs$ENDEMIC, 
+                            Lastobs=mergedEORs$LASTOBS,dist=NA,area=sum(areanow),
+                            extract(rasterstack_2, mergedEORs))
+     data_eor
+})
+
+ save(pca_eorandherb_SAE, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb_SAE.Rda") 
 
 ```
 
 
 ```{r}
-pca_eorandherb_SAE[[1]]
+distXsp1_pca <- do.call(c,mapply('[[', distXsp, 1))
+distXsp1_pca <- distXsp1_pca[want]
+#distXsp1_pca <- distXsp1_pca[!is.na(distXsp1_pca)]
+pca_herb_SAE <- lapply(distXsp1_pca, function(x){
+#  transdf <- data.frame(distXsp[[x]][[1]],dist=distXsp[[x]][[2]],area=distXsp[[x]][[3]])
+  out <- spTransform(x, CRS(paste(rscrs_2)))
+  pca_herbout <- data.frame(coordinates(out),id=out$id,polyid=NA,
+                            Bestcrs=out$institutionCode, firstobs=out$eventDate, 
+                            GRANK=NA,
+                            GNAME=out$scientificName,ENDEMIC=NA, 
+                            Lastobs=out$eventDate,dist=out$dist,area=out$area,
+                            extract(rasterstack_2, out))
+  pca_herbout
+})
+save(pca_herb_SAE, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herb_SAE.Rda")
+
+
+
+```
+
+```{r}
+
+herbGnames <- lapply(pca_herb_SAE, function(x){
+  unique(x$GNAME)
+})
+
+eorGnames <- lapply(pca_eorandherb_SAE, function(x){
+  unique(x$GNAME)
+})
+
+eorGnames[want];herbGnames
+```
+
+
+
+```{r}
+#Loop through all the species
+Maxent20species <- lapply(1:length(want), function(i){
+  checkrecords <- pca_herb_SAE[want[i]]
+   
+  # to keep at least 5 records per group
+  if(sum(checkrecords<10)>0){
+    NULL
+  } else {
+        kfoldnum <- 10
+        speciestable <- pca_data2[[i]]
+        speciestable$group_pa <- unlist(lapply(split(pca_data2[[i]], pca_data2[[i]]$pa), function(x){
+          kfold(x$pa, kfoldnum)
+          }))
+    
+      out <- list()
+      for(l in 1:10){     #Are 10 repeats for 10 fold enough?
+          #randomly select on of the test roups to sample as the training data, 10 fold
+          test <- sample(1:10, 1)
+          
+          train_pEOR <- speciestable[speciestable$pa == 1 & speciestable$group_pa!=test,c("x1","x2")]
+          train_pHerb <- speciestable[speciestable$pa == 2 & speciestable$group_pa!=test,c("x1","x2")]
+          train_bEOR <- speciestable[speciestable$pa == 3 & speciestable$group_pa!=test,c("x1","x2")]
+          train_bHerb <- speciestable[speciestable$pa == 4 & speciestable$group_pa!=test,c("x1","x2")]
+          
+          test_pEOR <- speciestable[speciestable$pa == 1 & speciestable$group_pa==test,c("x1","x2")]
+          test_pHerb <- speciestable[speciestable$pa == 2 & speciestable$group_pa==test,c("x1","x2")]
+          test_bEOR <- speciestable[speciestable$pa == 3 & speciestable$group_pa==test,c("x1","x2")]
+          test_bHerb <- speciestable[speciestable$pa == 4 & speciestable$group_pa==test,c("x1","x2")]
+          
+          me <- maxent(stackmini, p=train_pEOR, a=train_bEOR)
+          meHerb <- maxent(stackmini, p=train_pHerb, a=train_bHerb)
+          
+          #evalidate teh model
+          e <- dismo::evaluate(test_pEOR, test_bEOR, me, stackmini)
+          eHerb <- dismo::evaluate(test_pHerb, test_bHerb, meHerb, stackmini)
+          gc()
+          
+          #Visulatize predictions
+          writeRaster(dismo::predict(me, stackmini),paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/EOR",g1g2names$AcceptedName[i],l,".tif", sep=""),overwrite=TRUE)
+          gc()
+          writeRaster(dismo::predict(meHerb, stackmini),paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/Herb",g1g2names$AcceptedName[i],l,".tif", sep=""),overwrite=TRUE)
+          gc()
+          thres <- dismo::threshold(e) 
+          thresHerb <- dismo::threshold(eHerb)
+          # 1: which group to withhold, 2: maxent for EOR, 3: maxent for Herbarium, 4: evaluate EOR, 5: evaluate Herbarium, 6: thresholds for EOR, 7: thresholds for Herbarium, 8: species
+          out[[l]] <- list(test,me,meHerb,e,eHerb,thres,thresHerb,g1g2names$AcceptedName[i])#,pme,pmeHerb)
+          gc()
+      }
+      out
+  }
+})
+save(Maxent20species, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxent20species.Rda")
 
 
 ```
