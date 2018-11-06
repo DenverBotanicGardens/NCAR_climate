@@ -11,6 +11,9 @@ library(ENMeval)
 load( "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb_SAE.Rda" )
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herb_SAE.Rda")
+load("P:/hackathon/Simulations/envs.backgEOR.Rda")
+load("P:/hackathon/Simulations/envs.backgHerb.Rda")
+load("P:/hackathon/Simulations/circleHerb.Rda")
 
 polys <- lapply(1:nrow(g1g2names), function(i){
      polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
@@ -136,42 +139,67 @@ eorGnames <- lapply(pca_eorandherb_SAE, function(x){
 eorGnames[want];herbGnames
 ```
 
+```{r}
+
+#Get backgrounds for each species according to the herbarium specimens
+
+envs.backg.herb_SAE <- list()
+for(i in 1:length(want)){
+  envs.backg.herb_SAE[[i]] <- crop(rasterstack_2, circleHerb[[i]]@polygons)
+}
+
+for(i in 1:length(want)){
+  envs.backg.herb_SAE[[i]] <- mask(envs.backg.herb_SAE[[i]], circleHerb[[i]]@polygons)
+}
+
+
+save(envs.backg.herb_SAE, file= "P:/hackathon/Simulations/envs.backgHerb_SAE.Rda")
+
+pointsXsp.latlon <- list()
+for(i in 1:length(want)){
+  pointsXsp.latlon[[i]] <- spTransform(distXsp[[want[1]]][[1]], CRS(rscrs_2))
+}
+
+bg.herb_SAE <- lapply(1:length(want), function(i){
+  background <- as.data.frame(randomPoints(envs.backg.herb[[i]][[1]], n=nrow(pointsXsp.latlon[[i]]@coords)+
+                                          0.25*(nrow(pointsXsp.latlon[[i]]@coords))))
+  out <- data.frame(x1 = background$x, x2 = background$y, id = NA, polyid=NA, Bestcrs=NA, firstobs=NA,
+                           GRANK=NA, GNAME=g1g2names$AcceptedName[i],ENDEMIC=NA, Lastobs=NA,
+                    dist=NA,area=NA,
+                    raster::extract(rasterstack_2, background))
+  out
+})
+save(bg.herb_SAE, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bg.herb.Rda")
+
+#just make some random background points for EORs
+bg.EORs <- lapply(EORsxsp[!is.na(EORsxsp)], function(x){
+  out <- randomPoints(x, n=row(x@coords)+0.25*(nrow(x@coords)))
+  out
+})
+
+```
 
 
 ```{r}
 #Loop through all the species
 Maxent20species <- lapply(1:length(want), function(i){
-  checkrecords <- pca_herb_SAE[want[i]]
-  for(i in 1:length(want)){
-    herbpoints[[i]] <- spTransform((distXsp[[want[i]]][[1]]), CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
-    eorpoints[[i]] <- spTransform(distXsp[[want[i]]][[4]], CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
-    
-    rscrs_2
-   
+  checkrecords <- pca_herb_SAE[[i]]
+
   # to keep at least 5 records per group
-  if(sum(checkrecords<10)>0){
+  if(nrow(checkrecords)<10){
     NULL
   } else {
-        kfoldnum <- 10
-        speciestable <- pca_data2[[i]]
-        speciestable$group_pa <- unlist(lapply(split(pca_data2[[i]], pca_data2[[i]]$pa), function(x){
-          kfold(x$pa, kfoldnum)
-          }))
-    
+        speciestab <- pca_herb_SAE[[i]]
+        speciestab$pa <- 1
+        eortab <- pca_eorandherb_SAE[[want[i]]]
+        eortab$pa <- 2
+
       out <- list()
-      for(l in 1:10){     #Are 10 repeats for 10 fold enough?
-          #randomly select on of the test roups to sample as the training data, 10 fold
-          test <- sample(1:10, 1)
-          
-          train_pEOR <- speciestable[speciestable$pa == 1 & speciestable$group_pa!=test,c("x1","x2")]
-          train_pHerb <- speciestable[speciestable$pa == 2 & speciestable$group_pa!=test,c("x1","x2")]
-          train_bEOR <- speciestable[speciestable$pa == 3 & speciestable$group_pa!=test,c("x1","x2")]
-          train_bHerb <- speciestable[speciestable$pa == 4 & speciestable$group_pa!=test,c("x1","x2")]
+      for(l in 1:10){    
+          train_pHerb <- speciestab[,c("x1","x2")]
+          train_bHerb <- bg.herb_SAE[[i]]
           
           test_pEOR <- speciestable[speciestable$pa == 1 & speciestable$group_pa==test,c("x1","x2")]
-          test_pHerb <- speciestable[speciestable$pa == 2 & speciestable$group_pa==test,c("x1","x2")]
-          test_bEOR <- speciestable[speciestable$pa == 3 & speciestable$group_pa==test,c("x1","x2")]
-          test_bHerb <- speciestable[speciestable$pa == 4 & speciestable$group_pa==test,c("x1","x2")]
           
           me <- maxent(stackmini, p=train_pEOR, a=train_bEOR)
           meHerb <- maxent(stackmini, p=train_pHerb, a=train_bHerb)
