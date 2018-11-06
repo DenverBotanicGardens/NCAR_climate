@@ -11,9 +11,10 @@ library(ENMeval)
 load( "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb_SAE.Rda" )
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herb_SAE.Rda")
-load("P:/hackathon/Simulations/envs.backgEOR.Rda")
-load("P:/hackathon/Simulations/envs.backgHerb.Rda")
+# load("P:/hackathon/Simulations/envs.backgEOR.Rda")
+# load("P:/hackathon/Simulations/envs.backgHerb.Rda")
 load("P:/hackathon/Simulations/circleHerb.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bg.herb.Rda")
 
 polys <- lapply(1:nrow(g1g2names), function(i){
      polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
