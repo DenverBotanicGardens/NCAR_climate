@@ -7,21 +7,67 @@ output: html_document
 
 ```{r}
 library(ENMeval)
+library(maptools)
+library(sp)
+library(rgeos)
+library(spdep)
+library(rgdal)
+library(maptools)
+library(raster)
 
-load( "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb_SAE.Rda" )
+
+coElev <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Elevation_VT/CO_Mosaic_Elevation_VT/co_elev_VT_WGS84.tif")
+coAspect <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Aspect_VT/co_aspect_VT_WGS84.tif")
+coSlope <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Slope_VT/co_slope_VT_WGS84.tif")
+
+rasterstack_2 <- stack(list(coElev, coAspect, coSlope))
+rscrs_2 <- rasterstack_2@crs@projargs # "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+```
+
+
+```{r}
+# load( "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb_SAE.Rda" )
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herb_SAE.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herb_SAE.Rda")
 # load("P:/hackathon/Simulations/envs.backgEOR.Rda")
 # load("P:/hackathon/Simulations/envs.backgHerb.Rda")
-load("P:/hackathon/Simulations/circleHerb.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bg.herb.Rda")
+# load("P:/hackathon/Simulations/circleHerb.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bg.herb.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
+
+
+want <- which(!is.na(mapply('[[', distXsp, 1)))
+wantEOR <- which(!is.na(mapply('[[', distXsp, 4)))
+
+l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
+proj4string(l1eor) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
+l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
+l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
+                                       function(x){
+              x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
+              x
+              }))
 
 polys <- lapply(1:nrow(g1g2names), function(i){
      polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
                                          g1g2names$Taxon[i]),]
-     polys <- spTransform(polys, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+     # polys <- spTransform(polys, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
      polys
      })
+
+
+# Error in prettyNum(.Internal(format(x, trim, digits, nsmall, width, 3L, : first argument must be atomic
+# Can't call polys@data[as.Date...] have to do polys[as.Date...]
+polys_post1980 <- lapply(1:60, function(i){
+     polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                         g1g2names$Taxon[i]),]
+     # polys <- spTransform(polys, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+     polys@data$LASTOBS <- as.Date(polys@data$LASTOBS, format="%Y-%m-%d")
+     out <- polys[(!is.na(polys@data$LASTOBS) & polys@data$LASTOBS >"1980-12-31"),]
+     out
+     })
+
+plot(polys_post1980[[4]])
 
 ```
 
@@ -30,6 +76,13 @@ polys <- lapply(1:nrow(g1g2names), function(i){
 herbpoints <- list()
 eorpoints <- list()
 
+EORgridpoints <- mapply('[[', distXsp, 4)
+length(EORgridpoints[!is.na(EORgridpoints)])
+length(wantEOR)
+
+colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
+colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
+
 for(i in 1:length(want)){
     herbpoints[[i]] <- spTransform((distXsp[[want[i]]][[1]]), CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
     eorpoints[[i]] <- spTransform(distXsp[[want[i]]][[4]], CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
@@ -37,7 +90,7 @@ for(i in 1:length(want)){
     plot(colocounties.UTM)
     plot(herbpoints[[i]], add=TRUE, col="blue", pch=16)
     plot(eorpoints[[i]], add=TRUE)
-    plot(polys[[want[i]]], add=TRUE, border="red", lwd=4)
+    plot(polys_post1980[[want[i]]], add=TRUE, border="red", lwd=4)
 }
 ```
 
@@ -45,7 +98,49 @@ for(i in 1:length(want)){
 # Already loaded, skip!
 ```{r, eval=FALSE}
 
-pca_eor_SAE <- lapply(1:nrow(g1g2names), function(sp){
+pca_eor_SAE <- lapply(polys_post1980, function(pol){
+  areanow <- sapply(slot(pol, "polygons"), 
+                        slot, "area")
+  grid <- lapply(1:length(pol), function(x){
+    gridout <- makegrid(pol[x,], cellsize=50, pretty=FALSE)
+    gridout <- SpatialPointsDataFrame(gridout, data.frame(id=1:nrow(gridout),
+                                                       polyid=x,
+                                                       pol@data$PolyID@data[x,],
+                                                       area = sapply(slot(pol[x,],"polygons"), slot, "area")),
+                                      proj4string = CRS(proj4string(pol[x,])))
+     out <- gridout[pol[x,],]
+     if(nrow(out@data)==0){
+       center <- gCentroid(pol[x,])
+       centerout <- SpatialPointsDataFrame(center, data.frame(id=1,
+                                                       polyid=x,
+                                                       pol@data$PolyID@data[x,],
+                                                       area = sapply(slot(pol[x,],"polygons"), slot, "area")),
+                                      proj4string = CRS(proj4string(pol[x,])))
+       centerout
+     } else {
+       out
+     }
+  })
+  mergedEORs <- do.call(rbind,grid)
+  mergedEORs <- spTransform(mergedEORs, CRS(paste(rscrs_2)))
+  data_eor <- data.frame(coordinates(mergedEORs), id= mergedEORs$id, polyid = mergedEORs$polyid,
+                          Bestcrs=mergedEORs$BESTSRC, firstobs=mergedEORs$FIRSTOBS, 
+                            GRANK=mergedEORs$GRANK,
+                            GNAME=mergedEORs$GNAME,ENDEMIC=mergedEORs$ENDEMIC, 
+                            Lastobs=mergedEORs$LASTOBS,dist=NA,area=sum(areanow),
+                            extract(rasterstack_2, mergedEORs))
+  data_eor
+})
+
+save(pca_eor_SAE, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eor_SAE.Rda") 
+
+(pca_eor_SAE[[1]])
+
+```
+
+
+```{r}
+pca_eorandherb_SAE <- lapply(1:nrow(g1g2names), function(sp){
   #put grid points across colorado, sample from it for each polygons
      polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[sp],
                                          g1g2names$Taxon[sp]),] 
@@ -177,6 +272,14 @@ bg.EORs <- lapply(EORsxsp[!is.na(EORsxsp)], function(x){
   out <- randomPoints(x, n=row(x@coords)+0.25*(nrow(x@coords)))
   out
 })
+
+#make new circles
+circleEORs <- list()
+for(i in 1:length(want)){
+  circleEORs[[i]] <- circles(pca_eor_SAE[[i]][,c("x1","x2")], d=50000, lonlat=TRUE)
+}
+
+
 
 ```
 
