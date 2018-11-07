@@ -280,6 +280,39 @@ for(i in 1:length(want)){
 }
 
 
+backgroundEORs <- lapply(circleEORs, function(pol){
+  spsample(pol, n=nrow(pol@presence)+0.25*nrow(pol@presence))
+  gridout <- SpatialPointsDataFrame(gridout, data.frame(id=1:nrow(gridout),
+                                                        polyid=1,
+                                                        pol@data$PolyID@data,
+                                                        area = sapply(slot(pol,"polygons"), slot,
+                                                                      "area")),
+                                    proj4string = CRS(proj4string(pol[x,])))
+  out <- gridout[pol[x,],]
+  if(nrow(out@data)==0){
+    center <- gCentroid(pol[x,])
+    centerout <- SpatialPointsDataFrame(center, data.frame(id=1,
+                                                           polyid=x,
+                                                           pol@data$PolyID@data[x,],
+                                                           area = sapply(slot(pol[x,],"polygons"), slot,
+                                                                         "area")),
+                                        proj4string = CRS(proj4string(pol[x,])))
+    centerout
+    } else {
+      out
+      }
+  })
+
+  mergedEORs <- do.call(rbind,grid)
+  mergedEORs <- spTransform(mergedEORs, CRS(paste(rscrs_2)))
+  data_eor <- data.frame(coordinates(mergedEORs), id= mergedEORs$id, polyid = mergedEORs$polyid,
+                          Bestcrs=mergedEORs$BESTSRC, firstobs=mergedEORs$FIRSTOBS, 
+                            GRANK=mergedEORs$GRANK,
+                            GNAME=mergedEORs$GNAME,ENDEMIC=mergedEORs$ENDEMIC, 
+                            Lastobs=mergedEORs$LASTOBS,dist=NA,area=sum(areanow),
+                            extract(rasterstack_2, mergedEORs))
+  data_eor
+})
 
 ```
 
