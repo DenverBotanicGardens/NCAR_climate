@@ -45,7 +45,7 @@ load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/d
 # load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herb_SAE.Rda")
 # load("P:/hackathon/Simulations/envs.backgEOR.Rda")
 # load("P:/hackathon/Simulations/envs.backgHerb.Rda")
-# load("P:/hackathon/Simulations/circleHerb.Rda")
+load("P:/hackathon/Simulations/circleHerb.Rda")
 # load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bg.herb.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 
@@ -103,13 +103,15 @@ identical(which(!is.na(Herboints)),want)
 wantboth <- want[!is.na(wantEOR)]
 unique(Herboints[[1]]@data$scientificName)[1]
 
-for(i in 1:length(want[want!=41])){
-    herbpoints[[i]] <- spTransform((distXsp[[want[i]]][[1]]), CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
-    eorpoints[[i]] <- spTransform(distXsp[[want[i]]][[4]], CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+want2 <- want[want!=41]
+
+for(i in 1:length(want2)){
+    herbpoints[[i]] <- spTransform((distXsp[[want2[i]]][[1]]), CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+    eorpoints[[i]] <- spTransform(distXsp[[want2[i]]][[4]], CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
     plot(colocounties.UTM, main=paste(unique(herbpoints[[i]]@data$scientificName)[1]))
     plot(herbpoints[[i]], add=TRUE, col="blue", pch=16)
     plot(eorpoints[[i]], add=TRUE)
-    plot(polys_post1980[[want[i]]], add=TRUE, border="red", lwd=4)
+    plot(polys_post1980[[want2[i]]], add=TRUE, border="red", lwd=4)
 }
 ```
 
@@ -248,7 +250,10 @@ pca_herb_SAE <- lapply(distXsp1_pca, function(x){
   pca_herbout
 })
 save(pca_herb_SAE, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herb_SAE.Rda")
+```
 
+Check it
+```{r}
  (pca_herb_SAE[[1]])
 (mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE))
 (mapply(FUN=function(x) unique(x$GNAME),pca_eorandherb_SAE))
@@ -281,6 +286,7 @@ eorGnames <- lapply(pca_eorandherb_SAE, function(x){
 eorGnames[want];herbGnames
 ```
 
+
 ```{r}
 
 #Get backgrounds for each species according to the herbarium specimens
@@ -299,12 +305,13 @@ save(envs.backg.herb_SAE, file= "P:/hackathon/Simulations/envs.backgHerb_SAE.Rda
 
 pointsXsp.latlon <- list()
 for(i in 1:length(want)){
-  pointsXsp.latlon[[i]] <- spTransform(distXsp[[want[1]]][[1]], CRS(rscrs_2))
+  pointsXsp.latlon[[i]] <- spTransform(distXsp[[want[i]]][[1]], CRS(rscrs_2))
 }
 
 bg.herb_SAE <- lapply(1:length(want), function(i){
-  background <- as.data.frame(randomPoints(envs.backg.herb[[i]][[1]], n=nrow(pointsXsp.latlon[[i]]@coords)+
-                                          0.25*(nrow(pointsXsp.latlon[[i]]@coords))))
+  background <- as.data.frame(randomPoints(coElev,
+                                           nrow(pointsXsp.latlon[[i]]@coords)+
+                                             round(0.25*(nrow(pointsXsp.latlon[[i]]@coords)),0)))
   out <- data.frame(x1 = background$x, x2 = background$y, id = NA, polyid=NA, Bestcrs=NA, firstobs=NA,
                            GRANK=NA, GNAME=g1g2names$AcceptedName[i],ENDEMIC=NA, Lastobs=NA,
                     dist=NA,area=NA,
@@ -313,17 +320,30 @@ bg.herb_SAE <- lapply(1:length(want), function(i){
 })
 save(bg.herb_SAE, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bg.herb.Rda")
 
-#just make some random background points for EORs
-bg.EORs <- lapply(EORsxsp[!is.na(EORsxsp)], function(x){
-  out <- randomPoints(x, n=row(x@coords)+0.25*(nrow(x@coords)))
-  out
-})
+#points in the EORs
+EORsxsp <- mapply('[[', distXsp, 4)
+
+extent(EORsxsp[[1]])
+
 
 #make new circles
 circleEORs <- list()
-for(i in 1:length(want)){
+for(i in 1:60){
   circleEORs[[i]] <- circles(pca_eor_SAE[[i]][,c("x1","x2")], d=50000, lonlat=TRUE) #50 km radius circles
 }
+
+plot(EORsxsp[[40]])
+
+extent(polygons(circleEORs[[1]]))
+without41 <- which(!is.na(EORsxsp))
+
+#just make some random background points for EORs, these are only within the extents, that's why I made the circles! Where are my circles? 
+bg.EORs <- lapply(1:length(without41), function(x){
+  out <- randomPoints(coElev, n=row(EORsxsp[[x]]@coords)+round(0.25*(nrow(EORsxsp[[x]]@coords)),0),
+                      ext=extent(polygons(circleEORs[[x]])))
+  out
+})
+
 
 pol <- lapply(circleEORs, function(x){
   out <- polygons(x)
@@ -378,7 +398,9 @@ backgroundEORs <- lapply(pol, function(x){
 save(backgroundEORs, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/backgroundEORs.Rda") 
 
 backgroundEORs[[1]]
+```
 
+```{r}
 bgherbmatch <- #match(herbpoisition,want)
   match(want,herbpoisition)
 bgherbmatch <- bgherbmatch[!is.na(bgherbmatch)]
