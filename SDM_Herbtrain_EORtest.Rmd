@@ -154,7 +154,8 @@ pca_eor_SAE <- lapply(polys_post1980, function(pol){
 save(pca_eor_SAE, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eor_SAE.Rda") 
 
 (pca_eor_SAE[[1]])
-mapplyunique(pca_eor_SAE)
+(mapply(FUN=function(x) unique(x$GNAME),pca_eor_SAE))
+plot(pca_eor_SAE[[41]][,c('x1','x2')])
 ```
 
 
@@ -217,9 +218,20 @@ pca_eorandherb_SAE <- lapply(1:nrow(g1g2names), function(sp){
 
  save(pca_eorandherb_SAE, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb_SAE.Rda") 
 
+#More points! 
+ (pca_eorandherb_SAE[[1]])
+(mapply(FUN=function(x) unique(x$GNAME),pca_eorandherb_SAE))
+plot(pca_eorandherb_SAE[[41]][,c('x1','x2')])
 ```
 
+pca_herb_SAE
+[[41]]
+[1] Ptilagrostis porteri
+Levels: Ptilagrostis porteri
 
+pca_eorandherb_SAE
+41: Packera mancosana
+54: Ptilagrostis porteri
 ```{r}
 distXsp1_pca <- do.call(c,mapply('[[', distXsp, 1))
 distXsp1_pca <- distXsp1_pca[want]
@@ -237,7 +249,22 @@ pca_herb_SAE <- lapply(distXsp1_pca, function(x){
 })
 save(pca_herb_SAE, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herb_SAE.Rda")
 
+ (pca_herb_SAE[[1]])
+(mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE))
+(mapply(FUN=function(x) unique(x$GNAME),pca_eorandherb_SAE))
 
+# Which position of herb matches in eorandherb (and either NA or the spot it matches)
+herbpoisition <- match(mapply(FUN=function(x) unique(x$GNAME),pca_eorandherb_SAE),mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE))
+
+length(herbpoisition) #60
+# 1:60 for EOR and the associated herb one
+
+# Which poistion of eorandherb matches where in herb (and either NA or the spot it matches)
+match(mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE),mapply(FUN=function(x) unique(x$GNAME),pca_eorandherb_SAE))
+
+#to match by species, select the number 1:60 for EOR and herbposition[#] for herb
+plot(pca_herb_SAE[[herbpoisition[54]]][,c(1:2)])
+points(pca_eorandherb_SAE[[54]][,c('x1','x2')], col="red", pch=16)
 
 ```
 
