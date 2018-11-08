@@ -14,6 +14,7 @@ library(spdep)
 library(rgdal)
 library(maptools)
 library(raster)
+library(dismo)
 
 
 coElev <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Elevation_VT/CO_Mosaic_Elevation_VT/co_elev_VT_WGS84.tif")
@@ -276,54 +277,72 @@ bg.EORs <- lapply(EORsxsp[!is.na(EORsxsp)], function(x){
 #make new circles
 circleEORs <- list()
 for(i in 1:length(want)){
-  circleEORs[[i]] <- circles(pca_eor_SAE[[i]][,c("x1","x2")], d=50000, lonlat=TRUE)
+  circleEORs[[i]] <- circles(pca_eor_SAE[[i]][,c("x1","x2")], d=50000, lonlat=TRUE) #50 km radius circles
 }
 
-
-backgroundEORs <- lapply(circleEORs, function(pol){
-  spsample(pol, n=nrow(pol@presence)+0.25*nrow(pol@presence))
-  gridout <- SpatialPointsDataFrame(gridout, data.frame(id=1:nrow(gridout),
-                                                        polyid=1,
-                                                        pol@data$PolyID@data,
-                                                        area = sapply(slot(pol,"polygons"), slot,
-                                                                      "area")),
-                                    proj4string = CRS(proj4string(pol[x,])))
-  out <- gridout[pol[x,],]
-  if(nrow(out@data)==0){
-    center <- gCentroid(pol[x,])
-    centerout <- SpatialPointsDataFrame(center, data.frame(id=1,
-                                                           polyid=x,
-                                                           pol@data$PolyID@data[x,],
-                                                           area = sapply(slot(pol[x,],"polygons"), slot,
-                                                                         "area")),
-                                        proj4string = CRS(proj4string(pol[x,])))
-    centerout
-    } else {
-      out
-      }
+pol <- lapply(circleEORs, function(x){
+  out <- polygons(x)
+  proj4string(out) <- CRS(rscrs_2)
+  out
   })
 
-  mergedEORs <- do.call(rbind,grid)
-  mergedEORs <- spTransform(mergedEORs, CRS(paste(rscrs_2)))
-  data_eor <- data.frame(coordinates(mergedEORs), id= mergedEORs$id, polyid = mergedEORs$polyid,
-                          Bestcrs=mergedEORs$BESTSRC, firstobs=mergedEORs$FIRSTOBS, 
-                            GRANK=mergedEORs$GRANK,
-                            GNAME=mergedEORs$GNAME,ENDEMIC=mergedEORs$ENDEMIC, 
-                            Lastobs=mergedEORs$LASTOBS,dist=NA,area=sum(areanow),
-                            extract(rasterstack_2, mergedEORs))
-  data_eor
-})
+# RasterLayer from explainatory variables
+# mask <- coElev
+bg_rspatial <- randomPoints(coElev, 5000)
+plot(bg_rspatial) #5000 points across Colorado. 
 
+# put random points in the circle mask
+extent(pol[[1]]) # but this will be a square, not a circle, need to repeat the over where I get the subset of bg points that fall in the circles bg[circle[i,],] (assuming there are more than one circle)
+bg_rspatialincircle <- randomPoints(coElev, 50, ext=extent(pol[[1]]))
+
+#make into spatialpoints
+bg_sp <- data.frame(bg_rspatialincircle)
+coordinates(bg_sp) <- ~ x+y
+proj4string(bg_sp) <- CRS(rscrs_2)
+
+proj4string(pol[[1]])
+
+plot(colocounties)
+points(bg_rspatialincircle)
+plot(pol[[1]], add=TRUE)
+points(bg_sp[pol[[1]],], col="red")
+
+# Don't think I need to do this, get points outside circles
+  # # unique cells, numbered top to bottom, left to right
+  # cells <- cellFromXY(coElev, backgnd)
+  # cells <- unique(cells)
+  # xy <- xyFromCell(coElev, cells)
+  # plot(pol[[1]])
+  # points(xy)
+
+
+# http://rspatial.org/sdm/rst/3_sdm_absence-background.html 
+backgroundEORs <- lapply(pol, function(x){
+  backgnd <- randomPoints(coElev, 300, ext=extent(x))
+  bg <- data.frame(backgnd)
+  coordinates(bg) <- ~x+y
+  proj4string(bg) <- CRS(rscrs_2)
+  bg <- bg[x,] #only points that fall within circles
+  out <- data.frame(x1 = bg@coords[,1], x2 = bg@coords[,2], id = 1:nrow(bg@coords), 
+                    polyid=NA, Bestcrs=NA, firstobs=NA,
+                    GRANK=NA, GNAME=g1g2names$AcceptedName[i], ENDEMIC=NA, Lastobs=NA,
+                    dist=NA,area=NA,
+                    raster::extract(rasterstack_2, bg))
+  out
+  })
+save(backgroundEORs, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/backgroundEORs.Rda") 
+
+backgroundEORs[[1]]
 ```
 
 
 ```{r}
 #Loop through all the species
-Maxent20species <- lapply(1:length(want), function(i){
+Maxentspecies <- lapply(1:length(want), function(i){
   checkrecords <- pca_herb_SAE[[i]]
 
   # to keep at least 5 records per group
-  if(nrow(checkrecords)<10){
+  if(nrow(checkrecords)<4){
     NULL
   } else {
         speciestab <- pca_herb_SAE[[i]]
@@ -360,7 +379,7 @@ Maxent20species <- lapply(1:length(want), function(i){
       out
   }
 })
-save(Maxent20species, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxent20species.Rda")
+save(Maxentspecies, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxentspecies.Rda")
 
 
 ```
