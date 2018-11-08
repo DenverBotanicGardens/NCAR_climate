@@ -15,8 +15,21 @@ library(rgdal)
 library(maptools)
 library(raster)
 library(dismo)
+```
+
+```{r}
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eor_SAE.Rda") 
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb_SAE.Rda") 
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herb_SAE.Rda")
+load("P:/hackathon/Simulations/envs.backgHerb_SAE.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bg.herb.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/backgroundEORs.Rda") 
 
 
+```
+
+
+```{r}
 coElev <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Elevation_VT/CO_Mosaic_Elevation_VT/co_elev_VT_WGS84.tif")
 coAspect <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Aspect_VT/co_aspect_VT_WGS84.tif")
 coSlope <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Slope_VT/co_slope_VT_WGS84.tif")
@@ -78,17 +91,22 @@ herbpoints <- list()
 eorpoints <- list()
 
 EORgridpoints <- mapply('[[', distXsp, 4)
+Herboints <- mapply('[[', distXsp, 1)
 length(EORgridpoints[!is.na(EORgridpoints)])
 length(wantEOR)
 
 colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
 colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
 
-for(i in 1:length(want)){
+which(is.na(EORgridpoints))
+identical(which(!is.na(Herboints)),want)
+wantboth <- want[!is.na(wantEOR)]
+unique(Herboints[[1]]@data$scientificName)[1]
+
+for(i in 1:length(want[want!=41])){
     herbpoints[[i]] <- spTransform((distXsp[[want[i]]][[1]]), CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
     eorpoints[[i]] <- spTransform(distXsp[[want[i]]][[4]], CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
-    
-    plot(colocounties.UTM)
+    plot(colocounties.UTM, main=paste(unique(herbpoints[[i]]@data$scientificName)[1]))
     plot(herbpoints[[i]], add=TRUE, col="blue", pch=16)
     plot(eorpoints[[i]], add=TRUE)
     plot(polys_post1980[[want[i]]], add=TRUE, border="red", lwd=4)
@@ -136,7 +154,7 @@ pca_eor_SAE <- lapply(polys_post1980, function(pol){
 save(pca_eor_SAE, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eor_SAE.Rda") 
 
 (pca_eor_SAE[[1]])
-
+mapplyunique(pca_eor_SAE)
 ```
 
 
