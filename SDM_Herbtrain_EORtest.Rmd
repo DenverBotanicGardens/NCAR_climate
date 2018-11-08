@@ -378,6 +378,27 @@ backgroundEORs <- lapply(pol, function(x){
 save(backgroundEORs, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/backgroundEORs.Rda") 
 
 backgroundEORs[[1]]
+
+bgherbmatch <- #match(herbpoisition,want)
+  match(want,herbpoisition)
+bgherbmatch <- bgherbmatch[!is.na(bgherbmatch)]
+
+(mapply(FUN=function(x) unique(x$GNAME)[1],backgroundEORs))
+(mapply(FUN=function(x) unique(x$GNAME),pca_eorandherb_SAE))
+
+# Which position of herb matches in eorandherb (and either NA or the spot it matches)
+herbpoisition <- match(mapply(FUN=function(x) unique(x$GNAME),pca_eorandherb_SAE),mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE))
+
+
+unique(backgroundEORs[[7]]$GNAME)
+
+#to match by species, select the number 1:60 for EOR and herbposition[#] for herb
+plot(colocounties)
+points(pca_herb_SAE[[herbpoisition[54]]][,c(1:2)])
+points(pca_eorandherb_SAE[[54]][,c('x1','x2')], col="red", pch=16)
+points(backgroundEORs[[which(bgherbmatch==54)]][,c('x1','x2')], col="green", pch=2, cex=0.5)
+
+
 ```
 
 
