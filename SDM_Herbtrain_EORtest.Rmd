@@ -313,17 +313,22 @@ bg.herb_SAE <- lapply(1:length(want), function(i){
                                            nrow(pointsXsp.latlon[[i]]@coords)+
                                              round(0.25*(nrow(pointsXsp.latlon[[i]]@coords)),0)))
   out <- data.frame(x1 = background$x, x2 = background$y, id = NA, polyid=NA, Bestcrs=NA, firstobs=NA,
-                           GRANK=NA, GNAME=g1g2names$AcceptedName[i],ENDEMIC=NA, Lastobs=NA,
+                    GRANK=NA, GNAME=g1g2names$AcceptedName[which(herbposition==i)],
+                    ENDEMIC=NA, Lastobs=NA,
                     dist=NA,area=NA,
                     raster::extract(rasterstack_2, background))
   out
 })
 save(bg.herb_SAE, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bg.herb.Rda")
 
+
+
 #points in the EORs
 EORsxsp <- mapply('[[', distXsp, 4)
 
 extent(EORsxsp[[1]])
+
+
 
 
 #make new circles
@@ -332,29 +337,23 @@ for(i in 1:60){
   circleEORs[[i]] <- circles(pca_eor_SAE[[i]][,c("x1","x2")], d=50000, lonlat=TRUE) #50 km radius circles
 }
 
-plot(EORsxsp[[40]])
-
-extent(polygons(circleEORs[[1]]))
 without41 <- which(!is.na(EORsxsp))
 
 #just make some random background points for EORs, these are only within the extents, that's why I made the circles! Where are my circles? 
-bg.EORs <- lapply(1:length(without41), function(x){
-  out <- randomPoints(coElev, n=row(EORsxsp[[x]]@coords)+round(0.25*(nrow(EORsxsp[[x]]@coords)),0),
+bg.EORs <- lapply(without41, function(x){
+  out <- randomPoints(coElev, n=nrow(EORsxsp[[x]]@coords)+round(0.25*(nrow(EORsxsp[[x]]@coords)),0),
                       ext=extent(polygons(circleEORs[[x]])))
   out
 })
 
+plot(bg.EORs[[1]])
+plot(EORsxsp[[1]])
 
 pol <- lapply(circleEORs, function(x){
   out <- polygons(x)
-  proj4string(out) <- CRS(rscrs_2)
+  out <- spTransform(out,CRS(rscrs_2))
   out
   })
-
-# RasterLayer from explainatory variables
-# mask <- coElev
-bg_rspatial <- randomPoints(coElev, 5000)
-plot(bg_rspatial) #5000 points across Colorado. 
 
 # put random points in the circle mask
 extent(pol[[1]]) # but this will be a square, not a circle, need to repeat the over where I get the subset of bg points that fall in the circles bg[circle[i,],] (assuming there are more than one circle)
@@ -368,57 +367,66 @@ proj4string(bg_sp) <- CRS(rscrs_2)
 proj4string(pol[[1]])
 
 plot(colocounties)
-points(bg_rspatialincircle)
 plot(pol[[1]], add=TRUE)
 points(bg_sp[pol[[1]],], col="red")
 
-# Don't think I need to do this, get points outside circles
-  # # unique cells, numbered top to bottom, left to right
-  # cells <- cellFromXY(coElev, backgnd)
-  # cells <- unique(cells)
-  # xy <- xyFromCell(coElev, cells)
-  # plot(pol[[1]])
-  # points(xy)
-
-
 # http://rspatial.org/sdm/rst/3_sdm_absence-background.html 
-backgroundEORs <- lapply(pol, function(x){
-  backgnd <- randomPoints(coElev, 300, ext=extent(x))
-  bg <- data.frame(backgnd)
+backgroundEORs <- lapply(1:59, function(x){
+  bg <- data.frame(bg.EORs[[x]])
   coordinates(bg) <- ~x+y
   proj4string(bg) <- CRS(rscrs_2)
-  bg <- bg[x,] #only points that fall within circles
+  bg <- bg[pol[[without41[x]]],] #only points that fall within circles
   out <- data.frame(x1 = bg@coords[,1], x2 = bg@coords[,2], id = 1:nrow(bg@coords), 
                     polyid=NA, Bestcrs=NA, firstobs=NA,
-                    GRANK=NA, GNAME=g1g2names$AcceptedName[i], ENDEMIC=NA, Lastobs=NA,
+                    GRANK=NA, GNAME=g1g2names$AcceptedName[without41[x]], ENDEMIC=NA, Lastobs=NA,
                     dist=NA,area=NA,
                     raster::extract(rasterstack_2, bg))
   out
   })
 save(backgroundEORs, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/backgroundEORs.Rda") 
 
-backgroundEORs[[1]]
+
+bg.EORs[[1]]
+backgroundEORs[[9]]
+
+proj4string(polys[[1]])
+(mapply(FUN=function(x) unique(x$GNAME),backgroundEORs))
+
+plot(colocounties)
+plot(circleEORs[[1]],add=TRUE)
+points(bg.EORs[[1]])
+plot(bg, add=TRUE)
 ```
 
 ```{r}
-bgherbmatch <- #match(herbpoisition,want)
-  match(want,herbpoisition)
-bgherbmatch <- bgherbmatch[!is.na(bgherbmatch)]
-
-(mapply(FUN=function(x) unique(x$GNAME)[1],backgroundEORs))
-(mapply(FUN=function(x) unique(x$GNAME),pca_eorandherb_SAE))
 
 # Which position of herb matches in eorandherb (and either NA or the spot it matches)
-herbpoisition <- match(mapply(FUN=function(x) unique(x$GNAME),pca_eorandherb_SAE),mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE))
+herbposition <- match(mapply(FUN=function(x) unique(x$GNAME),pca_eorandherb_SAE),mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE))
+pca_eorposition <- c(1:40,NA,42:60)
+backeorposition <- c(1:40,NA,41:59)
 
+mapply(function(q,v,w,x,y,z,a,b) paste(a,b,q,v,w,x,y,z, sep="_"), 
+       lapply(herbposition, function(x) unique(pointsXsp.latlon[[x]]$scientificName)), # q
+       lapply(herbposition, function(x) unique(pca_herb_SAE[[x]]$GNAME)),         # v
+       lapply(c(1:40,NA,42:60), function(x) unique(pca_eor_SAE[[x]]$GNAME)),       # w
+       lapply(c(1:40,NA,41:59), function(x) unique(backgroundEORs[[x]]$GNAME)),    # x
+       lapply(c(1:40,NA,42:60), function(x) unique(pca_eorandherb_SAE[[x]]$GNAME)),# y
+       lapply(herbposition, function(x) unique(bg.herb_SAE[[x]]$GNAME)[1]),       # z
+       g1g2names$Taxon,g1g2names$AcceptedName)   # a b
 
-unique(backgroundEORs[[7]]$GNAME)
+plot(polygons(circleHerb[[1]]))
 
-#to match by species, select the number 1:60 for EOR and herbposition[#] for herb
-plot(colocounties)
-points(pca_herb_SAE[[herbpoisition[54]]][,c(1:2)])
-points(pca_eorandherb_SAE[[54]][,c('x1','x2')], col="red", pch=16)
-points(backgroundEORs[[which(bgherbmatch==54)]][,c('x1','x2')], col="green", pch=2, cex=0.5)
+#to match by species, select the number 1:60 for EOR and herbposition[#] for herb, without 41 for EOR
+for(i in 1:60){
+  plot(colocounties)
+  points(backgroundEORs[[backeorposition[i]]][,c('x1','x2')], col="green", pch=2, cex=0.25)
+  points(pca_herb_SAE[[herbposition[i]]][,c(1:2)])
+  points(pca_eorandherb_SAE[[pca_eorposition[i]]][,c('x1','x2')], col="red", pch=16)
+  if(!is.na(herbposition[i])){
+    plot(polygons(circleHerb[[herbposition[i]]]), add=TRUE, border="blue")
+  }
+}
+
 
 
 ```
@@ -426,11 +434,11 @@ points(backgroundEORs[[which(bgherbmatch==54)]][,c('x1','x2')], col="green", pch
 
 ```{r}
 #Loop through all the species
-Maxentspecies <- lapply(1:length(want), function(i){
+Maxentspecies <- lapply(1:60, function(i){
   checkrecords <- pca_herb_SAE[[i]]
 
   # to keep at least 5 records per group
-  if(nrow(checkrecords)<4){
+  if(nrow(checkrecords)<10){
     NULL
   } else {
         speciestab <- pca_herb_SAE[[i]]
