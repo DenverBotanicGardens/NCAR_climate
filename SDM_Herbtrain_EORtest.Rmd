@@ -267,6 +267,11 @@ length(herbpoisition) #60
 # Which poistion of eorandherb matches where in herb (and either NA or the spot it matches)
 match(mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE),mapply(FUN=function(x) unique(x$GNAME),pca_eorandherb_SAE))
 
+# Which position of herb matches in eorandherb (and either NA or the spot it matches)
+herbposition <- match(mapply(FUN=function(x) unique(x$GNAME),
+                             pca_eorandherb_SAE),
+                      mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE))
+
 #to match by species, select the number 1:60 for EOR and herbposition[#] for herb
 plot(pca_herb_SAE[[herbpoisition[54]]][,c(1:2)])
 points(pca_eorandherb_SAE[[54]][,c('x1','x2')], col="red", pch=16)
@@ -400,8 +405,6 @@ plot(bg, add=TRUE)
 
 ```{r}
 
-# Which position of herb matches in eorandherb (and either NA or the spot it matches)
-herbposition <- match(mapply(FUN=function(x) unique(x$GNAME),pca_eorandherb_SAE),mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE))
 pca_eorposition <- c(1:40,NA,42:60)
 backeorposition <- c(1:40,NA,41:59)
 
@@ -435,46 +438,59 @@ for(i in 1:60){
 ```{r}
 #Loop through all the species
 Maxentspecies <- lapply(1:60, function(i){
-  checkrecords <- pca_herb_SAE[[i]]
-
-  # to keep at least 5 records per group
-  if(nrow(checkrecords)<10){
+  checkrecords <- pca_herb_SAE[[herbposition[i]]]
+  checkeor <- backgroundEORs[[backeorposition[[i]]]]
+  if(is.na(checkrecords)){
     NULL
   } else {
-        speciestab <- pca_herb_SAE[[i]]
-        speciestab$pa <- 1
-        eortab <- pca_eorandherb_SAE[[want[i]]]
-        eortab$pa <- 2
+    if(is.null(checkeor)){
+      NULL
+    } else {
+    
+    # to keep at least 5 records per group
+    if(nrow(checkrecords)<10){
+      NULL
+      } else {
+        
+        out <- list()
+        for(l in 1:10){    
+             #randomly select on of the test roups to sample as the training data, 10 fold
+            # test <- sample(1:10, 1)
+            
+            # train_pEOR <- speciestable[speciestable$pa == 1 & speciestable$group_pa!=test,c("x1","x2")]
+            train_pHerb <- pca_herb_SAE[[herbposition[i]]][,c("decimalLongitude","decimalLatitude")]
+            # train_bEOR <- speciestable[speciestable$pa == 3 & speciestable$group_pa!=test,c("x1","x2")]
+            train_bHerb <- bg.herb_SAE[[herbposition[i]]][,c("x1","x2")]
+            
+            test_pEOR <- pca_eor_SAE[[pca_eorposition[i]]][,c("x1","x2")]
+            # test_pHerb <- speciestable[speciestable$pa == 2 & speciestable$group_pa==test,c("x1","x2")]
+            test_bEOR <- backgroundEORs[[backeorposition[i]]][,c("x1","x2")]
+            # test_bHerb <- speciestable[speciestable$pa == 4 & speciestable$group_pa==test,c("x1","x2")]
+            
+            # me <- maxent(rasterstack_2, p=train_pEOR, a=train_bEOR)
+            meHerb <- maxent(rasterstack_2, p=train_pHerb, a=train_bHerb)
+            
+            #evalidate teh model
+            e <- dismo::evaluate(test_pEOR, test_bEOR, meHerb, rasterstack_2)
+            # eHerb <- dismo::evaluate(test_pHerb, test_bHerb, meHerb, stackmini)
+            gc()
+            
+            #Visulatize predictions
+            # writeRaster(dismo::predict(me, stackmini),paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/EOR",g1g2names$AcceptedName[i],l,".tif", sep=""),overwrite=TRUE)
+            # gc()
+            writeRaster(dismo::predict(meHerb, rasterstack_2),paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/Herbtrain_eortest",g1g2names$AcceptedName[i],l,".tif", sep=""),overwrite=TRUE)
+            gc()
+            thres <- dismo::threshold(e) 
+            # thresHerb <- dismo::threshold(eHerb)
+            # 1: which group to withhold, 2: maxent for EOR, 3: maxent for Herbarium, 4: evaluate EOR, 5: evaluate Herbarium, 6: thresholds for EOR, 7: thresholds for Herbarium, 8: species
+            out[[l]] <- list(meHerb,e,thres,g1g2names$AcceptedName[i]))
+            gc()
+            }
+        out
+        }
+    }}
+  })
 
-      out <- list()
-      for(l in 1:10){    
-          train_pHerb <- speciestab[,c("x1","x2")]
-          train_bHerb <- bg.herb_SAE[[i]]
-          
-          test_pEOR <- speciestable[speciestable$pa == 1 & speciestable$group_pa==test,c("x1","x2")]
-          
-          me <- maxent(stackmini, p=train_pEOR, a=train_bEOR)
-          meHerb <- maxent(stackmini, p=train_pHerb, a=train_bHerb)
-          
-          #evalidate teh model
-          e <- dismo::evaluate(test_pEOR, test_bEOR, me, stackmini)
-          eHerb <- dismo::evaluate(test_pHerb, test_bHerb, meHerb, stackmini)
-          gc()
-          
-          #Visulatize predictions
-          writeRaster(dismo::predict(me, stackmini),paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/EOR",g1g2names$AcceptedName[i],l,".tif", sep=""),overwrite=TRUE)
-          gc()
-          writeRaster(dismo::predict(meHerb, stackmini),paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/Herb",g1g2names$AcceptedName[i],l,".tif", sep=""),overwrite=TRUE)
-          gc()
-          thres <- dismo::threshold(e) 
-          thresHerb <- dismo::threshold(eHerb)
-          # 1: which group to withhold, 2: maxent for EOR, 3: maxent for Herbarium, 4: evaluate EOR, 5: evaluate Herbarium, 6: thresholds for EOR, 7: thresholds for Herbarium, 8: species
-          out[[l]] <- list(test,me,meHerb,e,eHerb,thres,thresHerb,g1g2names$AcceptedName[i])#,pme,pmeHerb)
-          gc()
-      }
-      out
-  }
-})
 save(Maxentspecies, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxentspecies.Rda")
 
 
