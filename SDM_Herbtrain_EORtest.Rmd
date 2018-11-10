@@ -437,10 +437,10 @@ for(i in 1:60){
 
 ```{r}
 #Loop through all the species
-Maxentspecies <- lapply(1:60, function(i){
+Maxentspecies <- lapply(7:60, function(i){
   checkrecords <- pca_herb_SAE[[herbposition[i]]]
   checkeor <- backgroundEORs[[backeorposition[[i]]]]
-  if(is.na(checkrecords)){
+  if(is.null(checkrecords)){
     NULL
   } else {
     if(is.null(checkeor)){
