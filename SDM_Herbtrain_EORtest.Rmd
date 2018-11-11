@@ -437,7 +437,7 @@ for(i in 1:60){
 
 ```{r}
 #Loop through all the species
-Maxentspecies <- lapply(7:60, function(i){
+Maxentspecies <- lapply(1:60, function(i){
   checkrecords <- pca_herb_SAE[[herbposition[i]]]
   checkeor <- backgroundEORs[[backeorposition[[i]]]]
   if(is.null(checkrecords)){
@@ -448,27 +448,39 @@ Maxentspecies <- lapply(7:60, function(i){
     } else {
     
     # to keep at least 5 records per group
-    if(nrow(checkrecords)<10){
+      x <- checkrecords
+      x <- x[!grepl("-99",x$Lastobs),]
+      x <- x[x$Lastobs!="",]
+      x <- x[(as.Date(x$Lastobs)>"1980-12-31"),]
+      
+      y <- pca_eor_SAE[[pca_eorposition[i]]]
+      y <- y[!grepl("-99",y$Lastobs),]
+      y <- y[(as.Date(y$Lastobs)>"1980-12-31"),]
+      
+    if(nrow(x)<10){
       NULL
       } else {
-            train_pHerb <- pca_herb_SAE[[herbposition[i]]][,c("decimalLongitude","decimalLatitude")]
+            train_pHerb <- x[,c("decimalLongitude","decimalLatitude")]
             train_bHerb <- bg.herb_SAE[[herbposition[i]]][,c("x1","x2")]
             
             test_pEOR <- pca_eor_SAE[[pca_eorposition[i]]][,c("x1","x2")]
             test_bEOR <- backgroundEORs[[backeorposition[i]]][,c("x1","x2")]
             
-            meHerb <- maxent(rasterstack_2, p=train_pHerb, a=train_bHerb)
+            meHerb <- maxent(rasterstack_2, p=train_pHerb, a=train_bHerb, 
+                             path = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt")
             
             #evalidate teh model
             e <- dismo::evaluate(test_pEOR, test_bEOR, meHerb, rasterstack_2)
             gc()
             
             #Visulatize predictions
-            writeRaster(dismo::predict(meHerb, rasterstack_2),paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/Herbtrain_eortest",g1g2names$AcceptedName[i],".tif", sep=""),overwrite=TRUE)
+            writeRaster(dismo::predict(meHerb, rasterstack_2),paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/Herbtrain_eortest_post1980",g1g2names$AcceptedName[i],".tif", sep=""),overwrite=TRUE)
             gc()
             thres <- dismo::threshold(e) 
 
-            out <- list(meHerb,e,thres,g1g2names$AcceptedName[i])
+            out <- list(meHerb,e,thres,e@auc,e@kappa,g1g2names$AcceptedName[i],
+                        nrow(checkrecords),nrow(x),
+                        nrow(pca_eor_SAE[[pca_eorposition[i]]]), nrow(y))
             out
 
         }
@@ -477,5 +489,58 @@ Maxentspecies <- lapply(7:60, function(i){
 
 save(Maxentspecies, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxentspecies.Rda")
 
+
+```
+
+```{r}
+# Creating the objects    
+x <- stack()
+    threshold.m <- vector("numeric", 2)
+    auc.m1 <- vector("numeric", 2)
+    l.T1 <- list()
+    l.model <- list()
+
+run = 2
+for(i in 1:run){
+
+  # Creating the k-fold data
+   group.k1 <- kfold(loxA.4, 5)
+
+   loxTrain.L1 = loxData.L1[group.k1 != 1,]
+   loxTest.L1 = loxData.L1[group.k1 == 1,]
+
+
+   # Creating the background points
+   background = randomPoints(predictor0, 10000)
+   pseudo_absence_values = extract(predictor0, background)
+   pseudo_absence_values <- as.data.frame(pseudo_absence_values)
+   pseudo_absence_values$africa_ecoregion <- as.factor(pseudo_absence_values$africa_ecoregion)
+
+
+   # Creating the Analysis Data
+   train_y = c(rep(1,nrow(loxTrain.L1)), rep(0,nrow(pseudo_absence_values))) # Main Training Data
+   train_sdm_data = cbind(pa = train_y, rbind(loxTrain.L1, pseudo_absence_values)) # Main SDM Data
+
+   Model.MT1 = maxent(train_sdm_data[,-1], p = train_y, args = c("-J", "-P"),path = "maxent/set_2/output")
+   show(Model.MT1)
+   l.model <- list(l.model, Model.MT1)
+
+
+   # Doing Model Evaluation
+   mod.evT1 <- evaluate(Model.MT1, p = loxTest.L1, a = pseudo_absence_values)
+   l.T1 <- list(l.T1, mod.evT1)
+
+   # Capturing the threshold values
+   mod.thr <- threshold(mod.evT1, "spec_sens")
+   threshold.m [i] <- mod.thr
+
+   # Capturing the AUC values
+   auc.T1 <- mod.evT1@auc
+   auc.m1[i] <- auc.T1
+   
+   
+   Loop.r <- predict(predictor0,Model.MT1, progress='text')
+   x <- stack(x, Loop.r)
+   }
 
 ```
