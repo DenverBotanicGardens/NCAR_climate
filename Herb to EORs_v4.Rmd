@@ -352,15 +352,27 @@ projected <- spTransform(projected, CRS("+proj=utm +zone=13 +datum=NAD83 +units=
 There seems to be lots of points in Denver but no EOs!    
 gray60 or 80, black dots for publication   , col="midnightblue"
 ```{r}
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/HerbPntsEORs_CO.jpg",
-     width=250, height=225,units='mm', res=300)
 
 plot(colocounties.UTM,border="gray50") #colocounties is in WGS84, not in same datum as l1G1G2
 plot(l1G1G2, border="gray60", add=TRUE, lwd=5) #
 plot(projected, add=TRUE, pch=20, cex=0.5)
 
-dev.off()
 
+polys_46 <- l1G1G2[l1G1G2$GNAME %in% as.character(mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE)),]
+plot(polys)
+plot(polys_46, border="pink", add=TRUE)
+str(as.character(mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE)))
+
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/HerbPntsEORs_CO.jpg",
+     width=250, height=175,units='mm', res=300)
+
+plot(colocounties.UTM,border="gray70") #colocounties is in WGS84, not in same datum as l1G1G2
+plot(polys_46, border="gray60", add=TRUE, lwd=4) #
+plot(projected, add=TRUE, pch=20, cex=0.5)
+ScaleBar(colocounties.UTM,
+             10, .25, .05, .85, .10, lwd=1)
+
+dev.off()
 ```
 
 ```{r}
@@ -420,9 +432,14 @@ projLL <- proj4string(colorado)
 
 colorado<- spTransform(colorado, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
 i<-1
- polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-                                         g1g2names$Taxon[i]),] 
+ polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName,
+                                         g1g2names$Taxon),] 
  
+length(polys)
+
+sort(unique(polys@data$GNAME))[herbposition]
+g1g2names$AcceptedName[1]
+
 grid <- makegrid(polys, cellsize = 100) # cellsize in map units!
 grid <- SpatialPoints(grid, proj4string = CRS(proj4string(polys)))
 
@@ -725,13 +742,26 @@ polys <- lapply(1:nrow(g1g2names), function(i){
 
 Visual checks of data
 ```{r}
+polys <- lapply(1:nrow(g1g2names), function(i){
+  #put grid points across colorado, sample from it for each polygons
+     polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                         g1g2names$Taxon[i]),]
+     polys
+     })
+
+eorpost1980 <- lapply(pca_eorpost1980, function(x){
+  coordinates(x) <- ~ x1+x2
+  proj4string(x) <- CRS("+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0")
+  projectedx <- spTransform(x, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+})
+
 for(j in 10:13){
   for(i in 1:length(polys[[j]])){
     plot(polys[[j]][i,], border="blue",lwd=3, main=polys[[j]][i,]@data$LASTOBS)
-    plot(eorsinglecell[[j]], pch=21, col="red",add=TRUE)
+    plot(eorpost1980[[j]], pch=21, col="red",add=TRUE)
     plot(polys[[j]], border="yellow", add=TRUE)
     ScaleBar(polys[[j]][i,],
-             0.01, .25, .20, .15, .17, lwd=2) #first is round to nearest km
+             0.01, .05, .20, .95, .17, lwd=1) #first is round to nearest km
   }
 }
 
@@ -773,7 +803,6 @@ for(i in 1:length(polys)){
 
 #Already loaded, skip
 ```{r}
-
 #The first in all these are the herbarium records
 (distXsp[[1]][[1]]) #+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0   Need to transform
 
@@ -1026,11 +1055,16 @@ plot(density(distXsp1$dist), xlim=c(0,50000))
 abline(v=pStar, col="red")
 abline(h=max(vals$y)-qlnorm(0.95))
 
-length(distXsp1$dist[distXsp1$dist>100]) #816
+length(distXsp1$dist[distXsp1$dist>100])/ #816
+length(distXsp1$dist)
 
-length(distXsp1$dist[distXsp1$dist<=100]) #275
+length(distXsp1$dist[distXsp1$dist<=100])/ #275
+length(distXsp1$dist)
 
-median(distXsp1$dist)
+length(distXsp1$dist[distXsp1$dist>1000])/ #556
+length(distXsp1$dist)
+
+median(distXsp1$dist) #1083.777
 
 reps <- 50000
 ssize <- 500
@@ -1146,11 +1180,20 @@ colo.all.ll@data[!(colo.all.ll$countyclean %in%colo.all.ll$InCounty),]
 Total area of EOR polygons per spcies for the the 46 species with mapped herbarium records 
 ```{r}
 #n <- length(x); sort(x,partial=n-1)[n-1]   for the second to largest value
-ggplot(distXsp1[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
-                distXsp1$area<=max(distXsp1$area),], aes(area, dist/1000))+
+plotDistxRange <- ggplot(distXsp1[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
+                distXsp1$area<=max(distXsp1$area),], aes(sqrt(area), dist/1000))+
   geom_point()+
   theme_bw()+
-  stat_smooth(method="lm")+
+  ggtitle("a)")+
+  stat_smooth(method="lm", colour="black", level=0)+
+  ylab("Distance (km) to nearest EOR")+
+  xlab(expression(paste("Species range (km"^"2",")")))
+
+ggplot(distXsp1[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
+                distXsp1$area<=max(distXsp1$area),], aes(area, log(dist/1000)))+
+  geom_point()+
+  theme_bw()+
+  stat_smooth(method="lm", colour="black", level=0)+
   ylab("Distance (km) to nearest EOR")+
   xlab(expression(paste("Species range (km"^"2",")")))
 
@@ -1163,20 +1206,78 @@ distXsp1$year <- (as.numeric(gsub("([0-9]+).*$", "\\1", distXsp1$year)))
 
 ```{r}
 #get rid of the three that are out of the state issues
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/distanceXrange.jpg",
+     width=100, height=75,units='mm', res=300)
+
+plotDistxRange
+
+dev.off()
+
+#get rid of the three that are out of the state issues
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/distanceXyear.jpg",
-     width=150, height=100,units='mm', res=300)
+     width=200, height=75,units='mm', res=300)
 
+layout(matrix(c(1,2), 1,2, byrow=FALSE),
+             width=c(6,6), height=c(1))
 
+par(mar=c(2,4.5,4.5,0.5))
+
+plotDistxRange
 
 ggplot(distXsp1[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
                 distXsp1$area<=max(distXsp1$area),], aes(year, dist/1000))+
   geom_point(pch=16)+
   theme_bw()+
-  stat_smooth(method="lm")+
-  ylab("Distance (km) to nearest EOR")+
+  stat_smooth(method="lm",colour="black", level=0)+
+  ylab("")+
+  ggtitle("b)")+
+  # ylab("Distance (km) to nearest EOR")+
   xlab("Year")# +
-  # theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+  # theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
+
+dev.off()
+```
+
+```{r}
+
+#get rid of the three that are out of the state issues
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure2.jpg",
+     width=275, height=125,units='mm', res=300)
+
+layout(matrix(c(1,2), 1,2, byrow=FALSE),
+             width=c(6,6), height=c(1))
+
+par(mar=c(4,4,1,0.5))
+
+plot(sqrt(distXsp1$area[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
+                distXsp1$area<=max(distXsp1$area)]),
+     (distXsp1$dist[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
+                distXsp1$area<=max(distXsp1$area)])/1000,
+     pch=16, cex=0.5, 
+     xlab=expression(paste("Species range (km"^"2",")")),
+     ylab="Distance (km) to nearest EOR")
+abline(lm((distXsp1$dist[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
+                distXsp1$area<=max(distXsp1$area)])/1000~
+            sqrt(distXsp1$area[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
+                distXsp1$area<=max(distXsp1$area)])))
+mtext("a)", side=3, line=0, at=par("usr")[1]+0.01*diff(par("usr")[1:2]),
+             cex=1.2)
+
+plot(distXsp1$year[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
+                distXsp1$area<=max(distXsp1$area)],
+     (distXsp1$dist[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
+                distXsp1$area<=max(distXsp1$area)])/1000,
+     pch=16, cex=0.5, 
+     ylab="",
+     xlab="Year")
+abline(lm((distXsp1$dist[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
+                distXsp1$area<=max(distXsp1$area)])/1000~
+            distXsp1$year[distXsp1$dist<sort(distXsp1$dist,
+                                             partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
+                            distXsp1$area<=max(distXsp1$area)]))
+mtext("b)", side=3, line=0, at=par("usr")[1]+0.01*diff(par("usr")[1:2]),
+             cex=1.2)
 
 dev.off()
 ```
@@ -1221,7 +1322,9 @@ ggplot(distXsp1[which(distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-
 dev.off()
 ```
 
-Is there anything inherintly interesting about the genus? Maybe some genera are more likely to shift in range than others... so yes, keep in. 
+
+Is there anything inherintly interesting about the genus? Maybe some genera are more likely to shift in range than others... so yes, keep in.  
+
 ```{r}
 
 #to do year next need to get as many years out as possible from character strings
@@ -1276,7 +1379,7 @@ theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```{r}
 ggplot(distXsp1[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
                 distXsp1$area<=max(distXsp1$area),], aes(area/1000000, dist/1000))+
-  geom_jitter(position=position_jitter(1), aes(colour=year), size=4, alpha=0.95, pch=16)+  # geom_point(aes(colour=year))+
+  geom_jitter(position=position_jitter(1.5), aes(colour=year), size=2, alpha=0.95, pch=21)+  # geom_point(aes(colour=year))+
   stat_smooth(method="lm")+
   theme_bw()+
   xlab("Species Range")+

@@ -15,12 +15,6 @@ library(rgdal)
 library(maptools)
 library(raster)
 library(dismo)
-
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxentspecies.Rda")
-
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
-colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
-
 ```
 
 ```{r}
@@ -31,7 +25,15 @@ load("P:/hackathon/Simulations/envs.backgHerb_SAE.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bg.herb.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/backgroundEORs.Rda") 
 
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 
+# Which position of herb matches in eorandherb (and either NA or the spot it matches)
+herbposition <- match(mapply(FUN=function(x) unique(x$GNAME),
+                             pca_eorandherb_SAE),
+                      mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE))
+
+pca_eorposition <- c(1:40,NA,42:60)
+backeorposition <- c(1:40,NA,41:59)
 ```
 
 
@@ -47,12 +49,12 @@ rscrs_2 <- rasterstack_2@crs@projargs # "+proj=longlat +datum=WGS84 +no_defs +el
 
 ```{r}
 # load( "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb_SAE.Rda" )
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
 # load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herb_SAE.Rda")
 # load("P:/hackathon/Simulations/envs.backgEOR.Rda")
 # load("P:/hackathon/Simulations/envs.backgHerb.Rda")
 load("P:/hackathon/Simulations/circleHerb.Rda")
 # load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bg.herb.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 
 
 want <- which(!is.na(mapply('[[', distXsp, 1)))
@@ -86,15 +88,12 @@ polys_post1980 <- lapply(1:60, function(i){
      out
      })
 
-plot(polys_post1980[[7]])
+plot(polys_post1980[[4]])
 
 ```
 
 
 ```{r}
-want <- which(!is.na(mapply('[[', distXsp, 1)))
-wantEOR <- which(!is.na(mapply('[[', distXsp, 4)))
-
 herbpoints <- list()
 eorpoints <- list()
 
@@ -103,6 +102,7 @@ Herboints <- mapply('[[', distXsp, 1)
 length(EORgridpoints[!is.na(EORgridpoints)])
 length(wantEOR)
 
+colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
 colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
 
 which(is.na(EORgridpoints))
@@ -118,7 +118,7 @@ for(i in 1:length(want2)){
     plot(colocounties.UTM, main=paste(unique(herbpoints[[i]]@data$scientificName)[1]))
     plot(herbpoints[[i]], add=TRUE, col="blue", pch=16)
     plot(eorpoints[[i]], add=TRUE)
-    plot(polys_post1980[[want2[i]]], add=TRUE, border="red", lwd=4) #not ploting!
+    plot(polys_post1980[[want2[i]]], add=TRUE, border="red", lwd=4)
 }
 ```
 
@@ -266,18 +266,15 @@ Check it
 (mapply(FUN=function(x) unique(x$GNAME),pca_eorandherb_SAE))
 
 # Which position of herb matches in eorandherb (and either NA or the spot it matches)
-herbpoisition <- match(mapply(FUN=function(x) unique(x$GNAME),pca_eorandherb_SAE),mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE))
+# herbpoisition <- match(mapply(FUN=function(x) unique(x$GNAME),pca_eorandherb_SAE),mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE))
 
-length(herbpoisition) #60
+length(herbposition) #60
 # 1:60 for EOR and the associated herb one
 
 # Which poistion of eorandherb matches where in herb (and either NA or the spot it matches)
 match(mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE),mapply(FUN=function(x) unique(x$GNAME),pca_eorandherb_SAE))
 
-# Which position of herb matches in eorandherb (and either NA or the spot it matches)
-herbposition <- match(mapply(FUN=function(x) unique(x$GNAME),
-                             pca_eorandherb_SAE),
-                      mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE))
+
 
 #to match by species, select the number 1:60 for EOR and herbposition[#] for herb
 plot(pca_herb_SAE[[herbpoisition[54]]][,c(1:2)])
@@ -295,7 +292,6 @@ eorGnames <- lapply(pca_eorandherb_SAE, function(x){
   unique(x$GNAME)
 })
 
-eorGnames[want];herbGnames
 ```
 
 
@@ -349,13 +345,17 @@ for(i in 1:60){
   circleEORs[[i]] <- circles(pca_eor_SAE[[i]][,c("x1","x2")], d=50000, lonlat=TRUE) #50 km radius circles
 }
 
-without41 <- which(!is.na(EORsxsp))
 
 #just make some random background points for EORs, these are only within the extents, that's why I made the circles! Where are my circles? 
-bg.EORs <- lapply(without41, function(x){
-  out <- randomPoints(coElev, n=nrow(EORsxsp[[x]]@coords)+round(0.25*(nrow(EORsxsp[[x]]@coords)),0),
+bg.EORs <- lapply(1:60, function(x){
+  if(x==41){
+    NULL
+  } else {
+    out <- randomPoints(coElev, n=nrow(EORsxsp[[x]]@coords)+round(0.25*(nrow(EORsxsp[[x]]@coords)),0),
                       ext=extent(polygons(circleEORs[[x]])))
-  out
+    out
+  }
+  
 })
 
 plot(bg.EORs[[1]])
@@ -412,8 +412,6 @@ plot(bg, add=TRUE)
 
 ```{r}
 
-pca_eorposition <- c(1:40,NA,42:60)
-backeorposition <- c(1:40,NA,41:59)
 
 mapply(function(q,v,w,x,y,z,a,b) paste(a,b,q,v,w,x,y,z, sep="_"), 
        lapply(herbposition, function(x) unique(pointsXsp.latlon[[x]]$scientificName)), # q
@@ -429,31 +427,74 @@ plot(polygons(circleHerb[[1]]))
 #to match by species, select the number 1:60 for EOR and herbposition[#] for herb, without 41 for EOR
 for(i in 1:60){
   plot(colocounties)
-  points(backgroundEORs[[backeorposition[i]]][,c('x1','x2')], col="green", pch=2, cex=0.25)
-  points(pca_herb_SAE[[herbposition[i]]][,c(1:2)])
+  points(backgroundEORs[[backeorposition[i]]][,c('x1','x2')], col="pink", pch=2, cex=0.25)
+  points(pca_herb_SAE[[herbposition[i]]][,c(1:2)],col="blue", pch=16)
   points(pca_eorandherb_SAE[[pca_eorposition[i]]][,c('x1','x2')], col="red", pch=16)
   if(!is.na(herbposition[i])){
-    plot(polygons(circleHerb[[herbposition[i]]]), add=TRUE, border="blue")
+    plot(polygons(circleHerb[[herbposition[i]]]), add=TRUE, border="sky blue")
   }
 }
 
 
 
 ```
+table of all information
+```{r}
+pca_eorposition <- c(1:40,NA,42:60)
+backeorposition <- c(1:40,NA,41:59)
+
+identical(names(backgroundEORs[[1]]), # z, 3
+names(bg.herb_SAE[[1]])) # y, 4
+names(pca_eorandherb_SAE[[1]]) #328 rows, x, 1
+pca_eor_SAE[[1]] #460 rows
+names(pca_herb_SAE[[1]])  # a, 2
+colnames(pca_herb_SAE[[1]])
+
+# From the previous runs, these are the ones that have 10 or more herbarium records
+MEposition
+MEposition2 <- which(MEpos>0)
+length(MEposition2) # 28, the 28 out of 60 species that have SDM posibilities
+length(pca_eorandherb_SAE) # 60
+length(bg.herb_SAE) # 46
+length(backgroundEORs) # 59
+length(pca_herb_SAE) # 46
+pca_eorposition #all but 41
+length(herbposition) # 60
+
+# out of 60 species which ones? oh, clearly it's forpca or forback any of them, no wait, but that's only if the length of the thing is 60; relate them all to the 60 names, then pick the 28 from MEposition
+herbposition # length 60, 48 are not NA
+
+forlength60 <- intersect(which(!is.na(herbposition)),which(!is.na(MEposition)))
+length(forlength60) # 28
+
+forlength59 <- intersect(pca_eorposition[!is.na(pca_eorposition)],which(!is.na(MEposition)))
+length(forlength59)
+
+forlengthbackgroundeor <- intersect(1:59, which(!is.na(MEposition)))
+
+
+pca_data3 <- lapply(1:60, function(x){
+  names(pca_herb_SAE[[forlength60[x]]]) <- names(pca_eorandherb_SAE[[forlength59[x]]])
+  pca_eorandherb_SAE[[forlength59[x]]]$pa <- 1
+  bg.herb_SAE[[forlength60[x]]]$pa <- 4
+  backgroundEORs[[forlength59[x]]]$pa <- 3
+  pca_herb_SAE[[forlength60[x]]]$pa <- 2
+  rbind(pca_eorandherb_SAE[[forlength59[x]]],
+        bg.herb_SAE[[forlength60[x]]],
+        backgroundEORs[[forlength59[x]]],
+        pca_herb_SAE[[forlength60[x]]])
+})
+
+```
 
 
 ```{r}
+
 #Loop through all the species
-Maxentspecies <- lapply(1:60, function(i){
+MaxentspeciesEORandHerb <- lapply(MEposition, function(i){
   checkrecords <- pca_herb_SAE[[herbposition[i]]]
   checkeor <- backgroundEORs[[backeorposition[[i]]]]
-  if(is.null(checkrecords)){
-    NULL
-  } else {
-    if(is.null(checkeor)){
-      NULL
-    } else {
-    
+  
     # to keep at least 5 records per group
       x <- checkrecords
       x <- x[!grepl("-99",x$Lastobs),]
@@ -467,6 +508,8 @@ Maxentspecies <- lapply(1:60, function(i){
     if(nrow(x)<10){
       NULL
       } else {
+        kfoldnum<-2
+        x
             train_pHerb <- x[,c("decimalLongitude","decimalLatitude")]
             train_bHerb <- bg.herb_SAE[[herbposition[i]]][,c("x1","x2")]
             
@@ -481,7 +524,9 @@ Maxentspecies <- lapply(1:60, function(i){
             gc()
             
             #Visulatize predictions
-            writeRaster(dismo::predict(meHerb, rasterstack_2),paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/Herbtrain_eortest_post1980",g1g2names$AcceptedName[i],".tif", sep=""),overwrite=TRUE)
+            writeRaster(dismo::predict(meHerb, rasterstack_2),paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/Herb",g1g2names$AcceptedName[i],".tif", sep=""),overwrite=TRUE)
+            gc()
+            writeRaster(dismo::predict(meEOR, rasterstack_2),paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/EOR",g1g2names$AcceptedName[i],".tif", sep=""),overwrite=TRUE)
             gc()
             thres <- dismo::threshold(e) 
 
@@ -491,35 +536,22 @@ Maxentspecies <- lapply(1:60, function(i){
             out
 
         }
-    }}
-  })
+    })
 
-save(Maxentspecies, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxentspecies.Rda")
+save(MaxentspeciesEORandHerb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/MaxentspeciesEORandHerb.Rda")
 
 
 ```
 
+
 ```{r}
-Maxentspecies[[1]]
+Maxentspecies60down[[2]]
 
-outputs <- mapply( '[[',Maxentspecies, 2)
-names <- mapply('[[', Maxentspecies, 6)
+outputs <- mapply( '[[',Maxentspecies60down, 2)
+names <- mapply('[[', Maxentspecies60down, 6)
 
-maxentposition <- mapply(function(x,y) x %in% y,
-                         lapply(1:60, function(i){
-                           c(g1g2names$AcceptedName[i],g1g2names$Taxon[i])
-                           }),
-                         mapply(FUN=function(x) x[[6]],Maxentspecies))
-
-MEpos <- apply(maxentposition,2, function(x) sum(x) )
-# 
-# which(MEpos>0)
-# length(which(MEpos>0)) #28
-
-MEposition <- match(1:60,which(MEpos>0))
-
-length(maxentposition[!is.na(maxentposition)]) #missing first one... need both names
-
+outputs[[3]]@auc
+sapply(outputs[!sapply(outputs,is.null)], function(x) x@AUC)
 aucs <- lapply(which(!sapply(outputs,is.null)), function(x) outputs[[x]]@auc)
 length(aucs)
 names[!sapply(names,is.null)]
@@ -530,59 +562,55 @@ hist(unlist(aucs),breaks=5)
 
 
 ```{r}
-table1 <- lapply(1:60, function(i){
-  checkrecords <- pca_herb_SAE[[herbposition[i]]]
-  if(is.null(checkrecords)){
-    NULL
-  } else {
-    checkrecords <- checkrecords[checkrecords$Lastobs!="",]
-    checkrecords <- checkrecords[!grepl("-99",checkrecords$Lastobs),]
-    checkrecords$Lastobs <- as.Date(checkrecords$Lastobs)
-    checkrecords <- checkrecords[!is.na(checkrecords$Lastobs),]
-      x <- checkrecords
-      x <- x[(as.Date(x$Lastobs)>"1980-12-31"),]
-      
-      data.frame(Species=g1g2names$AcceptedName[i],
-        EarlyYrAll = min(as.Date(checkrecords$Lastobs)),
-        LateYrAll=max(as.Date(checkrecords$Lastobs)),N=nrow(checkrecords),
-                 EarlyYr=min(as.Date(x$Lastobs)),LateYr=max(as.Date(x$Lastobs)),Nsmd=nrow(x))
-  }})
 
-write.table(do.call(rbind,table1), "clipboard", sep="\t", row.names = FALSE)
-```
+# Creating the objects    
+x <- stack()
+    threshold.m <- vector("numeric", 2)
+    auc.m1 <- vector("numeric", 2)
+    l.T1 <- list()
+    l.model <- list()
 
-```{r}
-distXsp[[1]][[1]]
+run = 2
+for(i in 1:run){
 
-write.table(do.call(rbind,lapply(which(!is.na(herbposition)), function(x){
-  data.frame(Species=unique(distXsp[[x]][[1]]$scientificName)[1],
-             Area=(sum(distXsp[[x]][[3]]))/1000)
-})), "clipboard", sep="\t", row.names=FALSE)
+  # Creating the k-fold data
+   group.k1 <- kfold(loxA.4, 5)
 
-```
+   loxTrain.L1 = loxData.L1[group.k1 != 1,]
+   loxTest.L1 = loxData.L1[group.k1 == 1,]
 
 
-```{r}
-
-lapply(1:length(Maxentspecies))
-Maxentspecies[[1]][[2]]@auc
-
-# which(!is.na(herbposition))
-
-do.call(rbind,lapply(1:60, function(x){
-  if(!is.na(MEposition[x]) & !is.na(herbposition[x])){
-    data.frame(Species=unique(distXsp[[x]][[1]]$scientificName)[1],
-             Area=(sum(distXsp[[x]][[3]]))/1000,
-             AUC=Maxentspecies[[x]][[2]]@auc)
-  } else {
-    data.frame(Species=unique(distXsp[[x]][[1]]$scientificName)[1],
-               Area=(sum(distXsp[[x]][[3]]))/1000,
-               AUC=NA)
-  }
-  }))
+   # Creating the background points
+   background = randomPoints(predictor0, 10000)
+   pseudo_absence_values = extract(predictor0, background)
+   pseudo_absence_values <- as.data.frame(pseudo_absence_values)
+   pseudo_absence_values$africa_ecoregion <- as.factor(pseudo_absence_values$africa_ecoregion)
 
 
+   # Creating the Analysis Data
+   train_y = c(rep(1,nrow(loxTrain.L1)), rep(0,nrow(pseudo_absence_values))) # Main Training Data
+   train_sdm_data = cbind(pa = train_y, rbind(loxTrain.L1, pseudo_absence_values)) # Main SDM Data
+
+   Model.MT1 = maxent(train_sdm_data[,-1], p = train_y, args = c("-J", "-P"),path = "maxent/set_2/output")
+   show(Model.MT1)
+   l.model <- list(l.model, Model.MT1)
+
+
+   # Doing Model Evaluation
+   mod.evT1 <- evaluate(Model.MT1, p = loxTest.L1, a = pseudo_absence_values)
+   l.T1 <- list(l.T1, mod.evT1)
+
+   # Capturing the threshold values
+   mod.thr <- threshold(mod.evT1, "spec_sens")
+   threshold.m [i] <- mod.thr
+
+   # Capturing the AUC values
+   auc.T1 <- mod.evT1@auc
+   auc.m1[i] <- auc.T1
+   
+   
+   Loop.r <- predict(predictor0,Model.MT1, progress='text')
+   x <- stack(x, Loop.r)
+   }
 
 ```
-
-
