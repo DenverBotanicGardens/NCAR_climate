@@ -464,27 +464,42 @@ length(herbposition) # 60
 # out of 60 species which ones? oh, clearly it's forpca or forback any of them, no wait, but that's only if the length of the thing is 60; relate them all to the 60 names, then pick the 28 from MEposition
 herbposition # length 60, 48 are not NA
 
-forlength60 <- intersect(which(!is.na(herbposition)),which(!is.na(MEposition)))
-length(forlength60) # 28
-
-forlength59 <- intersect(pca_eorposition[!is.na(pca_eorposition)],which(!is.na(MEposition)))
-length(forlength59)
-
-forlengthbackgroundeor <- intersect(1:59, which(!is.na(MEposition)))
-
-
 pca_data3 <- lapply(1:60, function(x){
-  names(pca_herb_SAE[[forlength60[x]]]) <- names(pca_eorandherb_SAE[[forlength59[x]]])
-  pca_eorandherb_SAE[[pca_eorposition[x]]]$pa <- 1
-  bg.herb_SAE[[herbposition[x]]]$pa <- 4
-  backgroundEORs[[forlength59[x]]]$pa <- 3
-  pca_herb_SAE[[forlength60[x]]]$pa <- 2
-  rbind(pca_eorandherb_SAE[[forlength59[x]]],
-        bg.herb_SAE[[forlength60[x]]],
-        backgroundEORs[[forlength59[x]]],
-        pca_herb_SAE[[forlength60[x]]])
+  if(sum(!is.na(herbposition[x]),!is.na(pca_eorposition[x]),!is.na(backeorposition[x]))==3){
+      names(pca_herb_SAE[[herbposition[x]]]) <- names(pca_eorandherb_SAE[[pca_eorposition[x]]])
+      pca_eorandherb_SAE[[pca_eorposition[x]]]$pa <- 1
+      bg.herb_SAE[[herbposition[x]]]$pa <- 4
+      backgroundEORs[[backeorposition[x]]]$pa <- 3
+      pca_herb_SAE[[herbposition[x]]]$pa <- 2
+      rbind(pca_eorandherb_SAE[[pca_eorposition[x]]],
+            bg.herb_SAE[[herbposition[x]]],
+            backgroundEORs[[backeorposition[x]]],
+            pca_herb_SAE[[herbposition[x]]])
+  } else {
+    NA
+  }
 })
 
+length(pca_data3[!is.na(pca_data3)]) # ok, 46 have herbarium but one has EOR issues, so 45 possible for SDM
+
+pca_data4 <- lapply(MEposition2, function(x){
+  if(sum(!is.na(herbposition[x]),!is.na(pca_eorposition[x]),!is.na(backeorposition[x]))==3){
+      names(pca_herb_SAE[[herbposition[x]]]) <- names(pca_eorandherb_SAE[[pca_eorposition[x]]])
+      pca_eorandherb_SAE[[pca_eorposition[x]]]$pa <- 1
+      bg.herb_SAE[[herbposition[x]]]$pa <- 4
+      backgroundEORs[[backeorposition[x]]]$pa <- 3
+      pca_herb_SAE[[herbposition[x]]]$pa <- 2
+      rbind(pca_eorandherb_SAE[[pca_eorposition[x]]],
+            bg.herb_SAE[[herbposition[x]]],
+            backgroundEORs[[backeorposition[x]]],
+            pca_herb_SAE[[herbposition[x]]])
+  } else {
+    NA
+  }
+})
+
+pca_data4[[1]]
+length(pca_data4) ##28 WHOO HOOOO!
 ```
 
 
