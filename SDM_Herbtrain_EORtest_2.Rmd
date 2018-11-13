@@ -475,8 +475,8 @@ forlengthbackgroundeor <- intersect(1:59, which(!is.na(MEposition)))
 
 pca_data3 <- lapply(1:60, function(x){
   names(pca_herb_SAE[[forlength60[x]]]) <- names(pca_eorandherb_SAE[[forlength59[x]]])
-  pca_eorandherb_SAE[[forlength59[x]]]$pa <- 1
-  bg.herb_SAE[[forlength60[x]]]$pa <- 4
+  pca_eorandherb_SAE[[pca_eorposition[x]]]$pa <- 1
+  bg.herb_SAE[[herbposition[x]]]$pa <- 4
   backgroundEORs[[forlength59[x]]]$pa <- 3
   pca_herb_SAE[[forlength60[x]]]$pa <- 2
   rbind(pca_eorandherb_SAE[[forlength59[x]]],
