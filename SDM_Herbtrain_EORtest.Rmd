@@ -569,16 +569,18 @@ Maxentspecies[[1]][[2]]@auc
 
 # which(!is.na(herbposition))
 
-do.call(rbind,lapply(1:60, function(x){
-  if(!is.na(MEposition[x]) & !is.na(herbposition[x])){
-    data.frame(Species=unique(distXsp[[x]][[1]]$scientificName)[1],
-             Area=(sum(distXsp[[x]][[3]]))/1000,
+MEposition2 <- which(MEpos>0)
+
+do.call(rbind,lapply(MEposition2, function(x){
+  # if(sum(!is.na(MEposition[x]) & !is.na(herbposition[x]))>0){
+    data.frame(Species=unique(Maxentspecies[[x]]$GNAME)[1],
+             Area=(sum(distXsp[[backeorposition[x]]][[3]]))/1000,
              AUC=Maxentspecies[[x]][[2]]@auc)
-  } else {
-    data.frame(Species=unique(distXsp[[x]][[1]]$scientificName)[1],
-               Area=(sum(distXsp[[x]][[3]]))/1000,
-               AUC=NA)
-  }
+  # } else {
+    # data.frame(Species=unique(distXsp[[x]][[1]]$scientificName)[1],
+    #            Area=(sum(distXsp[[x]][[3]]))/1000,
+    #            AUC=NA)
+  # }
   }))
 
 

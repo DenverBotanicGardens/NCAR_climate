@@ -487,7 +487,9 @@ pca_data4 <- lapply(MEposition2, function(x){
       names(pca_herb_SAE[[herbposition[x]]]) <- names(pca_eorandherb_SAE[[pca_eorposition[x]]])
       pca_eorandherb_SAE[[pca_eorposition[x]]]$pa <- 1
       bg.herb_SAE[[herbposition[x]]]$pa <- 4
+      bg.herb_SAE[[herbposition[x]]]$Lastobs <- ("2000-01-01")
       backgroundEORs[[backeorposition[x]]]$pa <- 3
+      backgroundEORs[[backeorposition[x]]]$Lastobs <- ("2000-01-01")
       pca_herb_SAE[[herbposition[x]]]$pa <- 2
       rbind(pca_eorandherb_SAE[[pca_eorposition[x]]],
             bg.herb_SAE[[herbposition[x]]],
@@ -498,60 +500,79 @@ pca_data4 <- lapply(MEposition2, function(x){
   }
 })
 
-pca_data4[[1]]
+pca_data4[[1]][pca_data4[[1]]$pa==3,]
 length(pca_data4) ##28 WHOO HOOOO!
 ```
 
-
+Could do it in 4 sets, two on desktop, two on laptop
 ```{r}
+ # i<-pca_data4[[6]]
 
 #Loop through all the species
-MaxentspeciesEORandHerb <- lapply(MEposition, function(i){
-  checkrecords <- pca_herb_SAE[[herbposition[i]]]
-  checkeor <- backgroundEORs[[backeorposition[[i]]]]
+MaxentspeciesEORandHerb <- lapply(pca_data4, function(i){
   
-    # to keep at least 5 records per group
-      x <- checkrecords
-      x <- x[!grepl("-99",x$Lastobs),]
-      x <- x[x$Lastobs!="",]
-      x <- x[(as.Date(x$Lastobs)>"1980-12-31"),]
-      
-      y <- pca_eor_SAE[[pca_eorposition[i]]]
-      y <- y[!grepl("-99",y$Lastobs),]
-      y <- y[(as.Date(y$Lastobs)>"1980-12-31"),]
-      
-    if(nrow(x)<10){
-      NULL
-      } else {
-        kfoldnum<-2
-        x
-            train_pHerb <- x[,c("decimalLongitude","decimalLatitude")]
-            train_bHerb <- bg.herb_SAE[[herbposition[i]]][,c("x1","x2")]
-            
-            test_pEOR <- pca_eor_SAE[[pca_eorposition[i]]][,c("x1","x2")]
-            test_bEOR <- backgroundEORs[[backeorposition[i]]][,c("x1","x2")]
-            
-            meHerb <- maxent(rasterstack_2, p=train_pHerb, a=train_bHerb, 
-                             path = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/",g1g2names$AcceptedName[i],sep=""))
-            
-            #evalidate teh model
-            e <- dismo::evaluate(test_pEOR, test_bEOR, meHerb, rasterstack_2)
-            gc()
-            
-            #Visulatize predictions
-            writeRaster(dismo::predict(meHerb, rasterstack_2),paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/Herb",g1g2names$AcceptedName[i],".tif", sep=""),overwrite=TRUE)
-            gc()
-            writeRaster(dismo::predict(meEOR, rasterstack_2),paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/EOR",g1g2names$AcceptedName[i],".tif", sep=""),overwrite=TRUE)
-            gc()
-            thres <- dismo::threshold(e) 
+  # Only want records after 1980
+  #background points don't have lastobs
+  x <- i
+  x <- x[!grepl("-99",x$Lastobs),]
+  x <- x[x$Lastobs!="",]
+  x <- x[(as.Date(x$Lastobs)>"1980-12-31"),]
+  
+  out <- list()
+  checksp <- sapply(split(x, x$pa), function(y) nrow(y))
+  
+    if(sum(checksp<10)==0){
+        for(l in 1:10){
+          speciestable <- x
+          kfoldnum<-4
+          speciestable$group_pa <- unlist(lapply(split(speciestable, speciestable$pa), function(x){
+            kfold(x$pa, kfoldnum)
+          }))
 
-            out <- list(meHerb,e,thres,e@auc,e@kappa,g1g2names$AcceptedName[i],
-                        nrow(checkrecords),nrow(x),
-                        nrow(pca_eor_SAE[[pca_eorposition[i]]]), nrow(y))
-            out
+          test <- sample(1:4, 1)
+          # Hold out a little bit that is used to test (25%), keep the rest to train (75%)
+          train_pHerb <- speciestable[speciestable$pa == 2 & speciestable$group_pa != test, c("x1","x2")]
+          train_pEOR <- speciestable[speciestable$pa == 1 & speciestable$group_pa != test, c("x1","x2")]
+          train_bHerb <- speciestable[speciestable$pa == 4 & speciestable$group_pa != test, c("x1","x2")]
+          train_bEOR <- speciestable[speciestable$pa == 3 & speciestable$group_pa != test, c("x1","x2")]
 
+          test_pHerb <- speciestable[speciestable$pa == 2 & speciestable$group_pa == test, c("x1","x2")]
+          test_pEOR <- speciestable[speciestable$pa == 1 & speciestable$group_pa == test, c("x1","x2")]
+          test_bHerb <- speciestable[speciestable$pa == 4 & speciestable$group_pa == test, c("x1","x2")]
+          test_bEOR <- speciestable[speciestable$pa == 3 & speciestable$group_pa == test, c("x1","x2")]
+
+          meEOR <- maxent(rasterstack_2, p=train_pEOR, a=train_bEOR,
+                          path = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/",unique(i$GNAME)[1],l,"_EOR",sep=""))
+          meHerb <- maxent(rasterstack_2, p=train_pHerb, a=train_bHerb,
+                          path = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/",unique(i$GNAME)[1],l,"_herb",sep=""))
+
+          #evalidate the model
+          eEOR <- dismo::evaluate(test_pEOR, test_bEOR, meEOR, rasterstack_2)
+          gc()
+
+          eHerb <- dismo::evaluate(test_pHerb, test_bHerb, meHerb, rasterstack_2)
+          gc()
+
+          #Visulatize predictions
+          writeRaster(dismo::predict(meHerb,rasterstack_2),
+                      paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/HerbOnly_",unique(i$GNAME)[1],l,".tif", sep=""),overwrite=TRUE)
+          gc()
+          writeRaster(dismo::predict(meEOR, rasterstack_2),paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/EOROnly_",unique(i$GNAME)[1],l,".tif", sep=""),overwrite=TRUE)
+          gc()
+
+          thresEOR <- dismo::threshold(eEOR)
+          thresHerb <- dismo::threshold(eHerb)
+
+          out[[l]] <- list(unique(i$GNAME)[1],
+                      meEOR,eEOR,thresEOR,eEOR@auc,
+                      meHerb,eHerb,thresHerb,eHerb@auc)
+
+        
         }
-    })
+      }
+            out
+  })
+  
 
 save(MaxentspeciesEORandHerb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/MaxentspeciesEORandHerb.Rda")
 
