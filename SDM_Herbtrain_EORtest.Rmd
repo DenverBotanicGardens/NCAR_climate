@@ -21,6 +21,8 @@ load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/M
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
 colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
 
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data4.Rda")
+
 ```
 
 ```{r}

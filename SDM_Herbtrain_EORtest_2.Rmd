@@ -15,6 +15,11 @@ library(rgdal)
 library(maptools)
 library(raster)
 library(dismo)
+library(foreach)
+library(parallel)
+library(doParallel)
+
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data4.Rda")
 ```
 
 ```{r}
@@ -42,7 +47,7 @@ coElev <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENE
 coAspect <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Aspect_VT/co_aspect_VT_WGS84.tif")
 coSlope <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Slope_VT/co_slope_VT_WGS84.tif")
 
-rasterstack_2 <- stack(list(coElev, coAspect, coSlope))
+rasterstack_2 <- brick(list(coElev, coAspect, coSlope))
 rscrs_2 <- rasterstack_2@crs@projargs # "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 ```
 
@@ -331,6 +336,8 @@ save(bg.herb_SAE, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in ni
 
 
 
+
+
 #points in the EORs
 EORsxsp <- mapply('[[', distXsp, 4)
 
@@ -451,6 +458,18 @@ names(pca_herb_SAE[[1]])  # a, 2
 colnames(pca_herb_SAE[[1]])
 
 # From the previous runs, these are the ones that have 10 or more herbarium records
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxentspecies.Rda")
+maxentposition <- mapply(function(x,y) x %in% y,
+                         lapply(1:60, function(i){
+                           c(g1g2names$AcceptedName[i],g1g2names$Taxon[i])
+                           }),
+                         mapply(FUN=function(x) x[[6]],Maxentspecies))
+MEpos <- apply(maxentposition,2, function(x) sum(x) )
+# 
+# which(MEpos>0)
+# length(which(MEpos>0)) #28
+MEposition <- match(1:60,which(MEpos>0))
+mepo <- which(!is.na(MEposition))
 MEposition
 MEposition2 <- which(MEpos>0)
 length(MEposition2) # 28, the 28 out of 60 species that have SDM posibilities
@@ -500,13 +519,16 @@ pca_data4 <- lapply(MEposition2, function(x){
   }
 })
 
+save(pca_data4, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data4.Rda")
+
+
 pca_data4[[1]][pca_data4[[1]]$pa==3,]
 length(pca_data4) ##28 WHOO HOOOO!
 ```
 
 Could do it in 4 sets, two on desktop, two on laptop
 ```{r}
- # i<-pca_data4[[6]]
+  i<-pca_data4[[2]]
 
 #Loop through all the species
 MaxentspeciesEORandHerb <- lapply(pca_data4, function(i){
@@ -525,10 +547,15 @@ MaxentspeciesEORandHerb <- lapply(pca_data4, function(i){
         for(l in 1:10){
           speciestable <- x
           kfoldnum<-4
-          speciestable$group_pa <- unlist(lapply(split(speciestable, speciestable$pa), function(x){
-            kfold(x$pa, kfoldnum)
+          speciestable$group_pa <- unlist(lapply(split(speciestable, speciestable$pa), function(sp){
+            kfold(sp$pa, kfoldnum)
           }))
 
+lapply(split(speciestable, speciestable$pa), function(sp){
+           length(kfold(sp$pa, kfoldnum))
+          })
+        
+          
           test <- sample(1:4, 1)
           # Hold out a little bit that is used to test (25%), keep the rest to train (75%)
           train_pHerb <- speciestable[speciestable$pa == 2 & speciestable$group_pa != test, c("x1","x2")]
@@ -578,7 +605,106 @@ save(MaxentspeciesEORandHerb, file= "Q:/Research/Projects/alpine-phenology/Uncer
 
 
 ```
+Could do it in 4 sets, two on desktop, two on laptop
+```{r}
+  # i<-pca_data4[[2]]
 
+
+
+#register parallel computing backend
+ncores<-detectCores()
+cl <- parallel::makeCluster(ncores)
+doParallel::registerDoParallel(cl,cores)
+
+#compute indices for data splitting
+rows <- 1:nrow(rasterstack_2)
+split <- sort(rows%%ncores)+1
+
+#Loop through all the species
+MaxentspeciesEORandHerbforeach <- lapply(pca_data4, function(i_sp){
+  
+  # Only want records after 1980
+  #background points don't have lastobs
+  x <- i_sp
+  x <- x[!grepl("-99",x$Lastobs),]
+  x <- x[x$Lastobs!="",]
+  x <- x[(as.Date(x$Lastobs)>"1980-12-31"),]
+  
+  out <- list()
+  checksp <- sapply(split(x, x$pa), function(y) nrow(y))
+  
+    if(sum(checksp<10)==0){
+        for(l in 1:10){
+          speciestable <- x
+          kfoldnum<-4
+          speciestable$group_pa <- unlist(lapply(split(speciestable, speciestable$pa), function(sp){
+            kfold(sp$pa, kfoldnum)
+          }))
+
+lapply(split(speciestable, speciestable$pa), function(sp){
+           length(kfold(sp$pa, kfoldnum))
+          })
+        
+          
+          test <- sample(1:4, 1)
+          # Hold out a little bit that is used to test (25%), keep the rest to train (75%)
+          train_pHerb <- speciestable[speciestable$pa == 2 & speciestable$group_pa != test, c("x1","x2")]
+          train_pEOR <- speciestable[speciestable$pa == 1 & speciestable$group_pa != test, c("x1","x2")]
+          train_bHerb <- speciestable[speciestable$pa == 4 & speciestable$group_pa != test, c("x1","x2")]
+          train_bEOR <- speciestable[speciestable$pa == 3 & speciestable$group_pa != test, c("x1","x2")]
+
+          test_pHerb <- speciestable[speciestable$pa == 2 & speciestable$group_pa == test, c("x1","x2")]
+          test_pEOR <- speciestable[speciestable$pa == 1 & speciestable$group_pa == test, c("x1","x2")]
+          test_bHerb <- speciestable[speciestable$pa == 4 & speciestable$group_pa == test, c("x1","x2")]
+          test_bEOR <- speciestable[speciestable$pa == 3 & speciestable$group_pa == test, c("x1","x2")]
+
+          meEOR <- maxent(rasterstack_2, p=train_pEOR, a=train_bEOR,
+                          path = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/",unique(i_sp$GNAME)[1],l,"_EOR",sep=""))
+          meHerb <- maxent(rasterstack_2, p=train_pHerb, a=train_bHerb,
+                          path = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/",unique(i_sp$GNAME)[1],l,"_herb",sep=""))
+
+          #evalidate the model
+          eEOR <- dismo::evaluate(test_pEOR, test_bEOR, meEOR, rasterstack_2)
+          gc()
+
+          eHerb <- dismo::evaluate(test_pHerb, test_bHerb, meHerb, rasterstack_2)
+          gc()
+
+
+          #perform the prediction on subsets of the predictor dataset
+          prediction <- foreach(i=unique(split), .export=c("rows"), .packages = c("dismo"), .combine=c)%dopar%{
+              rows_sub <- rows[split==i]
+              sub <- raster::crop(rasterstack_2,raster::extent(rasterstack_2, min(rows_sub), max(rows_sub), 1, ncol(rasterstack_2)))
+          
+              
+              #Visulatize predictions
+              writeRaster(dismo::predict(sub, meHerb),
+                          paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/HerbOnly_",unique(i_sp$GNAME)[1],l,".tif", sep=""),overwrite=TRUE)
+              gc()
+              writeRaster(dismo::predict(meEOR, rasterstack_2),paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/EOROnly_",i,unique(i_sp$GNAME)[1],l,".tif", sep=""),overwrite=TRUE)
+              gc()
+          }
+          
+          stopCluster(cl)
+
+          thresEOR <- dismo::threshold(eEOR)
+          thresHerb <- dismo::threshold(eHerb)
+
+          out[[l]] <- list(unique(i_sp$GNAME)[1],
+                      meEOR,eEOR,thresEOR,eEOR@auc,
+                      meHerb,eHerb,thresHerb,eHerb@auc)
+
+        
+        }
+      }
+            out
+  })
+  
+
+save(MaxentspeciesEORandHerbforeach, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/MaxentspeciesEORandHerbforeach.Rda")
+
+
+```
 
 ```{r}
 Maxentspecies60down[[2]]
