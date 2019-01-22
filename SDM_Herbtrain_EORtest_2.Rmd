@@ -20,6 +20,7 @@ library(parallel)
 library(doParallel)
 
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data4.Rda")
+
 ```
 
 ```{r}
@@ -39,6 +40,42 @@ herbposition <- match(mapply(FUN=function(x) unique(x$GNAME),
 
 pca_eorposition <- c(1:40,NA,42:60)
 backeorposition <- c(1:40,NA,41:59)
+
+
+g1g2names[g1g2names$Family=="Plantaginaceae",]#Add the Family for Gutierrezia: Asteraceae  and Oonopsis: Asteraceae
+g1g2names$Family[g1g2names$Family==""] <- "Asteraceae"
+g1g2names$Family[g1g2names$Family=="Compositae"] <- "Asteraceae"
+g1g2names$Family[g1g2names$Family=="Leguminosae"] <- "Fabaceae"
+
+(length(pca_data4))/4
+
+
+toVistrails1 <- do.call(rbind,(lapply(1:14, function(x){ 
+  data.frame(pca_data4[[x]],SpeciesID = x)
+  })
+))
+
+toVistrails2 <- do.call(rbind,(lapply(15:28, function(x){ 
+  data.frame(pca_data4[[x]],SpeciesID = x)
+  })
+))
+# 
+# toVistrails3 <- do.call(rbind,(lapply(15:21, function(x){ 
+#   data.frame(pca_data4[[x]],SpeciesID = x)
+#   })
+# ))
+# 
+# toVistrails4 <- do.call(rbind,(lapply(22:28, function(x){ 
+#   data.frame(pca_data4[[x]],SpeciesID = x)
+#   })
+# ))
+
+nrow(toVistrails1)
+nrow(toVistrails2)
+
+write.csv(toVistrails1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData1_EORG1G2_WGS84.csv")
+
+write.csv(toVistrails2, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData2_EORG1G2_WGS84.csv")
 ```
 
 

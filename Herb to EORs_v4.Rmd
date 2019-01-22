@@ -21,7 +21,7 @@ library(maptools)
 library(raster)
 library(Taxonstand)
 library(RCurl)
-library(taxize)
+# library(taxize)
 library(ggmap)
 
 library(dismo)
@@ -101,7 +101,6 @@ coAspect <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GE
 
 coSlope <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Slope_VT/co_slope_VT_WGS84.tif")
 
-plot(coElev)
 ```
 
 
@@ -346,6 +345,8 @@ projected <- spTransform(projected, CRS("+proj=utm +zone=13 +datum=NAD83 +units=
 # 
 # head(g1g2names)
 # unique(l1G1G2$PolyID$GNAME)
+# 
+# write.csv(coloradosps.g1g2, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_EORG1G2_WGS84.csv")
 ```
 
 
@@ -845,6 +846,40 @@ pca_herbpost1980 <- lapply(pca_herb, function(x){
 save(pca_herbpost1980, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herbpost1980.Rda")
 
 save(pca_herbpost1980single, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herbpost1980single.Rda")
+
+g1g2names[g1g2names$Family=="Plantaginaceae",]#Add the Family for Gutierrezia: Asteraceae  and Oonopsis: Asteraceae
+g1g2names$Family[g1g2names$Family==""] <- "Asteraceae"
+g1g2names$Family[g1g2names$Family=="Compositae"] <- "Asteraceae"
+g1g2names$Family[g1g2names$Family=="Leguminosae"] <- "Fabaceae"
+# 
+# want <- which(!is.na(mapply('[[', distXsp, 1)))
+# wantEOR <- which(!is.na(mapply('[[', distXsp, 4)))
+# 
+# # Not going to work for the ones missing Herbarium records
+# data.frame(distXsp[[4]][[1]],g1g2names[4,])
+# 
+# x_Herbs= mapply('[[', distXsp, 1)
+# x_EORs <- mapply('[[', distXsp, 4)
+# 
+# x_Herbs[[1]]@coords
+# 
+# ToVisTrails_G1G2Herb <- do.call(rbind,
+#                                 lapply(want, function(x) data.frame(x_Herbs[[x]],g1g2names[x,])))
+#                                 
+# # ToVisTrails_G1G2EOR <- data.frame(matrix(ncol = length(ToVisTrails_G1G2Herb), nrow = 0))
+# # colnames(ToVisTrails_G1G2EOR) <- colnames(ToVisTrails_G1G2Herb)
+# 
+# EOR_G1G2tomerge <- do.call(rbind,
+#                                 lapply(wantEOR, function(x) data.frame(x_EORs[[x]],g1g2names[x,])))
+# 
+# 
+# names(ToVisTrails_G1G2Herb)
+# names(EOR_G1G2tomerge)
+# 
+# head(ToVisTrails_G1G2Herb[,c(89:90,92:117)])
+# head(EOR_G1G2tomerge)
+# 
+# write.csv()
 
 ```
 

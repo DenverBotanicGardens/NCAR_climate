@@ -216,6 +216,8 @@ allnames <- c(g1g2names$Taxon,
               paste(g1g2names$New.Genus,g1g2names$New.Species,sep=" "))
 length(unique(allnames)) #71
 
+
+table(coloradosps$scientificName)
 ```
 
 ```{r}
@@ -223,17 +225,10 @@ colorado <- get_map(location = c(lon = -105.6,lat = 39.35),
                     maptype = "satellite", zoom = 6)
 counties <- map_data("county")
 co_county <- subset(counties, region == 'colorado')
-<<<<<<< HEAD
 
 #l1G1G2 are in UTM zone 13
 l1G1G2@proj4string <- CRS("+proj=utm +zone=13 ellps=NAD83")
 
-=======
-
-#l1G1G2 are in UTM zone 13
-l1G1G2@proj4string <- CRS("+proj=utm +zone=13 ellps=NAD83")
-
->>>>>>> d0b29990b003805f937bfe88e766f541ede26521
 str(colorado)
 str(co_county)
 
