@@ -1,0 +1,130 @@
+---
+title: "gdf to geotiff"
+author: "Michelle DePrenger-Levin"
+date: "December 24, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(rgdal)
+library(raster)
+```
+
+```{r}
+adfs <- list.dirs(path = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado",full.names = TRUE, recursive = TRUE)
+
+
+adfs[1:(length(adfs)/2)]
+length(unique(adfs))
+# hdrs <- lapply(36:46, function(x){
+#   out <- grep(paste("n",x,sep=""),adfs)
+#   outgrdn <- grep("grdn",out)
+# })
+length(adfs[grep("grdn",adfs)])
+
+adfs[grep("grdn",adfs)][1]
+
+
+adf2tif <- lapply(adfs[grep("grdn",adfs)], function(x) raster(paste(x,"/hdr.adf",sep="")))
+
+
+adfs[[1]]
+
+plot(adf2tif[[1]])
+lapply(1:length(adf2tif), function(r){
+  writeRaster(adf2tif[[r]],paste(adfs[[1]],"/",
+                                 gsub("^.*/", "", adfs[grep("grdn",adfs)][r]),
+                                 '.tif',sep=""),options=c('TFW=YES'), overwrite=TRUE)
+
+})
+```
+
+Missed 
+       n38w108    
+       n37w104   
+       n36w111
+```{r}
+missinghdrs <- c("n38w108","n37w104","n36w111")
+
+adfs[grep(paste(missinghdrs, collapse ="|"), adfs, value=TRUE) ]
+
+getem <- lapply(lapply(missinghdrs, function(x) adfs[grep(x,adfs)]), 
+                          function(x) x[grep("_13", x)])
+
+adf2tif2 <- lapply(getem,
+                   function(x) raster(paste(x[[1]],"/hdr.adf",sep="")))
+
+
+lapply(1:length(adf2tif2), function(r){
+  writeRaster(adf2tif2[[r]],paste(adfs[[1]],"/",
+                                 gsub("^.*/", "", getem[grep("grdn",getem)][r]),
+                                 '.tif',sep=""),options=c('TFW=YES'), overwrite=TRUE)
+
+})
+
+writeRaster(adf2tif2[[3]], paste(adfs[[1]],"/",
+                                 gsub("^.*/", "", getem[grep("grdn",getem)][[3]]),
+                                 '.tif',sep="")[[1]],options=c('TFW=YES'), overwrite=TRUE)
+```
+
+
+```{r}
+
+r <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/aspect25int/hdr.adf")
+
+writeRaster(r, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/aspect25int.tif", options=c('TFW=YES'))
+
+
+r <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/coplus25int/hdr.adf")
+
+writeRaster(r, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/coplus25int.tif", options=c('TFW=YES'))
+
+#Slopedeg
+r <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/slopedeg25int/hdr.adf")
+
+writeRaster(r, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/slopedeg25int.tif", options=c('TFW=YES'))
+
+
+#rugged
+r <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/rugged25int/hdr.adf")
+
+writeRaster(r, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/rugged25int.tif", options=c('TFW=YES'))
+
+```
+
+Turn US ecoregions level 4 into a raster for VisTrails    
+```{r}
+library(raster)
+library(rgdal)
+
+p <- shapefile("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Ecogregions of the US/us_eco_l4.shp")
+proj4string(p)
+# [1] "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"
+# in meters, can do 10 meter
+p
+
+ext <- floor(extent(p))
+rout <- raster(ext, res = 1000)
+r <- rasterize(p, rout, field=1)
+plot(r)
+# 
+# library(doParallel)
+# library(foreach)
+# 
+# usecores <- detectCores() -1
+# cl <- makeCluster(usecores)
+# registerDoParallel(cl)
+
+path <- "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/"
+
+writeRaster(r, filename = paste0(path,"EmptyRaster.tif"))
+
+
+# foreach(i = )
+
+
+```
+Note that you are rasterizing very small polygons to large raster cells. A polygon is considered 'inside' if it covers the center of a cell (i.e. assuming a case where polygons cover multiple cells). So for these data you would need to use a much higher resolution (and then perhaps aggregate the results). Alternatively you could rasterize polygon centroids.   
+
