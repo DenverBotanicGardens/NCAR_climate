@@ -1,0 +1,127 @@
+---
+title: "ForVisTrails"
+author: "Michelle DePrenger-Levin"
+date: "January 11, 2019"
+output: html_document
+---
+
+To make FieldData_ for VisTrails   
+
+Method to thin how i want to by Dan Warren  
+Could treat either lat lon or environmental distances as the distance, would likely have to make a pca or dist matrix to do environmental to thin but shoudl think about that next. but don't know that well, you do 
+```{r}
+# x, a data frame containing the columns to be used to calculate distances along with whatever other data you need
+# cols, a vector of column names or indices to use for calculating distances
+# npoints, the number of rarefied points to spit out
+#
+# e.g., thin.max(my.data, c("latitude", "longitude"), 200)
+
+
+thin.max <- function(x, cols, npoints){
+  #Create empty vector for output
+  inds <- vector(mode="numeric")
+  
+  #Create distance matrix
+  this.dist <- as.matrix(dist(x[,cols], upper=TRUE))
+  
+  #Draw first index at random
+  inds <- c(inds, as.integer(runif(1, 1, length(this.dist[,1]))))
+  
+  #Get second index from maximally distant point from first one
+  #Necessary because apply needs at least two columns or it'll barf
+  #in the next bit
+  inds <- c(inds, which.max(this.dist[,inds]))
+  
+  while(length(inds) < npoints){
+    #For each point, find its distance to the closest point that's already been selected
+    min.dists <- apply(this.dist[,inds], 1, min)
+    
+    #Select the point that is furthest from everything we've already selected
+    this.ind <- which.max(min.dists)
+    
+    #Get rid of ties, if they exist
+    if(length(this.ind) > 1){
+      print("Breaking tie...")
+      this.ind <- this.ind[1]
+    }
+    inds <- c(inds, this.ind)
+  }
+  
+  return(x[inds,])
+}
+
+```
+
+
+```{r}
+rm(list=ls())
+
+library(ggplot2)
+library(rgeos)
+library(sp)
+library(spdep)
+library(rgdal)
+library(maptools)
+library(raster)
+library(Taxonstand)
+library(RCurl)
+
+
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
+
+# Write each list item as a FieldData with only pa == 1|2 where '1' is EORs and '2' is Herb
+# First sort and eliminate duplicate locaitons 
+# All are already post 1980
+
+foo <- pca_data[[1]]
+
+foo$lon3 <- round(foo$x2,3) # about 110 m
+foo$lat3 <- round(foo$x1,3)
+
+foo1 <- foo[with(foo, order(pa,lon3,lat3)),]
+foo2 <- foo1[!duplicated(foo1[,c("pa","lon3","lat3")]),]
+
+lapply(1:length(pca_data), function(x){
+  foo <- pca_data[[x]]
+  foo$lon3 <- round(foo$x2,3) # about 110 m
+  foo$lat3 <- round(foo$x1,3)
+# Sort by location; pa == 1 is EOR and pa == 2 are Herbarium records 
+  foo1 <- foo[with(foo, order(pa,lon3,lat3)),]
+  foo2 <- foo1[!duplicated(foo1[,c("pa","lon3","lat3")]),]
+# Save each file for use in VisTrails
+  write.csv(foo2, paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_sp",x,".csv", sep=""))
+})
+
+x<-5
+
+# Thin or increase so number of EOR points match Herb points. So few so not worried about thinning for spatial autocorrelation, that will likely be the problem because there are few popualtions that are all close togehter. Instead look to do what Dan Warren did: http://enmtools.blogspot.com/2015/10/handy-little-snippet-of-r-code-for.html where he was looking for a target sample size that cover the most area - contain the most information, says he'll get it into ENMtools eventually 
+
+lapply(1:length(pca_data), function(x){
+  foo <- pca_data[[x]]
+    
+  foo$lon3 <- round(foo$x2,3) # about 110 m
+  foo$lat3 <- round(foo$x1,3)
+# Sort by location; pa == 1 is EOR and pa == 2 are Herbarium records 
+  foo1 <- foo[with(foo, order(pa,lon3,lat3)),]
+  foo2 <- foo1[!duplicated(foo1[,c("pa","lon3","lat3")]),]
+
+  herbsp <- foo2[foo2$pa == 2,]
+  eorsample <- foo2[foo2$pa == 1,]
+  
+  if(nrow(eorsample)>nrow(herbsp)){
+     # was going to use eorsample[sample(1:(nrow(eorsample)),size = nrow(herbsp)),] but will thin.max instead
+  write.csv(thin.max(eorsample, c("x1","x2"), nrow(herbsp)),
+            paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_EORsamesize_sp",x,".csv", sep=""))
+  } else {
+    # if there are fewer EOR samples than Herb samples, then sample with replacement but jitter points so no overlapping. But more overlapping than the Soltice advise of within 0.01 decimal degrees
+    eorsamplebigger <- eorsample[sample(1:(nrow(eorsample)),size = nrow(herbsp), replace = TRUE),]
+    eorsamplebigger$x1 <- jitter(eorsamplebigger$x1, factor=0.009)
+    eorsamplebigger$x2 <- jitter(eorsamplebigger$x2, factor=0.009)
+        write.csv(eorsamplebigger,
+            paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_EORsamesize_sp",x,".csv", sep=""))
+    }
+})
+```
+
+
+
