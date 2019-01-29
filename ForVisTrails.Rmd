@@ -92,7 +92,6 @@ lapply(1:length(pca_data), function(x){
   write.csv(foo2, paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_sp",x,".csv", sep=""))
 })
 
-x<-5
 
 # Thin or increase so number of EOR points match Herb points. So few so not worried about thinning for spatial autocorrelation, that will likely be the problem because there are few popualtions that are all close togehter. Instead look to do what Dan Warren did: http://enmtools.blogspot.com/2015/10/handy-little-snippet-of-r-code-for.html where he was looking for a target sample size that cover the most area - contain the most information, says he'll get it into ENMtools eventually 
 
@@ -121,6 +120,13 @@ lapply(1:length(pca_data), function(x){
             paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_EORsamesize_sp",x,".csv", sep=""))
     }
 })
+```
+
+
+Go to Chapter1_SDM.Rmd
+```{r}
+
+
 ```
 
 
