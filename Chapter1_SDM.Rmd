@@ -6,30 +6,39 @@ output: html_notebook
 I think the outputs that don't have _EOR or _herb are the ones that used Herb to train and EOR to test. can see what the AUC patterns were for those. 
 Making new herb train and EOR test ones with VisTrails and same size EOR numbers
 ```{r}
+rm(list=ls())
+
+library(ggplot2)
+
 # pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/Arabis crandallii_EOR/"
 # 
 # resultpath <- list.files(path = pathstart, pattern = "maxentResults.csv") # , full.names = TRUE)[[1]]
 
-maxouts <- list.dirs(path = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt",full.names = TRUE, recursive = TRUE)
-
-maxoutsubset <- maxouts[!grepl("plots", maxouts)]
-maxoutsubset <- maxoutsubset[!grepl("_EOR", maxoutsubset)]
-maxoutsubset <- maxoutsubset[!grepl("_herb", maxoutsubset)]
-
-sapply(strsplit(maxoutsubset,"/"), function(x){
-  x[7]
-})
+# I don't think I want these, went through one by one but had issues. 
+    # maxouts <- list.dirs(path = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt",full.names = TRUE, recursive = TRUE)
+    # 
+    # maxoutsubset <- maxouts[!grepl("plots", maxouts)]
+    # maxoutsubset <- maxoutsubset[!grepl("_EOR", maxoutsubset)]
+    # maxoutsubset <- maxoutsubset[!grepl("_herb", maxoutsubset)]
+    # 
+    # sapply(strsplit(maxoutsubset,"/"), function(x){
+    #   x[7]
+    # })
 
 # Where is the information about EOR size and distances to match to the names? 
 
-
-AUCresults <- do.call(rbind,lapply(maxoutsubset, function(x){
-  read.csv(paste(x,"/maxentResults.csv", sep=""))
-}))
-
-names(AUCresults)[grep("AUC",names(AUCresults))]
-
-hist(AUCresults$Training.AUC)
+      # AUCresults <- do.call(rbind,lapply(maxoutsubset, function(x){
+      #   read.csv(paste(x,"/maxentResults.csv", sep=""))
+      # }))
+      # 
+      # names(AUCresults)[grep("AUC",names(AUCresults))]
+      # 
+      # jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/AUCtraintest1.jpg",
+      #      width=200, height=175,units='mm', res=300)
+      # hist(AUCresults$Training.AUC, breaks = 10,
+      #      main="",
+      #      xlab="AUC")
+      # dev.off()
 ```
 
 Get all the files that I'm making with VisTrails, then extract the information from the sets I want. Named similar runs the same way. 
@@ -50,7 +59,7 @@ EORsamesub <- EORsamesub[!grepl("Expanded", EORsamesub)]
 EORsamesub <- EORsamesub[!grepl("responseCurves", EORsamesub)]
 
 # The 9th layer is the folder for that Maxent output
-unique(sapply(strsplit(EORsame,"/"), function(x){
+unique(sapply(strsplit(EORsamesub,"/"), function(x){
   x[9]
 }))
 
@@ -64,9 +73,7 @@ sapply(strsplit(EORsamesub, "Sp"), function(x){
   as.numeric(gsub("([0-9]+).*$", "\\1", x[2]))
 })
 
-x <- EORsamesub[[1]]
 # Where is the information about EOR size and distances to match to the names? 
-
 AUCresults2 <- do.call(rbind,lapply(EORsamesub, function(x){
   resultfile <- read.csv(paste(x,"/maxentResults.csv", sep=""))
   resultfile$Species <- as.numeric(resultfile$Species)
@@ -77,6 +84,16 @@ AUCresults2 <- do.call(rbind,lapply(EORsamesub, function(x){
 
 hist(AUCresults2$Training.AUC)
 
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/AUC_EOR.jpg",
+     width=200, height=175,units='mm', res=300)
+hist(AUCresults2$Training.AUC, breaks = 10,
+     main="",
+     xlab="AUC")
+dev.off()
+```
+
+Now the herbarium specimens!
+```{r}
 # Compare to the Herb results
 Herbsame <- maxouts2[grepl("Maxent_Sp", maxouts2)]
 speciesHerb <- unique(unlist(lapply(regmatches(EORsame, gregexpr("[[:digit:]]+", EORsame)),"[[", 3)))
@@ -93,9 +110,15 @@ Herbsamesub <- Herbsamesub[!grepl("responseCurves", Herbsamesub)]
 read.csv(paste(Herbsamesub[[5]],"/maxentResults.csv", sep=""))
 
 AUClist <- lapply(Herbsamesub, function(x){
-  read.csv(paste(x,"/maxentResults.csv", sep=""))
+  resultfile <- read.csv(paste(x,"/maxentResults.csv", sep=""))
+  resultfile$Species <- as.numeric(resultfile$Species)
+  y <- strsplit(x,"Sp")
+  resultfile$Species <- as.numeric(gsub("([0-9]+).*$", "\\1", y[[1]][2]))
+  resultfile
 })
 
+
+# Go back and see if can run those without threshold and such so they're the same. 
 # don't want 5, 7, 10
 AUCresults3 <- do.call(rbind,lapply(c(1:4,6,8:9,11:14), function(x){
   AUClist[[x]]
@@ -108,10 +131,18 @@ AUCresults3 <- do.call(rbind,lapply(c(1:4,6,8:9,11:14), function(x){
 
 hist(AUCresults3$Training.AUC)
 
-
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/AUC_Herb.jpg",
+     width=200, height=175,units='mm', res=300)
+hist(AUCresults3$Training.AUC, breaks = 10,
+     main="",
+     xlab="AUC")
+dev.off()
 # TestEOR_ only want one per species, manually go in and delete extras that had mishaps
 
 ```
+
+
+
 
 # Rounds of VisTrails with elevation: coplus50int; aspect: aspect50int; ruggedness: COplus_ruggedInt50; annual temp Bio1 and annual precip Bio12 
 
@@ -129,12 +160,38 @@ dirs.vistrails[grep("_Sp",dirs.vistrails)]
 ```{r}
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
 
+
+
 linkspeciesnumber <- do.call(rbind,lapply(1:length(pca_data), function(x){
   data.frame(SpNum = x, Species = unique(pca_data[[x]]$GNAME[pca_data[[x]]$pa==3]),
              Dist = pca_data[[x]]$dist[pca_data[[x]]$pa==2], # pa==2 are herb
              SpeciesArea = unique(pca_data[[x]]$area[pca_data[[x]]$pa==1]))
 }))
 
+# I don't think the area numbers are right!
+for(i in 1:46){
+  print(table(pca_data[[i]]$area, pca_data[[i]]$pa))
+}
+
+
+# the EOR AUC results from VisTrails, samesize runs from ForVisTrails.Rmd where I either thinned to match number of Herbarium records or where I bootstrapped and jittered to get matching points. Used a standalone Dan Warren thinning process to get equally spaced out but covering the most area (of information) for points. 
+EORmaxentdata <- merge(linkspeciesnumber, AUCresults2, by.x = "SpNum", by.y = "Species")
+
+avgDist <- aggregate(EORmaxentdata$Dist, list(EORmaxentdata$SpNum), mean) 
+sdDist <- aggregate(EORmaxentdata$Dist, list(EORmaxentdata$SpNum), sd) 
+EORsummarymaxent <- merge(unique(linkspeciesnumber[,-3]), AUCresults2, by.x = "SpNum", by.y = "Species")
+
+summary(lm(Training.AUC ~ Dist,data = EORmaxentdata))
+
+ggplot(EORmaxentdata, aes(SpeciesArea, Training.AUC))+
+  geom_point()+
+  stat_smooth(method="lm")+
+  theme_bw()
+
+ggplot(EORmaxentdata, aes(Dist, Training.AUC))+
+  geom_point()+
+  stat_smooth(method="lm")+
+  theme_bw()
 
 
 ```
