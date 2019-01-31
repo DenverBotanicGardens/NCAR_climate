@@ -15,14 +15,14 @@ rm(list=ls())
 library(ggplot2)
 library(rgeos)
 library(sp)
-library(spdep)
+# library(spdep)
 library(rgdal)
 library(maptools)
 library(raster)
 library(Taxonstand)
-library(RCurl)
+# library(RCurl)
 # library(taxize)
-library(ggmap)
+# library(ggmap)
 
 library(dismo)
 library(ENMeval)
@@ -41,27 +41,33 @@ require(lme4)
 require(lattice)
 require(AICcmodavg)
 
+     library(splancs)
+
 # #Skip making these, takes a long time
 # load("P:/hackathon/Simulations/circleEOR.Rda")
 # load("P:/hackathon/Simulations/circleHerb.Rda")
 # load("P:/hackathon/Simulations/EORgrid.thin.Rda")
-# load("P:/hackathon/Simulations/circleEOR.Rda")
-load("P:/hackathon/Simulations/envs.backgEOR.Rda")
-load("P:/hackathon/Simulations/envs.backgHerb.Rda")
+# # load("P:/hackathon/Simulations/circleEOR.Rda")
+# load("P:/hackathon/Simulations/envs.backgEOR.Rda")
+# load("P:/hackathon/Simulations/envs.backgHerb.Rda")
 # load("P:/hackathon/Simulations/Herb.thin1000.Rda")
 # load("P:/hackathon/Simulations/EORgrid.thin.Rda")
 
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 
 load("P:/hackathon/Simulations/coloradosps.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorsinglecell.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herbpost1980.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorpost1980.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data2.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxent46species.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorsinglecell.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herbpost1980.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorpost1980.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data2.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxent46species.Rda")
+
+colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
+colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
+
 
 ScaleBar <- function(reference_raster_utm, round_to_nearest_km, width_percent, y_percent_from_bottom, x_percent_from_left, y_text_percent_from_bottom, ...) {
     # Round by max to nearest... e.g. 5 km 
@@ -89,37 +95,70 @@ ScaleBar <- function(reference_raster_utm, round_to_nearest_km, width_percent, y
 
 
 ```
+Make grid points and thin to the number of herb points right away. 
+```{r}
+thin.max <- function(x, cols, npoints){
+  #Create empty vector for output
+  inds <- vector(mode="numeric")
+  
+  #Create distance matrix
+  this.dist <- as.matrix(dist(x[,cols], upper=TRUE))
+  
+  #Draw first index at random
+  inds <- c(inds, as.integer(runif(1, 1, length(this.dist[,1]))))
+  
+  #Get second index from maximally distant point from first one
+  #Necessary because apply needs at least two columns or it'll barf
+  #in the next bit
+  inds <- c(inds, which.max(this.dist[,inds]))
+  
+  while(length(inds) < npoints){
+    #For each point, find its distance to the closest point that's already been selected
+    min.dists <- apply(this.dist[,inds], 1, min)
+    
+    #Select the point that is furthest from everything we've already selected
+    this.ind <- which.max(min.dists)
+    
+    #Get rid of ties, if they exist
+    if(length(this.ind) > 1){
+      print("Breaking tie...")
+      this.ind <- this.ind[1]
+    }
+    inds <- c(inds, this.ind)
+  }
+  
+  return(x[inds,])
+}
 
-Want to use elevation, slope and aspect. Could look at ruggedness too but don't have that yet. 
+```
+
+Want to use elevation, slope and aspect, ruggedness
 ```{r}
 
-coElev <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Elevation_VT/CO_Mosaic_Elevation_VT/co_elev_VT_WGS84.tif")
+# coElev <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Elevation_VT/CO_Mosaic_Elevation_VT/co_elev_VT_WGS84.tif")
+# 
+# coElev_biosize <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Elevation_VT/co_elev_WGS84_30sec.tif")
+# 
+# coAspect <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Aspect_VT/co_aspect_VT_WGS84.tif")
+# 
+# coSlope <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Slope_VT/co_slope_VT_WGS84.tif")
 
-coElev_biosize <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Elevation_VT/co_elev_WGS84_30sec.tif")
+coElev <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/coplus50int.tif")
 
-coAspect <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Aspect_VT/co_aspect_VT_WGS84.tif")
+coAspect <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/aspect50int.tif")
 
-coSlope <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Slope_VT/co_slope_VT_WGS84.tif")
+coSlope <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/COplus_slope50.tif")
+
+coRugged <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/COplus_ruggedInt50.tif")
+
 
 ```
 
 
 
 ```{r}
-#l1eor <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records", layer="L1shp")
+
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
-
-object.size(l1eor)
-
-colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
-colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
-
-#In lat/lon WGS 84
-#plot(colocounties)
-
-#in UTM NAD83
-#plot(colocounties.UTM)
-#plot(l1eor, add=TRUE)
 
 #Each polygon might be made of multiple disconnected polygons. Need to separate and label
 l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
@@ -129,21 +168,17 @@ l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
               x
               }))
 
-#How many names in 
-#length(unique(l1G1G2$GNAME)) #60
-#write.table(unique(l1G1G2$GNAME), "clipboard", sep="\t", row.names=FALSE)
-
 
 # Could take all the synonyms and names of l1G1G2 to make the list of names to pull from SEINet big list
 namesg1g2 <- table(l1G1G2$GNAME)
-# length(namesg1g2[namesg1g2 > 0]) #60 species
-# g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
-# table(g1g2names$Taxonomic.status)
+length(namesg1g2[namesg1g2 > 0]) #60 species
+g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
+table(g1g2names$Taxonomic.status)
 # 2 not in there, "Gutierrezia elegans" "Oonopsis sp. 1", 10 synonyms, 3 unresolved
 # save(g1g2names, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 
-
-#g1g2names[g1g2names$Taxonomic.status == "Unresolved",]
+c
+g1g2names[g1g2names$Taxonomic.status == "Unresolved",]
 #Gilia sedifolia
 #Ipomopsis ramosa
 #Packera mancosana
@@ -301,51 +336,12 @@ coloradosps.g1g2$lat2 <- round(coloradosps.g1g2$decimalLatitude,2)
 coloradosps.g1g2$lon3 <- round(coloradosps.g1g2$decimalLongitude,3) # about 110 m
 coloradosps.g1g2$lat3 <- round(coloradosps.g1g2$decimalLatitude,3)
 
-# 
-# 
-# duplicated(coloradosps.g1g2[,c("lat2","lon2")])
-# 
-# duplicated(coloradosps.g1g2[,c("lat3","lon3")])
-# 
-# plot(colocounties)
-# points(coloradosps.g1g2$lon2,coloradosps.g1g2$lat2,pch=20,cex=0.5)
-# points(coloradosps.g1g2$decimalLongitude,coloradosps.g1g2$decimalLatitude,col="red",
-#        pch=20,cex=0.5)
-# points(coloradosps.g1g2$lon3,coloradosps.g1g2$lat3,pch=21,cex=0.5, col="blue")
-
-# 
-# nrow(coloradosps.g1g2) #-
-# nrow(coloradosps.g1g2[!duplicated(coloradosps.g1g2[,c("lat2","lon2")]),]) #685
-# 
-# nrow(coloradosps.g1g2[!duplicated(coloradosps.g1g2[,c("lat3","lon3")]),]) #791
-# 
-# nrow(coloradosps.g1g2[duplicated(coloradosps.g1g2[,c("lat3","lon3")]),]) #1660
-# nrow(coloradosps.g1g2[duplicated(coloradosps.g1g2[,c("lat2","lon2")]),]) #1766
-
-
-#which ones are in denver?
-# control + shift + C 
-# write.table(coloradosps.g1g2[which(coloradosps.g1g2$decimalLatitude >39.5&
-#                          coloradosps.g1g2$decimalLatitude <40.1&
-#                          coloradosps.g1g2$decimalLongitude>-105.5),], 
-#             "clipboard", sep="\t", row.names=FALSE)
-# 
-# write.table(coloradosps.g1g2[grep("Den",coloradosps.g1g2$county),], 
-#             "clipboard", sep="\t", row.names=FALSE)
-
-# setdiff(sort(unique(coloradosps.g1g2$scientificName)),sort(unique(l1G1G2$GNAME))) #species from the SEINet specimens that isn't in the names given for G1G2
-# setdiff(sort(unique(l1G1G2$GNAME)),sort(unique(coloradosps.g1g2$scientificName))) #the first list that's not in the second
-
-
 #convert points from WGS84 to NAD83
 projected <- coloradosps.g1g2[complete.cases(coloradosps.g1g2[,c("lat2","lon2")]),]
 coordinates(projected) <- ~ lon2+lat2
 proj4string(projected) <- CRS("+proj=longlat +datum=WGS84") 
 projected <- spTransform(projected, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
-# 
-# head(g1g2names)
-# unique(l1G1G2$PolyID$GNAME)
-# 
+
 # write.csv(coloradosps.g1g2, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_EORG1G2_WGS84.csv")
 ```
 
@@ -425,103 +421,161 @@ dev.off()
       "The latest revision is WGS 84 (also known as WGS 1984, EPSG:4326), established in 1984 and last revised in 2004.[1] Earlier schemes included WGS 72, WGS 66, and WGS 60. WGS 84 is the reference coordinate system used by the Global Positioning System."
 
 
-#Test to make distXsp   
-```{r}
-us <- getData('GADM', country = 'US', level = 1)
-colorado <- us[us$NAME_1 == "Colorado",]
-projLL <- proj4string(colorado)
-
-colorado<- spTransform(colorado, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
-i<-1
- polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName,
-                                         g1g2names$Taxon),] 
- 
-length(polys)
-
-sort(unique(polys@data$GNAME))[herbposition]
-g1g2names$AcceptedName[1]
-
-grid <- makegrid(polys, cellsize = 100) # cellsize in map units!
-grid <- SpatialPoints(grid, proj4string = CRS(proj4string(polys)))
-
-length(grid[polys,]) #106 points
-
-#map each species, map each EOR, check distance from points to nearest EORs
-
-#l1G1G2 are in UTM zone 13
-# says  projargs: chr "+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84
-#transform to UTM to match l1G1G2
-#60 names with the listed name and the accepted name acording to TPL
-
-proj4string(l1G1G2) <- CRS(proj4string(l1eor))
-coloradosps.dist <- coloradosps.g1g2
-coloradosps.dist$distNearEOR <- NA
-
-    utm_crs <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
-latlong_crs <- CRS("+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0")
-
-proj4string(l1G1G2)<-utm_crs
-```
-
+Trying to reduce memory before running 
+        > rm(colocounties)
+        > rm(colocounties.UTM)
+        > rm(coloradosps.g1g2)
+        > rm(coloradosps.specimens)
+        > rm(familyxyear)
+        > rm(herbariumxyear)
+        > rm(projected)
 
 #Already loaded! Skip
 ```{r}
-distXsp <- lapply(1:nrow(g1g2names), function(i){
-  #put grid points across colorado, sample from it for each polygons
-     polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-                                         g1g2names$Taxon[i]),] 
-     grid <- makegrid(polys, cellsize = 100) # cellsize in map units!
-     grid <- SpatialPointsDataFrame(grid, 
-                                    data.frame(id = 1:nrow(grid), Species = g1g2names$AcceptedName[i]),
-                                    proj4string = CRS(proj4string(polys)))
-     EORpnts <- data.frame(grid[polys,]@coords)
-  if(nrow(EORpnts)>0){
-    coordinates(EORpnts) <- ~ x1+x2
-    proj4string(EORpnts) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
-    EORpnts <- spTransform(EORpnts, latlong_crs) # CRS("+proj=longlat +datum=WGS84"))
-  } else {
-    EORpnts <- NA
-  }
-     
+# oh no, want only after 1980 collections
+
+distXsp_v3 <- lapply(1:60, function(i){
+  gc()
   g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in%
                                 c(g1g2names$Taxon[i],g1g2names$AcceptedName[i])&
                                 !is.na(coloradosps.g1g2$decimalLatitude),]
-  #g1g2now <- g1g2now[!is.na(g1g2now$decimalLatitude),]
-  #area of each polygon
-  areanow <- sapply(slot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-                                         g1g2names$Taxon[i]),], "polygons"), 
-         slot, "area")
-
-  # g1g2now$decimalLatitude <- as.numeric(as.character(g1g2now$decimalLatitude))
-  # g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
-  # g1g2now <- g1g2now[!is.na(g1g2now$decimalLatitude),]
-  # g1g2now <- g1g2now[!is.na(g1g2now$decimalLongitude),]
+  
+  g1g2now <- g1g2now[as.numeric(as.character(g1g2now$year))>1980,]
+  g1g2now <- g1g2now[g1g2now$decimalLatitude>0,]
+  g1g2now <- g1g2now[grepl("Specimen",g1g2now$basisOfRecord),]
+  g1g2now <- g1g2now[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)]
+  gc()
+  
+  
   if(nrow(g1g2now)>0){
-    #turn into spatialpointsdataframe for individual species
+  # put grid points across colorado, sample from it for each polygons
+    polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                        g1g2names$Taxon[i]),] 
+    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+    totalarea <- sum(area(disaggregate(polys)))
+  # area of each polygon
+    areanow <- sapply(slot(polys,"polygons"), slot, "area")
+    
+  # Proportional area to the whole area number to thin
+    EORpnts <- do.call(rbind, lapply(1:length(polys), function(f){
+      outline <- polys@polygons[[f]]@Polygons[[1]]@coords
+      grid <- makegrid(polys, cellsize = 50) # cellsize in map units!
+      names(grid) <- c("x","y")
+      gridout <- grid[inout(grid,outline), ]
+      if(nrow(gridout)>1){
+        gridthin <- thin.max(gridout,c("x","y"),round(nrow(g1g2now)*(areanow[[f]]/totalarea),0))
+        gc()
+        } else {
+          if(nrow(gridout)>0) {
+            gridthin <- gridout 
+          } else {
+            gridthin <- NULL
+          }
+          }
+      gridthin
+      }))
+    gc()
+    
+  #turn into spatialpointsdataframe for individual species
     coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
-    proj4string(g1g2now) <- CRS("+proj=longlat +datum=WGS84") 
-    g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
-    distnow <- apply(gDistance(g1g2now,
-                               l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-                                                          g1g2names$Taxon[i]),], byid=TRUE),
-                     2,min)
-    g1g2now$SpeciesID <- i
-    g1g2now$dist <- distnow
-    g1g2now$area <- sum(areanow)
-    g1g2now$numpolys <- length(areanow)
-    out <- list(g1g2now, distnow, areanow, EORpnts)
-  } else {
-  #   g1g2now$dist <- NA
-  #   g1g2now$area <- sum(areanow)
-  #   g1g2now$numpolys <- length(areanow)    
-      out <- list(NA,NA, areanow, EORpnts)
+    proj4string(g1g2now) <- CRS("+init=epsg:4326")  # CRS("+proj=longlat +datum=WGS84")
+    g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
+  # The minimum distance from each point to the nearest polygon
+    distnow <- apply(gDistance(g1g2now,polys, byid=TRUE),2,min)
+    gc()
+    
+    out <- list(g1g2now,distnow, areanow, EORpnts)
+    gc()
+    out
     }
-  out
   })
 
-  save(distXsp, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
+# save(distXsp_chunck1, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_chunk1.Rda")
+
+save(distXsp_v3, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_v3.Rda") 
 
 ```
+
+# make new file with everything, all the points for Herb == 1, EOR ==2  
+```{r}
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_v3.Rda")
+
+# Good, again 46 of them have data
+x <- mapply('[[', distXsp_v3, 1)
+Herbcoords <- x[!unlist(lapply(x, is.null))]
+
+notnull <- which(!unlist(lapply(x, is.null)))
+x[[notnull[45]]]@data$scientificName[1]
+# the following are the ones to write for VisTrails
+notnull[-45]
+
+mapply('[[', distXsp_v3, 2)[!unlist(lapply(mapply('[[', distXsp_v3, 2), is.null))]
+
+for(i in 1:60){
+  plot(foo[[i]]@coords,
+       main=foo[[i]]@data$scientificName[1])
+}
+
+# Herb = 2 and EOR = 1
+lapply(notnull[-45], function(d){
+  Herbpts <- data.frame(Species = distXsp_v3[[d]][[1]]@data$scientificName[1],
+                        SpNum = d,
+                        distXsp_v3[[d]][[1]]@coords,
+                        pa = 2)
+  names(Herbpts) <- c("Species","SpNum","x","y","pa")
+  write.csv(Herbpts, paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_Herbpts_sp",d,".csv", sep=""))
+ 
+  EORpts <- data.frame(Species = distXsp_v3[[d]][[1]]@data$scientificName[1],
+                       SpNum = d,
+                       distXsp_v3[[d]][[4]],
+                       pa = 1)
+  out <- rbind(Herbpts,EORpts)
+    write.csv(out, paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_HerbEORpts_sp",d,".csv", sep=""))
+})
+  
+# Save each file for use in VisTrails
+write.csv(foo2, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_spAll.csv")
+
+
+```
+
+
+# testing background points   
+either use KDE with kernelUD or Minimum convex polygon (MCP)
+```{r}
+library(adehabitatHR)
+library(ks)
+class(distXsp_v3[[1]][[1]])
+
+xy <- data.frame(distXsp_v3[[1]][[1]]@coords)
+names(xy) <- c("X","Y")
+# coordinates(xy) <- ~ X+Y
+xy <- SpatialPoints(xy)
+
+# If added in points alnog roads then could make the contour even closer to parts where likely surveyed. 
+# 95% home range contour
+ud <- kernelUD(xy, extent=0.5, grid=150)
+ver <- getverticeshr(ud, 95)
+
+# kde.foo <- kde(xy, xmin=c(-5,-5), xmax=c(5,5), bgridsize=c(151,151))
+# just put random points for background points witin the kernelUD 
+bgpts <- spsample(ver, 300, "stratified")
+
+verMCP <- mcp(xy, percent=95)
+
+plot(ver)
+# plot(verMCP, col="blue", add=TRUE)
+points(bgpts, col="red")
+points(xy, col="green")
+points( spsample(ver, 300, "nonaligned"), col="black", pch=16)
+points( spsample(ver, 300, "random"), col="orange", pch=3)
+
+# If you want to introduce bias:
+mm <- ud@coords[order(ud@coords[,1], ud@coords[,2]),]
+mm
+```
+
+
 
 ```{r}
 
