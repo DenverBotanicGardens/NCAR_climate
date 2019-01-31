@@ -9,6 +9,8 @@ Making new herb train and EOR test ones with VisTrails and same size EOR numbers
 rm(list=ls())
 
 library(ggplot2)
+library(rgeos)
+library(raster)
 
 # pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/Arabis crandallii_EOR/"
 # 
@@ -92,6 +94,45 @@ hist(AUCresults2$Training.AUC, breaks = 10,
 dev.off()
 ```
 
+Now get these rasters and see where the EOR differs from the Herb
+```{r}
+# Use the resampled one instead
+# coElev <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/coplus50int.tif")
+
+  # proj4string(coElev)
+  # x <- EORsamesub[[1]]
+  # plot(raster1[raster1>.9])
+  # plot(raster1)
+  # r80 <- raster1
+  # r80[r80<0.8] <- NA
+  # plot(r80)
+  # meanelev90 <- overlay(coElev, raster1[raster1>.9], fun = mean) 
+  # raster1 <- writeStart(raster1, paste(x,"/Avg_elev_prob_map.tif", sep=""), overwrite=TRUE)
+  # for (r in 1:nrow(raster1)) {
+  #   v <- getValues(raster1[raster1>0.9], r)
+  #   v <- v + a
+  #   out <- writeValues(out, v, r)
+  #   }
+  # out <- writeStop(out)
+  # 
+  # elev <- gIntersects(raster1,coElev,byid = TRUE)
+
+# Get raster1 to match coElev, no go coElev to raster1
+# resample(coElev, raster1, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled.tif")
+
+coElev_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled.tif")
+plot(coElev_res)
+
+EORrasters <- lapply(EORsamesub, function(x){
+  raster1 <- raster(paste(x,"/Maxent_prob_map.tif", sep=""))
+  y <- values(raster1)
+  X1 <- values(coElev)
+})
+
+```
+
+
+
 Now the herbarium specimens!
 ```{r}
 # Compare to the Herb results
@@ -106,8 +147,7 @@ Herbsamesub <- Herbsamesub[!grepl("cvSplit", Herbsamesub)]
 Herbsamesub <- Herbsamesub[!grepl("Expanded", Herbsamesub)]
 Herbsamesub <- Herbsamesub[!grepl("responseCurves", Herbsamesub)]
 
-
-read.csv(paste(Herbsamesub[[5]],"/maxentResults.csv", sep=""))
+# read.csv(paste(Herbsamesub[[5]],"/maxentResults.csv", sep=""))
 
 AUClist <- lapply(Herbsamesub, function(x){
   resultfile <- read.csv(paste(x,"/maxentResults.csv", sep=""))
@@ -160,6 +200,8 @@ dirs.vistrails[grep("_Sp",dirs.vistrails)]
 ```{r}
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
 
+# Instead, load:
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_v3.Rda")
 
 
 linkspeciesnumber <- do.call(rbind,lapply(1:length(pca_data), function(x){
