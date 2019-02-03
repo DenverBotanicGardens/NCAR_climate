@@ -10,6 +10,7 @@ To make FieldData_ for VisTrails
 Method to thin how i want to by Dan Warren  
 Could treat either lat lon or environmental distances as the distance, would likely have to make a pca or dist matrix to do environmental to thin but shoudl think about that next. but don't know that well, you do 
 ```{r}
+
 # x, a data frame containing the columns to be used to calculate distances along with whatever other data you need
 # cols, a vector of column names or indices to use for calculating distances
 # npoints, the number of rarefied points to spit out
@@ -53,8 +54,11 @@ thin.max <- function(x, cols, npoints){
 ```
 
 
+Did the thinning already for making grid points in distXsp_v3.  
+Load that and make the models, run them through R for making the ENM, maybe skip making geotiffs, instead just get the average elevation, slope, precip things by infered suitability. 
 ```{r}
 rm(list=ls())
+# install.packages("spocc")
 
 library(ggplot2)
 library(rgeos)
@@ -65,10 +69,175 @@ library(maptools)
 library(raster)
 library(Taxonstand)
 library(RCurl)
+library(dismo)
+library(rJava)
+library(adehabitatHR)
+
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
+
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_v3.Rda")
+```
+
+Used Herb to EORs_v4 to write the the VisTrails 
+# make new file with everything, all the points for Herb == 1, EOR ==2  
+```{r}
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_v3.Rda")
+
+# Good, again 46 of them have data
+x <- mapply('[[', distXsp_v3, 1)
+Herbcoords <- x[!unlist(lapply(x, is.null))]
+
+notnull <- which(!unlist(lapply(x, is.null)))
+x[[notnull[45]]]@data$scientificName[1]
+# the following are the ones to write for VisTrails
+notnull[-45]
+
+plot(Herbcoords[[45]]@coords) # looks fine
+
+# All the distances from Herbarium specimen to nearest EOR
+mapply('[[', distXsp_v3, 2)[!unlist(lapply(mapply('[[', distXsp_v3, 2), is.null))]
+
+for(i in 1:46){
+  plot(Herbcoords[[i]]@coords,
+       main=Herbcoords[[i]]@data$scientificName[1])
+}
+
+for(i in notnull){
+  print(nrow(distXsp_v3[[i]][[1]]@coords))
+}
+
+# Herb = 2 and EOR = 1
+# lapply(notnull, function(d){
+#   if(nrow(distXsp_v3[[d]][[1]]@coords)>3){
+#       Herbpts <- data.frame(Species = distXsp_v3[[d]][[1]]@data$scientificName[1],
+#                             SpNum = d,
+#                             distXsp_v3[[d]][[1]]@coords,
+#                             pa = 2)
+#       names(Herbpts) <- c("Species","SpNum","x","y","pa")
+#       write.csv(Herbpts, paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_Herbpts_sp",d,".csv", sep=""))
+#      
+#       EORpts <- data.frame(Species = distXsp_v3[[d]][[1]]@data$scientificName[1],
+#                            SpNum = d,
+#                            distXsp_v3[[d]][[4]],
+#                            pa = 1)
+#       out <- rbind(Herbpts,EORpts)
+#         write.csv(out, paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_HerbEORpts_sp",d,".csv", sep=""))
+# 
+#   }
+# })
+
+# One file for Herb and one for EOR
+# Herb = 2 and EOR = 1
+Herbpts_all <- do.call(rbind,lapply(notnull, function(d){
+  if(nrow(distXsp_v3[[d]][[1]]@coords)>3){
+      Herbpts <- data.frame(Species = distXsp_v3[[d]][[1]]@data$scientificName[1],
+                            SpNum = d,
+                            distXsp_v3[[d]][[1]]@coords,
+                            pa = 2)
+      names(Herbpts) <- c("Species","SpNum","x","y","pa")
+      Herbpts
+}}))
+
+convertpts <- SpatialPoints(Herbpts_all[,c("x","y")], proj4string = CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+convertxy <- spTransform(convertpts, CRS("+proj=longlat +datum=WGS84"))
+
+Herbpts_all_ll <- data.frame(Herbpts_all, convertxy)
+str(Herbpts_all_ll)
+names(Herbpts_all_ll) <- c(names(Herbpts_all_ll)[1:5], "lon", "lat")
+Herbpts_all_ll$pr <- 1
+
+write.csv(Herbpts_all_ll, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_Herbpts_all.csv")
+     
+for(i in notnull){
+  print(nrow(distXsp_v3[[i]][[4]]))
+}   
+      
+# notnull[5]   
+# distXsp_v3[[8]][[1]] # Boechera glareosa has 31 specimens, has distances, has area but no EOR points
+library(maptools)
+l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
+#Each polygon might be made of multiple disconnected polygons. Need to separate and label
+l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
+l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
+                                       function(x){
+              x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
+              x
+              }))
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
+polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[8],
+                                        g1g2names$Taxon[8]),] 
+
+# plot(distXsp_v3[[8]][[1]])
+# plot(polys) #Oh! it's just one dot so it didn't get any points. I should be able to make some points! 
+ library(splancs)
+EORpnts_8 <- do.call(rbind, lapply(1:length(polys), function(f){
+      outline <- polys@polygons[[f]]@Polygons[[1]]@coords
+      grid <- makegrid(polys, cellsize = 5) # cellsize in map units!
+      names(grid) <- c("x","y")
+      gridout <- grid[inout(grid,outline), ]
+      if(nrow(gridout)>1){
+        gridthin <- thin.max(gridout,c("x","y"),nrow(distXsp_v3[[8]][[1]]@coords))
+        gc()
+        } else {
+          if(nrow(gridout)>0) {
+            gridthin <- gridout 
+          } else {
+            gridthin <- NULL
+          }}
+      gridthin
+}))
+
+      
+EORpts_all <- do.call(rbind, lapply(notnull[-5],function(d){
+  data.frame(Species = distXsp_v3[[d]][[1]]@data$scientificName[1],
+             SpNum = d,distXsp_v3[[d]][[4]],pa = 1)
+}))
+
+EORpts_all <- rbind(EORpts_all, data.frame(Species = distXsp_v3[[8]][[1]]@data$scientificName[1],
+                                           SpNum = 8, EORpnts_8, pa=1))
+
+convertpts2 <- SpatialPoints(EORpts_all[,c("x","y")], proj4string = CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+convertxy2 <- spTransform(convertpts2, CRS("+proj=longlat +datum=WGS84"))
+
+EORpts_all_ll <- data.frame(EORpts_all, convertxy2)
+str(EORpts_all_ll)
+names(EORpts_all_ll) <- c(names(EORpts_all_ll)[1:5], "lon", "lat")
+EORpts_all_ll$pr <- 1
+
+write.csv(EORpts_all_ll, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_EORpts_all.csv")
 
 
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
+  
+# Save each file for use in VisTrails
+write.csv(foo2, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_spAll.csv")
 
+
+```
+
+
+https://github.com/talbertc-usgs/sahm/blob/bbef17e9ad56590f38d6e2ffe1de5198565a922b/pySAHM/Resources/R_Modules/PseudoAbs.r 
+```{r}
+
+
+
+```
+
+Try package maxent in R (not the Maxent program) and/or try running Maxent from R  
+http://gsp.humboldt.edu/OLM/R/04_01_Variograms.html     
+http://gsp.humboldt.edu/OLM/R/05_05_SpeciesDistributionModelins.html   
+http://gsp.humboldt.edu/OLM/R/__Contents.html  
+
+```{r}
+library(maxent)
+
+```
+
+
+
+
+
+This is what I did pre-January 30, 2019:
+```{r}
 # Write each list item as a FieldData with only pa == 1|2 where '1' is EORs and '2' is Herb
 # First sort and eliminate duplicate locaitons 
 # All are already post 1980
