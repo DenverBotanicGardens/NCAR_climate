@@ -238,6 +238,27 @@ If i can get more, add 'em up
 ```{r}
 
 
+
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/AUC_EORandHerb.jpg",
+     width=400, height=175,units='mm', res=300)
+
+layout(matrix(c(1,2), 1,2, byrow=FALSE),
+             width=c(6,6), height=c(1))
+hist(AUCresults2$Training.AUC, breaks = 10,
+     main="EOR",
+     xlab="AUC")
+
+hist(AUCresults3$Training.AUC, breaks = 10,
+     main="Herbarium",
+     xlab="AUC")
+
+dev.off()
+
+
+hist(AUCresults2$Training.AUC, breaks=15, col=rgb(1,0,0,0.5),
+     main="Red is EOR; Blue is Herb")  
+hist(AUCresults3$Training.AUC, add=TRUE,breaks=15, col=rgb(0,0,1,0.5))
+
 ```
 
 # Rounds of VisTrails with elevation: coplus50int; aspect: aspect50int; ruggedness: COplus_ruggedInt50; annual temp Bio1 and annual precip Bio12 
@@ -254,43 +275,85 @@ dirs.vistrails[grep("_Sp",dirs.vistrails)]
 
 
 ```{r}
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
 
 # Instead, load:
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_v3.Rda")
 
 
-linkspeciesnumber <- do.call(rbind,lapply(1:length(pca_data), function(x){
-  data.frame(SpNum = x, Species = unique(pca_data[[x]]$GNAME[pca_data[[x]]$pa==3]),
-             Dist = pca_data[[x]]$dist[pca_data[[x]]$pa==2], # pa==2 are herb
-             SpeciesArea = unique(pca_data[[x]]$area[pca_data[[x]]$pa==1]))
+# linkspeciesnumber <- do.call(rbind,lapply(1:length(pca_data), function(x){
+#   data.frame(SpNum = x, Species = unique(pca_data[[x]]$GNAME[pca_data[[x]]$pa==3]),
+#              Dist = pca_data[[x]]$dist[pca_data[[x]]$pa==2], # pa==2 are herb
+#              SpeciesArea = unique(pca_data[[x]]$area[pca_data[[x]]$pa==1]))
+# }))
+
+x <- mapply('[[', distXsp_v3, 1)
+Herbcoords <- x[!unlist(lapply(x, is.null))]
+notnull <- which(!unlist(lapply(x, is.null)))
+
+linkspeciesnumber <- do.call(rbind,lapply(notnull, function(x){
+  data.frame(Species = distXsp_v3[[x]][[1]]@data$scientificName[1], Dist = distXsp_v3[[x]][[2]],
+             Area = sum(distXsp_v3[[x]][[3]]), SpNum = x)
 }))
 
-# I don't think the area numbers are right!
-for(i in 1:46){
-  print(table(pca_data[[i]]$area, pca_data[[i]]$pa))
-}
+ggplot(linkspeciesnumber, aes(Species, log(Dist)))+
+  geom_boxplot(outlier.shape=NA) + #avoid plotting outliers twice
+  geom_jitter(position=position_jitter(width=.1, height=0))
+
+ggplot(linkspeciesnumber, aes(Area, log(Dist)))+
+  geom_point()+
+  stat_smooth(method="lm")+
+  ylab("Distance (log(meters))")+
+  theme_bw()
 
 
 # the EOR AUC results from VisTrails, samesize runs from ForVisTrails.Rmd where I either thinned to match number of Herbarium records or where I bootstrapped and jittered to get matching points. Used a standalone Dan Warren thinning process to get equally spaced out but covering the most area (of information) for points. 
-EORmaxentdata <- merge(linkspeciesnumber, AUCresults2, by.x = "SpNum", by.y = "Species")
+# 2 is EORs, .x; 3 is Herbs, .y
+EORmaxentdata <- merge(linkspeciesnumber, AUCresults2[,c(1:2,5:7)], by.x = "SpNum", by.y = "Species")
+EORxHarbymaxentdata <- merge(EORmaxentdata, AUCresults3[,c(1:2,5:7)], by.x = "SpNum", by.y = "Species")
 
 avgDist <- aggregate(EORmaxentdata$Dist, list(EORmaxentdata$SpNum), mean) 
 sdDist <- aggregate(EORmaxentdata$Dist, list(EORmaxentdata$SpNum), sd) 
-EORsummarymaxent <- merge(unique(linkspeciesnumber[,-3]), AUCresults2, by.x = "SpNum", by.y = "Species")
+EORsummarymaxent <- merge(unique(linkspeciesnumber), AUCresults2, by.x = "SpNum", by.y = "Species")
 
 summary(lm(Training.AUC ~ Dist,data = EORmaxentdata))
 
-ggplot(EORmaxentdata, aes(SpeciesArea, Training.AUC))+
+ggplot(EORmaxentdata, aes(Area, Training.AUC))+
   geom_point()+
   stat_smooth(method="lm")+
   theme_bw()
 
-ggplot(EORmaxentdata, aes(Dist, Training.AUC))+
+ggplot(EORmaxentdata, aes(log(Dist), Training.AUC))+
   geom_point()+
   stat_smooth(method="lm")+
   theme_bw()
 
+ggplot(EORmaxentdata, aes(as.factor(Training.AUC), log(Dist)))+
+  geom_boxplot(outlier.shape=NA) + #avoid plotting outliers twice
+  geom_jitter(position=position_jitter(width=.1, height=0))
+
+ggplot(EORmaxentdata, aes(as.factor(Training.AUC), Area))+
+  geom_boxplot(outlier.shape=NA) + #avoid plotting outliers twice
+  geom_jitter(position=position_jitter(width=.1, height=0))
+
+EORHERBarea <- unique(EORxHarbymaxentdata[,-3])
+
+# Red is EOR, Blue is Herb
+
+plot(log(EORHERBarea$Area), EORHERBarea$Training.AUC.x, col="red",pch=16,
+     ylim=c(0.55,.95))
+points(log(EORHERBarea$Area), EORHERBarea$Training.AUC.y, col="blue", pch=4)
+
+
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/AUCxSampleSizeandArea.jpg",
+     width=250, height=175,units='mm', res=300)
+plot(EORHERBarea$X.Training.samples.x, EORHERBarea$Training.AUC.x, col="red",pch=16,
+     ylim=c(0.55,.95), cex=round(log(EORHERBarea$Area)-11,0),
+     xlab="Training sample size",
+     ylab="AUC")
+points(EORHERBarea$X.Training.samples.x, EORHERBarea$Training.AUC.y, col="blue", pch=16,
+       cex = round(log(EORHERBarea$Area)-11,0))
+dev.off()
 
 ```
 
@@ -299,9 +362,41 @@ Want to add vegetation types, layer too. should work now that I've got all the o
 
 Make maxent commands
 for output prediction map, use ENMeval   
+Using KDE at 95% in MAxent VisTrails which mostly makes it so that it appears there's less effort in areas with fewer points but might not be the case, just might be smaller popualtions so maybe just circles with a certain radius would be better. Maybe add some points along roads for circles. Could put points along roads and then first pick points along roads within a certain distance from presence points and then 'circles' around all those points ?  
+follow https://rspatial.org/sdm/SDM.pdf while VisTrails isnt' working
 ```{r}
+# tested in Herb to EORs_v4
 
+# library(adehabitatHR)
+# library(ks)
 
+#Ah ha! so many errors for kernel size, so switch to circles
+# bgHerbKDE <- lapply(notnull, function(x){
+#   xy <- data.frame(distXsp_v3[[x]][[1]]@coords)
+#   names(xy) <- c("X","Y")
+#   xy <- SpatialPoints(xy)
+#   ud <- kernelUD(xy, extent=0.5, grid=150)
+#   ver <- getverticeshr(ud, 80)
+#   # just put random points for background points witin the kernelUD 
+#   spsample(ver, 300, "stratified")
+#   })
+
+class(distXsp_v3[[1]][[1]])
+library(dismo)
+library(rgeos)
+
+bgHerb <- lapply(notnull, function(x){
+  circles <- circles(distXsp_v3[[x]][[1]], d = 5000) #Should be 1km around
+  polygns <- polygons(circles)
+  bg <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
+  # do I want to get just one per cell? I'm gonna skip cellFromXY(mask, bg) # where mask should be my one used to set the size and clip the others in vistrails
+  bg
+  })
+
+template <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/PARC_COplus_slope25/COplus_slope50.tif")
+
+plot(polygns)
+points(bg, cex=0.5, pch=16, col="red")
 ```
 
 
