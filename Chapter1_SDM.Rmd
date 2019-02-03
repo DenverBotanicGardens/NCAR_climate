@@ -98,35 +98,88 @@ Now get these rasters and see where the EOR differs from the Herb
 ```{r}
 # Use the resampled one instead
 # coElev <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/coplus50int.tif")
+# coAspect <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/aspect50int.tif")
+# coSlope <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/COplus_slope50.tif")
+# coRugged <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/COplus_ruggedInt50.tif")
 
-  # proj4string(coElev)
-  # x <- EORsamesub[[1]]
-  # plot(raster1[raster1>.9])
-  # plot(raster1)
-  # r80 <- raster1
-  # r80[r80<0.8] <- NA
-  # plot(r80)
-  # meanelev90 <- overlay(coElev, raster1[raster1>.9], fun = mean) 
-  # raster1 <- writeStart(raster1, paste(x,"/Avg_elev_prob_map.tif", sep=""), overwrite=TRUE)
-  # for (r in 1:nrow(raster1)) {
-  #   v <- getValues(raster1[raster1>0.9], r)
-  #   v <- v + a
-  #   out <- writeValues(out, v, r)
-  #   }
-  # out <- writeStop(out)
-  # 
-  # elev <- gIntersects(raster1,coElev,byid = TRUE)
+x<-EORsamesub[[1]]
+raster1 <- raster(paste(x,"/Maxent_prob_map.tif", sep=""))
+
+# resample(coAspect, raster1, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/AspectResampled.tif")
+# 
+# resample(coSlope, raster1, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/SlopeResampled.tif")
+# 
+# resample(coRugged, raster1, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/RuggedResampled.tif")
 
 # Get raster1 to match coElev, no go coElev to raster1
 # resample(coElev, raster1, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled.tif")
 
+# resample(coElev, raster1, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled.tif")
+
 coElev_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled.tif")
-plot(coElev_res)
+
+coAspect_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/AspectResampled.tif")
+
+coSlope_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/SlopeResampled.tif")
+
+coRugged_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/RuggedResampled.tif")
+
+# Function to calculate the linear model of one raster to another
+# 1 would be the intercept I guess, while y are the values for y (from the resulting probability map)
+# Don't quite get it
+          # X <- cbind(1, y)
+          # invXtX <- solve(t(X) %*% X) %*% t(X)
+          # quickfun <- function(i) (invXtX %*% i)
+          # # raster::calc calculates values for a new raster from another
+          # m <- calc(s, quickfun) 
+          # names(m) <- c('intercept', 'slope')
+# r <- calc(s, fun)
+# y <- values(raster1)
+# X1 <- values(coElev)
+
+# Could also ignore the not likely but that cuts off lots... maybe just the really near 0?
+raster1sm <- raster1
+raster1sm[raster1sm<0.05] <- NA
+
+# But this is basically just what maxent does, right? but with a prior that is flat or 'maximizes entropy'?
+s <- stack(raster1, coElev_res, coAspect_res, coSlope_res, coRugged_res)
+# Make it a little smaller
+v <- sampleRegular(s, 100000)  
+v <- data.frame(na.omit(v))
+variables <- names(v)
+m <- lm(v[,1] ~ v[,2] + v[,3] + v[,4] + v[,5])
+summary(m)
+plot(v[,5],v[,1],
+     xlab = names(v)[5],
+     ylab = names(v)[1])
+
+# What do I really want to see? Maybe AIC if the model is different for Herb vs. EOR? That would be similar to loadings fo ra PCA? 
+library(ks)
+library(MASS)
+?kde2d
+plot(v[,1],v[,2])
+contour(kde2d(v[,1], v[,2], lims = c(min(v[,1]), max(v[,1]),
+                                     min(v[,2]), max(v[,2]))), 
+        levels= c(min(v[,1]), max(v[,1]),
+                                     min(v[,2]), max(v[,2])))
+
+# X <- cbind(1, values(s))
+# X <- cbind(1, as.matrix(v))
+# invXtX <- solve(t(X) %*% X) %*% t(X)
+# quickfun <- function(i) (invXtX %*% i)
+# m <- quickfun(as.matrix(v))
+# summary(m)
 
 EORrasters <- lapply(EORsamesub, function(x){
   raster1 <- raster(paste(x,"/Maxent_prob_map.tif", sep=""))
-  y <- values(raster1)
-  X1 <- values(coElev)
+  s <- stack(raster1, coElev_res, coAspect_res, coSlope_res, coRugged_res)
+  v <- sampleRegular(s, 100000)  
+  v <- data.frame(na.omit(v))
+  variables <- names(v)
+  m <- lm(v[,1] ~ v[,2])
+  summary(m)
+  plot(v[,2],v[,1])
+  abline(m)
 })
 
 ```
@@ -181,8 +234,11 @@ dev.off()
 
 ```
 
+If i can get more, add 'em up
+```{r}
 
 
+```
 
 # Rounds of VisTrails with elevation: coplus50int; aspect: aspect50int; ruggedness: COplus_ruggedInt50; annual temp Bio1 and annual precip Bio12 
 
@@ -248,3 +304,10 @@ for output prediction map, use ENMeval
 
 ```
 
+
+PCA for how different
+```{r}
+
+
+
+```
