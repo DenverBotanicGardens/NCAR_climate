@@ -152,7 +152,7 @@ summary(m)
 plot(v[,5],v[,1],
      xlab = names(v)[5],
      ylab = names(v)[1])
-
+# I think I want to compare the EOR to climate and Herb and see if the slopes are different
 # What do I really want to see? Maybe AIC if the model is different for Herb vs. EOR? That would be similar to loadings fo ra PCA? 
 library(ks)
 library(MASS)
@@ -274,6 +274,8 @@ dirs.vistrails[grep("_Sp",dirs.vistrails)]
 ```
 
 
+# Maxent 
+# VisTrails stopped working, error in making the probability maps so trying here
 ```{r}
 # load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
 
@@ -381,22 +383,184 @@ follow https://rspatial.org/sdm/SDM.pdf while VisTrails isnt' working
 #   spsample(ver, 300, "stratified")
 #   })
 
+x <- mapply('[[', distXsp_v3, 1)
+Herbcoords <- x[!unlist(lapply(x, is.null))]
+notnull <- which(!unlist(lapply(x, is.null)))
+
+xEOR <- mapply('[[', distXsp_v3, 4)
+EORcoords <- xEOR[!unlist(lapply(xEOR, is.null))]
+notnullEOR <- which(!unlist(lapply(xEOR, is.null)))
+
+setdiff(notnull,notnullEOR) # 8 is naughty, who is 8?
+distXsp_v3[[8]][[1]]@data$scientificName # Boechera glareosa, where did you go?! Boechera gunnisoniana? 
+
 class(distXsp_v3[[1]][[1]])
 library(dismo)
 library(rgeos)
 
+#Background points, in a 5km circle around presence points, 300 stratified across the circles. Not quite the KDE but if I combined other collections from same trip I think that would be a correct estimator, circles represent the posibility that folks hiked 3 miles on their collection trip, seems likely enough. 
+
 bgHerb <- lapply(notnull, function(x){
-  circles <- circles(distXsp_v3[[x]][[1]], d = 5000) #Should be 1km around
+  circles <- circles(distXsp_v3[[x]][[1]], d = 5000) #Should be 5km around
   polygns <- polygons(circles)
   bg <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
   # do I want to get just one per cell? I'm gonna skip cellFromXY(mask, bg) # where mask should be my one used to set the size and clip the others in vistrails
   bg
   })
 
+
+# I know which they are, in order they are notnullEOR
+bgEOR <- lapply(notnullEOR, function(x){
+  df <- distXsp_v3[[x]][[4]]
+  coordinates(df) <- ~x+y
+  proj4string(df) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+  circles <- circles(df, d = 5000) #Should be 5km around
+  polygns <- polygons(circles)
+  bg <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
+  # do I want to get just one per cell? I'm gonna skip cellFromXY(mask, bg) # where mask should be my one used to set the size and clip the others in vistrails
+  bg
+  })
+
+```
+
+Extract values from rasters
+```{r}
+
 template <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/PARC_COplus_slope25/COplus_slope50.tif")
 
-plot(polygns)
-points(bg, cex=0.5, pch=16, col="red")
+
+# coplus50int.tif
+coElev_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled.tif")
+# aspect50int.tif
+coAspect_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/AspectResampled.tif")
+# coSlope_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/SlopeResampled.tif")
+# COplus_ruggedInt50.tif
+coRugged_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/RuggedResampled.tif")
+# bio1 <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/BioClim/20190122_WorldClimv2/wc2.0_bio_30s_01.tif")
+# bio12 <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/BioClim/20190122_WorldClimv2/wc2.0_bio_30s_12.tif")
+
+#before resampled to the output Maxent probability map based on template (should be able to do template but it doesn't work...)
+resample(bio1, coElev_res, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio1Resampled.tif", overwrite=TRUE)
+resample(bio12, coElev_res, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled.tif", overwrite=TRUE)
+
+
+
+bio1_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio1Resampled.tif")
+bio12_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled.tif")
+
+
+rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
+
+presvalsHerb <- lapply(notnull, function(x){
+  convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
+  dfp <- data.frame(pb = 1, extract(rasterstack, convertxy))
+  back <- bgHerb[[match(x,notnull)]]
+  proj4string(back) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
+  convertback <-spTransform(back, CRS("+proj=longlat +datum=WGS84"))
+  dfb <- data.frame(pb = 0, extract(rasterstack, convertback))
+  rbind(dfp,dfb)
+})
+
+table(presvalsHerb[[4]]$pb)
+
+presvalsEOR <- lapply(notnullEOR, function(x){
+  df <- distXsp_v3[[x]][[4]]
+  coordinates(df) <- ~x+y
+  proj4string(df) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+  convertEOR <- spTransform(df, CRS("+proj=longlat +datum=WGS84"))
+  dfp <- data.frame(pb = 1, extract(rasterstack, convertEOR))
+  back <- bgEOR[[match(x,notnullEOR)]]
+  proj4string(back) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
+  convertback <-spTransform(back, CRS("+proj=longlat +datum=WGS84"))
+  dfb <- data.frame(pb = 0, extract(rasterstack, convertback))
+  rbind(dfp,dfb)
+})
+
+
+#Still not same number of records! how, why, why!?!?
+for(i in notnull){
+  print(paste(distXsp_v3[[i]][[1]]@data$scientificName[1]))
+  print(table(presvalsHerb[[match(i,notnull)]]$pb))
+  print(table(presvalsEOR[[match(i,notnullEOR )]]$pb))
+}
+
+#Could sample again to get same number of records for presence and absence for each
+jar <- paste(system.file(package="dismo"), "/java/maxent.jar", sep='')
+
+x<-1
+convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
+convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
+xm <- maxent(rasterstack,convertxy[convertxy$kfold!=1,])
+bgpnts <- bgHerb[[1]]
+proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
+## Loading required namespace: rJava
+# plot(xm)
+# response(xm)
+
+ # evaluate(pres_test, backg_test, bc, pred_nf)
+nrow(convertxy[convertxy$kfold==1,])
+nrow(convertxy[convertxy$kfold!=1,])
+
+e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, rasterstack)
+ext <- extent(template)
+gc()
+predict(rasterstack, xm, ext=ext, progress='', filename = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predict1.tif", )
+par(mfrow=c(1,2))
+plot(px, main='Maxent, raw values')
+plot(wrld_simpl, add=TRUE, border='dark grey')
+
+
+library(foreach)
+library(parallel)
+#register parallel computing backend
+ncores=10
+cl = parallel::makeCluster(ncores)
+doParallel::registerDoParallel(cl,cores)
+
+#compute indices for data splitting
+rows = 1:nrow(rasterstack)
+split = sort(rows%%ncores)+1
+
+outname = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predict1"
+
+#perform the prediction on subsets of the predictor dataset
+prediction = foreach(i=unique(split), .combine=c)%dopar%{
+  rows_sub = rows[split==i]
+  sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub), max(rows_sub), 
+                                               1, ncol(rasterstack)))
+  raster::predict(sub, xm, filename=paste(outname, i, sep="_"))
+}
+
+gc()
+ext
+template <- raster(ext)
+projection(template) <- '+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs'
+writeRaster(template, file="Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predictall", format="GTiff")
+
+# get all these files we made
+pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/"
+
+resultpath <- list.files(path = pathstart, pattern = "Predict1" , full.names = TRUE) #[[1]]
+
+x <- lapply(resultpath, function(x){
+  raster(x)
+})
+# x <- list(r1, r2)
+x$filename <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/PredictAll1.tif"
+x$overwrite <- TRUE
+m <- do.call(merge, x)
+
+plot(m)
+
+```
+
+```{r}
+# library(gdalUtils)
+library(rgdal)
+
+mosaic_rasters(gdalfile=resultpath,dst_dataset="Predictall.tif",of="GTiff")
+gdalinfo("Predictall.tif")
 ```
 
 
