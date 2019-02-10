@@ -11,6 +11,44 @@ rm(list=ls())
 library(ggplot2)
 library(rgeos)
 library(raster)
+library(foreach)
+library(parallel)
+library(doParallel)
+
+library(dismo)
+library(rgeos)
+
+
+
+# Instead, load:
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_v3.Rda")
+
+notnull <- which(!unlist(lapply(mapply('[[', distXsp_v3, 1), is.null)))
+morethan12 <- c()
+for(l in notnull){
+  morethan12[match(l,notnull)] <- if(nrow(distXsp_v3[[l]][[1]]@coords)>12){ 
+    l } else {
+      NA
+    }
+}
+morethan12 <- morethan12[!is.na(morethan12)]  
+
+template <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/PARC_COplus_slope25/COplus_slope50.tif")
+
+
+# coplus50int.tif
+coElev_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled.tif")
+# aspect50int.tif
+coAspect_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/AspectResampled.tif")
+
+# COplus_ruggedInt50.tif
+coRugged_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/RuggedResampled.tif")
+
+bio1_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio1Resampled.tif")
+bio12_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled.tif")
+
+
+rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
 
 # pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/Arabis crandallii_EOR/"
 # 
@@ -102,8 +140,8 @@ Now get these rasters and see where the EOR differs from the Herb
 # coSlope <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/COplus_slope50.tif")
 # coRugged <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/COplus_ruggedInt50.tif")
 
-x<-EORsamesub[[1]]
-raster1 <- raster(paste(x,"/Maxent_prob_map.tif", sep=""))
+# x<-EORsamesub[[1]]
+# raster1 <- raster(paste(x,"/Maxent_prob_map.tif", sep=""))
 
 # resample(coAspect, raster1, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/AspectResampled.tif")
 # 
@@ -279,9 +317,6 @@ dirs.vistrails[grep("_Sp",dirs.vistrails)]
 ```{r}
 # load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
 
-# Instead, load:
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_v3.Rda")
-
 
 # linkspeciesnumber <- do.call(rbind,lapply(1:length(pca_data), function(x){
 #   data.frame(SpNum = x, Species = unique(pca_data[[x]]$GNAME[pca_data[[x]]$pa==3]),
@@ -292,6 +327,8 @@ load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/d
 x <- mapply('[[', distXsp_v3, 1)
 Herbcoords <- x[!unlist(lapply(x, is.null))]
 notnull <- which(!unlist(lapply(x, is.null)))
+
+
 
 linkspeciesnumber <- do.call(rbind,lapply(notnull, function(x){
   data.frame(Species = distXsp_v3[[x]][[1]]@data$scientificName[1], Dist = distXsp_v3[[x]][[2]],
@@ -395,9 +432,6 @@ setdiff(notnull,notnullEOR) # 8 is naughty, who is 8?
 distXsp_v3[[8]][[1]]@data$scientificName # Boechera glareosa, where did you go?! Boechera gunnisoniana? 
 
 class(distXsp_v3[[1]][[1]])
-library(dismo)
-library(rgeos)
-
 #Background points, in a 5km circle around presence points, 300 stratified across the circles. Not quite the KDE but if I combined other collections from same trip I think that would be a correct estimator, circles represent the posibility that folks hiked 3 miles on their collection trip, seems likely enough. 
 
 bgHerb <- lapply(notnull, function(x){
@@ -513,10 +547,11 @@ plot(wrld_simpl, add=TRUE, border='dark grey')
 
 library(foreach)
 library(parallel)
+library(doParallel)
 #register parallel computing backend
 ncores=10
 cl = parallel::makeCluster(ncores)
-doParallel::registerDoParallel(cl,cores)
+doParallel::registerDoParallel(cl,ncores)
 
 #compute indices for data splitting
 rows = 1:nrow(rasterstack)
@@ -554,7 +589,234 @@ m <- do.call(merge, x)
 plot(m)
 
 ```
+## Yes yes yes loop instead of lappy
+```{r}
 
+
+#Could sample again to get same number of records for presence and absence for each
+jar <- paste(system.file(package="dismo"), "/java/maxent.jar", sep='')
+
+ncores=10
+cl = parallel::makeCluster(ncores)
+ext <- extent(bio1_res)
+
+    
+  
+for(x in morethan12[-1]){
+    convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
+    convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
+    xm <- maxent(rasterstack,convertxy[convertxy$kfold!=1,])
+    save(xm, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/maxentSp",x,".Rda", sep=""))
+    # bgpnts <- bgHerb[[1]]
+    # proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+    # bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
+    # e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, rasterstack)
+  
+    gc()
+    
+    #register parallel computing backend
+    cl = parallel::makeCluster(ncores)
+    doParallel::registerDoParallel(cl,ncores)
+    #compute indices for data splitting
+    rows = 1:nrow(rasterstack)
+    split = sort(rows%%ncores)+1
+    outname = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predict", x, sep="")
+    #perform the prediction on subsets of the predictor dataset
+    prediction <- foreach(i=unique(split), .combine=c)%dopar%{
+      rows_sub = rows[split==i]
+      sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub), max(rows_sub), 
+                                                    1, ncol(rasterstack)))
+      raster::predict(sub, xm, filename=paste(outname, i, sep="_"), overwrite=TRUE)
+    }
+    rm(xm)
+    gc()
+    stopCluster(cl)
+    # template <- raster(ext)
+    # projection(template) <- '+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs'
+    # writeRaster(template, file=paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predictall",x,sep=""), format="GTiff")
+    # # get all these files we made
+    # pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/"
+    # resultpath <- list.files(path = pathstart, pattern = paste("Predict",x,sep="") , full.names = TRUE) #[[1]]
+    # xout <- lapply(resultpath, function(y){
+    #   raster(y)
+    #   })
+    # 
+    # xout$filename <- paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predictall",x,".tif", sep="")
+    # xout$overwrite <- TRUE
+    # m <- do.call(merge, xout)
+  }
+
+
+
+
+
+```
+
+# Now grab all the maxent models and get the predict and evalute data from them   
+```{r}
+
+for(x in morethan12[-1]){
+    convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
+    convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
+    xm <- maxent(rasterstack,convertxy[convertxy$kfold!=1,])
+
+    bgpnts <- bgHerb[[1]]
+    proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+    bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
+    e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, rasterstack)
+    save(e, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/evaluateSp",x,".Rda", sep=""))
+}  
+    gc()
+
+```
+
+### THIS ONE!!! is now broken with examples from the web I don't quite get...
+I think the solution is that the whole thing needs to be in the foreach loop, not a nested foreach where something about a backend parallel makes the summary.connection(connection) invalid connection error
+```{r}
+# n <- nrow(data)
+# a1 <- 1:n
+# a2 <- rep(1:10,ceiling(n/10))[1:n]
+# k <- ncol(data)-1
+outercomb <- function(...) {
+    lapply(1:2, function(i) lapply(list(...), function(p) p[[i]]))
+}
+innercomb <- function(...) {
+    lapply(unique(split), function(i))
+      rows_sub = rows[split==i]
+      sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub), max(rows_sub), 
+                                                    1, ncol(rasterstack)))
+      raster::predict(sub, xm, filename=paste(outname, i, sep="_"))
+      }
+    gc()
+}
+r <- foreach(i=1:k, .combine='outercomb', .multicombine=TRUE,
+        .packages='randomForest') %:%
+    foreach(1:10, .combine='innercomb', .multicombine=TRUE) %dopar% {
+        set.seed(1981)
+        Xa2 <- sample(a2, n)
+        train.rf <- double(10)
+        test.rf <- double(10)
+        for(j in  1:10){
+            m <- a1[Xa2 == j]
+            n1 <- n-length(m)
+            n2 <- length(m)
+            set.seed(2013)
+            rf.data <- randomForest(level~., data=data[-m,], mtry=i, ntree=1000)
+            train.rf[j] <- sum(data[-m,28] == predict(rf.data, data[-m,]))/n1
+            test.rf[j] <- sum(data[m,28] == predict(rf.data, data[m,]))/n2
+        }
+        c(mean(train.rf), mean(test.rf))
+    }
+trainrf <- r[[1]]
+testrf <- r[[2]]
+
+jar <- paste(system.file(package="dismo"), "/java/maxent.jar", sep='')
+#register parallel computing backend
+ncores=10
+cl = parallel::makeCluster(ncores)
+doParallel::registerDoParallel(cl,ncores)
+
+#compute indices for data splitting
+rows <- 1:nrow(rasterstack)
+split <- sort(rows%%ncores)+1
+
+#perform the prediction on subsets of the predictor dataset
+keepAUC <- foreach(x = morethan12, .combine=c, .init=list(list(), list()),) %dopar% 
+  {
+    library(rgdal)
+    outname = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predict", x, sep="")
+    convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
+    convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
+    xm <- maxent(rasterstack,convertxy[convertxy$kfold!=1,])
+        # bgpnts <- bgHerb[[1]]
+        # proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+        # bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
+        # e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, rasterstack)
+    gc()
+        
+    # rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
+    eachpredict<-foreach(i=unique(split), .combine=c)%dopar%{
+      rows_sub = rows[split==i]
+      sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub), max(rows_sub), 
+                                                    1, ncol(rasterstack)))
+      raster::predict(sub, xm, filename=paste(outname, i, sep="_"))
+      }
+    gc()
+
+    template <- raster(ext)
+    projection(template) <- '+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs'
+    writeRaster(template, file=paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predictall",x,sep=""), format="GTiff")
+    # get all these files we made
+    # pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/"
+    # resultpath <- list.files(path = pathstart, pattern = paste("Predict_sp",x,sep="") , full.names = TRUE) #[[1]]
+    # xout <- lapply(resultpath, function(y){
+    #   raster(y)
+    #   })
+    # 
+    # xout$filename <- paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predict_sp",x,".tif", sep="")
+    # xout$overwrite <- TRUE
+    # m <- do.call(merge, x)
+    list(xm,eachpredict)
+    }
+
+stopCluster(cl)
+
+```
+
+
+Abandon foreach for now, see if lapply doesn't kill it all
+```{r}
+
+# save(xm, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/maxentSp8.Rda")
+
+#compute indices for data splitting
+rows <- 1:nrow(rasterstack)
+ncores=10
+splitR <- sort(rows%%ncores)+1
+
+x<-morethan12[3]
+keepAUC <- lapply(morethan12, function(x){
+  outname = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predictsp", x, sep="")
+    convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
+    convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
+    xm <- maxent(rasterstack,convertxy[convertxy$kfold!=1,])
+        # bgpnts <- bgHerb[[1]]
+        # proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+        # bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
+        # e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, rasterstack)
+    gc()
+        
+    # rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
+    lapply(unique(splitR), function(i){
+      rows_sub = rows[splitR==i]
+      sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub), max(rows_sub), 
+                                                    1, ncol(rasterstack)))
+      raster::predict(sub, xm, filename=paste(outname, i, sep="_"))
+      })
+    gc()
+
+    template <- raster(ext)
+    projection(template) <- '+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs'
+    writeRaster(template, file=paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predictallsp",x,sep=""), format="GTiff")
+    # get all these files we made
+    pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/"
+    resultpath <- list.files(path = pathstart, pattern = paste("Predict_sp",x,sep="") , full.names = TRUE) #[[1]]
+    xout <- lapply(resultpath, function(y){
+      raster(y)
+      })
+
+    xout$filename <- paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predict_sp",x,".tif", sep="")
+    xout$overwrite <- TRUE
+    m <- do.call(merge, x)
+    list(xm,eachpredict)
+    })
+
+
+```
+
+
+
+#not working
 ```{r}
 # library(gdalUtils)
 library(rgdal)
