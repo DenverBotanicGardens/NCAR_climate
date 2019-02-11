@@ -12,7 +12,7 @@ library(ggplot2)
 library(rgeos)
 library(raster)
 library(foreach)
-library(parallel)
+library(parallel)
 library(doParallel)
 
 library(dismo)
@@ -441,7 +441,7 @@ bgHerb <- lapply(notnull, function(x){
   # do I want to get just one per cell? I'm gonna skip cellFromXY(mask, bg) # where mask should be my one used to set the size and clip the others in vistrails
   bg
   })
-
+save(bgHerb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgHerb.Rda")
 
 # I know which they are, in order they are notnullEOR
 bgEOR <- lapply(notnullEOR, function(x){
@@ -454,6 +454,8 @@ bgEOR <- lapply(notnullEOR, function(x){
   # do I want to get just one per cell? I'm gonna skip cellFromXY(mask, bg) # where mask should be my one used to set the size and clip the others in vistrails
   bg
   })
+save(bgEOR, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgEOR.Rda")
+
 
 ```
 
@@ -589,7 +591,7 @@ m <- do.call(merge, x)
 plot(m)
 
 ```
-## Yes yes yes loop instead of lappy
+## Herbarium specimens
 ```{r}
 
 
@@ -603,15 +605,12 @@ ext <- extent(bio1_res)
     
   
 for(x in morethan12[-1]){
+  set.seed(1234)
     convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
     convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
     xm <- maxent(rasterstack,convertxy[convertxy$kfold!=1,])
     save(xm, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/maxentSp",x,".Rda", sep=""))
-    # bgpnts <- bgHerb[[1]]
-    # proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
-    # bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
-    # e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, rasterstack)
-  
+   
     gc()
     
     #register parallel computing backend
@@ -651,179 +650,123 @@ for(x in morethan12[-1]){
 
 
 ```
-
-# Now grab all the maxent models and get the predict and evalute data from them   
+EOR 
 ```{r}
 
-for(x in morethan12[-1]){
+ncores=10
+cl = parallel::makeCluster(ncores)
+ext <- extent(bio1_res)
+
+
+for(x in morethan12[morethan12!=8]){
+  set.seed(1234)
+  sampleto <- nrow(distXsp_v3[[x]][[1]]@coords)
+  df <- distXsp_v3[[x]][[4]]
+  df <- df[sample(nrow(df), sampleto), ]
+  coordinates(df) <- ~x+y
+  proj4string(df) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+  convertEOR <- spTransform(df, CRS("+proj=longlat +datum=WGS84"))
+  convertEOR$kfold <- kfold(convertEOR, k=4) # to have 75:25%
+  
+  xm <- maxent(rasterstack,convertxy[convertxy$kfold!=1,])
+  save(xm, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/maxentEORSp",x,".Rda", sep=""))
+  gc()
+  
+  #register parallel computing backend
+    cl = parallel::makeCluster(ncores)
+    doParallel::registerDoParallel(cl,ncores)
+    #compute indices for data splitting
+    rows = 1:nrow(rasterstack)
+    split = sort(rows%%ncores)+1
+    outname = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/PredictEOR", x, sep="")
+    #perform the prediction on subsets of the predictor dataset
+    prediction <- foreach(i=unique(split), .combine=c)%dopar%{
+      rows_sub = rows[split==i]
+      sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub), max(rows_sub), 
+                                                    1, ncol(rasterstack)))
+      raster::predict(sub, xm, filename=paste(outname, i, sep="_"), overwrite=TRUE)
+    }
+    rm(xm)
+    gc()
+    stopCluster(cl)
+   
+  }
+
+
+
+
+
+```
+
+
+# Now grab all the maxent models and get the predict and evalute data from them   
+Crap, set seed not in there so the background group might be different than it was first, crap crap
+I think each maxent model took about 45 minutes 
+```{r}
+
+notnull
+morethan12
+
+lapply(morethan12, function(x){
+    set.seed(1234)
     convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
     convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
-    xm <- maxent(rasterstack,convertxy[convertxy$kfold!=1,])
-
-    bgpnts <- bgHerb[[1]]
+    # xm <- maxent(rasterstack,convertxy[convertxy$kfold!=1,])
+    load(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/maxentSp",x,".Rda", sep=""))
+    gc()
+    bgpnts <- bgHerb[[match(x,notnull)]]
     proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
     bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
     e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, rasterstack)
     save(e, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/evaluateSp",x,".Rda", sep=""))
-}  
-    gc()
+    e
+    })
 
+    
 ```
 
-### THIS ONE!!! is now broken with examples from the web I don't quite get...
-I think the solution is that the whole thing needs to be in the foreach loop, not a nested foreach where something about a backend parallel makes the summary.connection(connection) invalid connection error
 ```{r}
-# n <- nrow(data)
-# a1 <- 1:n
-# a2 <- rep(1:10,ceiling(n/10))[1:n]
-# k <- ncol(data)-1
-outercomb <- function(...) {
-    lapply(1:2, function(i) lapply(list(...), function(p) p[[i]]))
-}
-innercomb <- function(...) {
-    lapply(unique(split), function(i))
-      rows_sub = rows[split==i]
-      sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub), max(rows_sub), 
-                                                    1, ncol(rasterstack)))
-      raster::predict(sub, xm, filename=paste(outname, i, sep="_"))
-      }
-    gc()
-}
-r <- foreach(i=1:k, .combine='outercomb', .multicombine=TRUE,
-        .packages='randomForest') %:%
-    foreach(1:10, .combine='innercomb', .multicombine=TRUE) %dopar% {
-        set.seed(1981)
-        Xa2 <- sample(a2, n)
-        train.rf <- double(10)
-        test.rf <- double(10)
-        for(j in  1:10){
-            m <- a1[Xa2 == j]
-            n1 <- n-length(m)
-            n2 <- length(m)
-            set.seed(2013)
-            rf.data <- randomForest(level~., data=data[-m,], mtry=i, ntree=1000)
-            train.rf[j] <- sum(data[-m,28] == predict(rf.data, data[-m,]))/n1
-            test.rf[j] <- sum(data[m,28] == predict(rf.data, data[m,]))/n2
-        }
-        c(mean(train.rf), mean(test.rf))
-    }
-trainrf <- r[[1]]
-testrf <- r[[2]]
 
-jar <- paste(system.file(package="dismo"), "/java/maxent.jar", sep='')
-#register parallel computing backend
-ncores=10
-cl = parallel::makeCluster(ncores)
-doParallel::registerDoParallel(cl,ncores)
+evaluations <- do.call(rbind,lapply(morethan12, function(x) {
+  load(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/evaluateSp",x,".Rda", sep=""))
+  out <- data.frame(SpNum = x, AUC = e@auc)
+  out
+})
+)
 
-#compute indices for data splitting
-rows <- 1:nrow(rasterstack)
-split <- sort(rows%%ncores)+1
-
-#perform the prediction on subsets of the predictor dataset
-keepAUC <- foreach(x = morethan12, .combine=c, .init=list(list(), list()),) %dopar% 
-  {
-    library(rgdal)
-    outname = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predict", x, sep="")
-    convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
-    convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
-    xm <- maxent(rasterstack,convertxy[convertxy$kfold!=1,])
-        # bgpnts <- bgHerb[[1]]
-        # proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
-        # bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
-        # e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, rasterstack)
-    gc()
-        
-    # rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
-    eachpredict<-foreach(i=unique(split), .combine=c)%dopar%{
-      rows_sub = rows[split==i]
-      sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub), max(rows_sub), 
-                                                    1, ncol(rasterstack)))
-      raster::predict(sub, xm, filename=paste(outname, i, sep="_"))
-      }
-    gc()
-
-    template <- raster(ext)
-    projection(template) <- '+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs'
-    writeRaster(template, file=paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predictall",x,sep=""), format="GTiff")
-    # get all these files we made
-    # pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/"
-    # resultpath <- list.files(path = pathstart, pattern = paste("Predict_sp",x,sep="") , full.names = TRUE) #[[1]]
-    # xout <- lapply(resultpath, function(y){
-    #   raster(y)
-    #   })
-    # 
-    # xout$filename <- paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predict_sp",x,".tif", sep="")
-    # xout$overwrite <- TRUE
-    # m <- do.call(merge, x)
-    list(xm,eachpredict)
-    }
-
-stopCluster(cl)
-
+hist(evaluations$AUC)
 ```
 
-
-Abandon foreach for now, see if lapply doesn't kill it all
+# make all the rasters from the 10 strips
 ```{r}
 
-# save(xm, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/maxentSp8.Rda")
+ext <- extent(template)
 
-#compute indices for data splitting
-rows <- 1:nrow(rasterstack)
-ncores=10
-splitR <- sort(rows%%ncores)+1
-
-x<-morethan12[3]
-keepAUC <- lapply(morethan12, function(x){
-  outname = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predictsp", x, sep="")
-    convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
-    convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
-    xm <- maxent(rasterstack,convertxy[convertxy$kfold!=1,])
-        # bgpnts <- bgHerb[[1]]
-        # proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
-        # bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
-        # e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, rasterstack)
-    gc()
-        
-    # rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
-    lapply(unique(splitR), function(i){
-      rows_sub = rows[splitR==i]
-      sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub), max(rows_sub), 
-                                                    1, ncol(rasterstack)))
-      raster::predict(sub, xm, filename=paste(outname, i, sep="_"))
-      })
-    gc()
-
+for(x in morethan12){
     template <- raster(ext)
     projection(template) <- '+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs'
-    writeRaster(template, file=paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predictallsp",x,sep=""), format="GTiff")
+    writeRaster(template, file=paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/PredictallSp",x,sep=""), format="GTiff", overwrite=TRUE)
     # get all these files we made
     pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/"
-    resultpath <- list.files(path = pathstart, pattern = paste("Predict_sp",x,sep="") , full.names = TRUE) #[[1]]
+    resultpath <- list.files(path = pathstart, pattern = paste("Predict",x,sep="") , full.names = TRUE) #[[1]]
     xout <- lapply(resultpath, function(y){
       raster(y)
       })
-
-    xout$filename <- paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Predict_sp",x,".tif", sep="")
+    
+    xout$filename <- paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/PredictallSp",x,".tif", sep="")
     xout$overwrite <- TRUE
-    m <- do.call(merge, x)
-    list(xm,eachpredict)
-    })
-
-
+    m <- do.call(merge, xout)
+}
 ```
 
-
-
-#not working
+Examine the maps
 ```{r}
-# library(gdalUtils)
-library(rgdal)
+sp1 <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/PredictallSp1.tif")
 
-mosaic_rasters(gdalfile=resultpath,dst_dataset="Predictall.tif",of="GTiff")
-gdalinfo("Predictall.tif")
+plot(sp1, main=distXsp_v3[[1]][[1]]$scientificName[1])
 ```
+
+
 
 
 PCA for how different
