@@ -26,6 +26,7 @@ load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/b
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgEOR.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presvalsHerb.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presvalsEOR.Rda")
+colosps <- read.csv("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_EORG1G2_WGS84.csv")
 
 
 notnull <- which(!unlist(lapply(mapply('[[', distXsp_v3, 1), is.null)))
@@ -60,35 +61,7 @@ bio12_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_G
 
 rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
 
-# pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/Arabis crandallii_EOR/"
-# 
-# resultpath <- list.files(path = pathstart, pattern = "maxentResults.csv") # , full.names = TRUE)[[1]]
 
-# I don't think I want these, went through one by one but had issues. 
-    # maxouts <- list.dirs(path = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt",full.names = TRUE, recursive = TRUE)
-    # 
-    # maxoutsubset <- maxouts[!grepl("plots", maxouts)]
-    # maxoutsubset <- maxoutsubset[!grepl("_EOR", maxoutsubset)]
-    # maxoutsubset <- maxoutsubset[!grepl("_herb", maxoutsubset)]
-    # 
-    # sapply(strsplit(maxoutsubset,"/"), function(x){
-    #   x[7]
-    # })
-
-# Where is the information about EOR size and distances to match to the names? 
-
-      # AUCresults <- do.call(rbind,lapply(maxoutsubset, function(x){
-      #   read.csv(paste(x,"/maxentResults.csv", sep=""))
-      # }))
-      # 
-      # names(AUCresults)[grep("AUC",names(AUCresults))]
-      # 
-      # jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/AUCtraintest1.jpg",
-      #      width=200, height=175,units='mm', res=300)
-      # hist(AUCresults$Training.AUC, breaks = 10,
-      #      main="",
-      #      xlab="AUC")
-      # dev.off()
 ```
 
 Get all the files that I'm making with VisTrails, then extract the information from the sets I want. Named similar runs the same way. 
@@ -342,12 +315,14 @@ dirs.vistrails[grep("_Sp",dirs.vistrails)]
 
 linkspeciesnumber <- do.call(rbind,lapply(notnull, function(x){
   data.frame(Species = distXsp_v3[[x]][[1]]@data$scientificName[1], Dist = distXsp_v3[[x]][[2]],
-             Area = sum(distXsp_v3[[x]][[3]]), SpNum = x)
+             Area = sum(distXsp_v3[[x]][[3]]), SpNum = x, Year=distXsp_v3[[x]][[1]]@data$year,
+             distXsp_v3[[x]][[1]]@coords)
 }))
 
-ggplot(linkspeciesnumber, aes(Species, log(Dist)))+
-  geom_boxplot(outlier.shape=NA) + #avoid plotting outliers twice
-  geom_jitter(position=position_jitter(width=.1, height=0))
+Years <- (as.numeric(gsub("([0-9]+).*$", "\\1", linkspeciesnumber$Year)))
+linkspeciesnumber$Year <- as.numeric(as.character(linkspeciesnumber$Year))
+linkspeciesnumber$Year <- Years
+hist(linkspeciesnumber$Year)
 
 ggplot(linkspeciesnumber, aes(Area, log(Dist)))+
   geom_point()+
@@ -355,8 +330,64 @@ ggplot(linkspeciesnumber, aes(Area, log(Dist)))+
   ylab("Distance (log(meters))")+
   theme_bw()
 
+plot(log(linkspeciesnumber$Area+1),log(linkspeciesnumber$Dist+1),
+     xlab=expression(paste("Species Range log(meters" ^2,")" )),
+     ylab=expression(paste("log (meters)")))
+abline(lm(log(Dist+1)~log(Area+1), data=linkspeciesnumber))
 
-# the EOR AUC results from VisTrails, samesize runs from ForVisTrails.Rmd where I either thinned to match number of Herbarium records or where I bootstrapped and jittered to get matching points. Used a standalone Dan Warren thinning process to get equally spaced out but covering the most area (of information) for points. 
+length(unique(linkspeciesnumber$SpNum))
+length(morethan12) # minus 1 for the Boechera missing EOR
+
+max(linkspeciesnumber$Dist)
+# Current Figure 2: see Herb to EORs_v4.Rmd 
+# Removing largest distance that would put the point 3155 miles away, Colorado is 380 miles wide
+# The second furthest is 668 miles away from somewhere in Colorado, that's outside of colorado
+# The three furthest couldn't fall within Colroado so are removed  
+# hypotenuse of colroado is about 472 miles, the third point is 406 miles from nearest EOR
+```
+Table 1 - species in niche models, put a column indiciating which are SDM
+```{r}
+coloradosps
+
+```
+
+
+```{r}
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure2.jpg",
+     width=225, height=105,units='mm', res=300)
+
+smallerthan <- sort(linkspeciesnumber$Dist)[length(linkspeciesnumber$Dist)-2]
+
+layout(matrix(c(1,2), 1,2))
+
+plot(linkspeciesnumber$Area[linkspeciesnumber$Dist<smallerthan],
+     linkspeciesnumber$Dist[linkspeciesnumber$Dist<smallerthan],
+     xlab=expression(paste("Species Range km" ^2)),
+     ylab=expression(paste("km")),
+     pch=16, cex= .5, yaxt="n", xaxt="n")
+     axis(2, at=c(0,100,200,300,400)*1000, labels=c(0,100,200,300,400))
+     axis(1, at=c(0,10,20,30,40,50,60,70,80,90)*(1000^2), labels=c(0,10,20,30,40,50,60,70,80,90))
+abline(lm(Dist~Area, data=linkspeciesnumber[linkspeciesnumber$Dist<smallerthan,]))
+mtext("a)", side=3, line=0, adj=0)
+
+plot(jitter(linkspeciesnumber$Year[linkspeciesnumber$Dist<smallerthan]),
+     linkspeciesnumber$Dist[linkspeciesnumber$Dist<smallerthan],
+     xlab="Year",
+     ylab="",
+     pch=16, cex= .25, yaxt="n")
+     axis(2, at=c(0,100,200,300,400)*1000, labels=c(0,100,200,300,400))
+abline(lm(Dist~Year, data=linkspeciesnumber[linkspeciesnumber$Dist<smallerthan,]))
+mtext("b)", side=3, line=0, adj=0)
+
+
+dev.off()
+
+```
+
+
+The EOR AUC results from VisTrails, samesize runs from ForVisTrails.Rmd where I either thinned to match number of Herbarium records or where I bootstrapped and jittered to get matching points. Used a standalone Dan Warren thinning process to get equally spaced out but covering the most area (of information) for points.
+```{r}
+ 
 # 2 is EORs, .x; 3 is Herbs, .y
 EORmaxentdata <- merge(linkspeciesnumber, AUCresults2[,c(1:2,5:7)], by.x = "SpNum", by.y = "Species")
 EORxHarbymaxentdata <- merge(EORmaxentdata, AUCresults3[,c(1:2,5:7)], by.x = "SpNum", by.y = "Species")
