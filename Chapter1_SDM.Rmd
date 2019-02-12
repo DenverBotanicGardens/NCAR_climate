@@ -22,6 +22,11 @@ library(rgeos)
 
 # Instead, load:
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_v3.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgHerb.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgEOR.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presvalsHerb.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presvalsEOR.Rda")
+
 
 notnull <- which(!unlist(lapply(mapply('[[', distXsp_v3, 1), is.null)))
 morethan12 <- c()
@@ -32,6 +37,11 @@ for(l in notnull){
     }
 }
 morethan12 <- morethan12[!is.na(morethan12)]  
+
+
+xEOR <- mapply('[[', distXsp_v3, 4)
+EORcoords <- xEOR[!unlist(lapply(xEOR, is.null))]
+notnullEOR <- which(!unlist(lapply(xEOR, is.null)))
 
 template <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/PARC_COplus_slope25/COplus_slope50.tif")
 
@@ -323,10 +333,10 @@ dirs.vistrails[grep("_Sp",dirs.vistrails)]
 #              Dist = pca_data[[x]]$dist[pca_data[[x]]$pa==2], # pa==2 are herb
 #              SpeciesArea = unique(pca_data[[x]]$area[pca_data[[x]]$pa==1]))
 # }))
-
-x <- mapply('[[', distXsp_v3, 1)
-Herbcoords <- x[!unlist(lapply(x, is.null))]
-notnull <- which(!unlist(lapply(x, is.null)))
+# 
+# x <- mapply('[[', distXsp_v3, 1)
+# Herbcoords <- x[!unlist(lapply(x, is.null))]
+# notnull <- which(!unlist(lapply(x, is.null)))
 
 
 
@@ -398,7 +408,7 @@ dev.off()
 
 
 Want to add vegetation types, layer too. should work now that I've got all the other layers a better size
-
+# Loaded these up top
 Make maxent commands
 for output prediction map, use ENMeval   
 Using KDE at 95% in MAxent VisTrails which mostly makes it so that it appears there's less effort in areas with fewer points but might not be the case, just might be smaller popualtions so maybe just circles with a certain radius would be better. Maybe add some points along roads for circles. Could put points along roads and then first pick points along roads within a certain distance from presence points and then 'circles' around all those points ?  
@@ -419,14 +429,14 @@ follow https://rspatial.org/sdm/SDM.pdf while VisTrails isnt' working
 #   # just put random points for background points witin the kernelUD 
 #   spsample(ver, 300, "stratified")
 #   })
-
-x <- mapply('[[', distXsp_v3, 1)
-Herbcoords <- x[!unlist(lapply(x, is.null))]
-notnull <- which(!unlist(lapply(x, is.null)))
-
-xEOR <- mapply('[[', distXsp_v3, 4)
-EORcoords <- xEOR[!unlist(lapply(xEOR, is.null))]
-notnullEOR <- which(!unlist(lapply(xEOR, is.null)))
+# 
+# x <- mapply('[[', distXsp_v3, 1)
+# Herbcoords <- x[!unlist(lapply(x, is.null))]
+# notnull <- which(!unlist(lapply(x, is.null)))
+# 
+# xEOR <- mapply('[[', distXsp_v3, 4)
+# EORcoords <- xEOR[!unlist(lapply(xEOR, is.null))]
+# notnullEOR <- which(!unlist(lapply(xEOR, is.null)))
 
 setdiff(notnull,notnullEOR) # 8 is naughty, who is 8?
 distXsp_v3[[8]][[1]]@data$scientificName # Boechera glareosa, where did you go?! Boechera gunnisoniana? 
@@ -497,6 +507,9 @@ presvalsHerb <- lapply(notnull, function(x){
   rbind(dfp,dfb)
 })
 
+save(presvalsHerb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presvalsHerb.Rda")
+
+
 table(presvalsHerb[[4]]$pb)
 
 presvalsEOR <- lapply(notnullEOR, function(x){
@@ -512,10 +525,11 @@ presvalsEOR <- lapply(notnullEOR, function(x){
   rbind(dfp,dfb)
 })
 
+save(presvalsEOR, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presvalsEOR.Rda")
 
 #Still not same number of records! how, why, why!?!?
 for(i in notnull){
-  print(paste(distXsp_v3[[i]][[1]]@data$scientificName[1]))
+  print(paste(i,paste(distXsp_v3[[i]][[1]]@data$scientificName[1])))
   print(table(presvalsHerb[[match(i,notnull)]]$pb))
   print(table(presvalsEOR[[match(i,notnullEOR )]]$pb))
 }
@@ -657,18 +671,27 @@ ncores=10
 cl = parallel::makeCluster(ncores)
 ext <- extent(bio1_res)
 
+# 1 through Sp34 worked but then computer restarted
+# morethan12[morethan12!=8]
+# morethan12[morethan12>34]
 
 for(x in morethan12[morethan12!=8]){
   set.seed(1234)
   sampleto <- nrow(distXsp_v3[[x]][[1]]@coords)
   df <- distXsp_v3[[x]][[4]]
-  df <- df[sample(nrow(df), sampleto), ]
+  # There is one species that there are no EORs mapped and one that results in fewer points that for Herbarium specimens
+  if(  table(presvalsHerb[[match(x,notnull)]]$pb)[2]>
+       table(presvalsEOR[[match(x,notnullEOR )]]$pb)[2]){
+    df <- df[sample(nrow(df), sampleto, replace = TRUE), ]
+  } else {
+    df <- df[sample(nrow(df), sampleto), ]
+       }
   coordinates(df) <- ~x+y
   proj4string(df) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
   convertEOR <- spTransform(df, CRS("+proj=longlat +datum=WGS84"))
   convertEOR$kfold <- kfold(convertEOR, k=4) # to have 75:25%
   
-  xm <- maxent(rasterstack,convertxy[convertxy$kfold!=1,])
+  xm <- maxent(rasterstack,convertEOR[convertEOR$kfold!=1,])
   save(xm, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/maxentEORSp",x,".Rda", sep=""))
   gc()
   
