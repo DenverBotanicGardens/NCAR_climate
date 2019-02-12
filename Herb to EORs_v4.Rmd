@@ -496,48 +496,7 @@ save(distXsp_v3, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in nic
 
 ```
 
-# make new file with everything, all the points for Herb == 1, EOR ==2  
-```{r}
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_v3.Rda")
 
-# Good, again 46 of them have data
-x <- mapply('[[', distXsp_v3, 1)
-Herbcoords <- x[!unlist(lapply(x, is.null))]
-
-notnull <- which(!unlist(lapply(x, is.null)))
-x[[notnull[45]]]@data$scientificName[1]
-# the following are the ones to write for VisTrails
-notnull[-45]
-
-mapply('[[', distXsp_v3, 2)[!unlist(lapply(mapply('[[', distXsp_v3, 2), is.null))]
-
-for(i in 1:60){
-  plot(foo[[i]]@coords,
-       main=foo[[i]]@data$scientificName[1])
-}
-
-# Herb = 2 and EOR = 1
-lapply(notnull[-45], function(d){
-  Herbpts <- data.frame(Species = distXsp_v3[[d]][[1]]@data$scientificName[1],
-                        SpNum = d,
-                        distXsp_v3[[d]][[1]]@coords,
-                        pa = 2)
-  names(Herbpts) <- c("Species","SpNum","x","y","pa")
-  write.csv(Herbpts, paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_Herbpts_sp",d,".csv", sep=""))
- 
-  EORpts <- data.frame(Species = distXsp_v3[[d]][[1]]@data$scientificName[1],
-                       SpNum = d,
-                       distXsp_v3[[d]][[4]],
-                       pa = 1)
-  out <- rbind(Herbpts,EORpts)
-    write.csv(out, paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_HerbEORpts_sp",d,".csv", sep=""))
-})
-  
-# Save each file for use in VisTrails
-write.csv(foo2, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_spAll.csv")
-
-
-```
 
 
 # testing background points   
