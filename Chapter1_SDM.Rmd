@@ -17,6 +17,7 @@ library(doParallel)
 
 library(dismo)
 library(rgeos)
+library(Rmisc)
 
 
 
@@ -26,7 +27,6 @@ load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/b
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgEOR.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presvalsHerb.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presvalsEOR.Rda")
-colosps <- read.csv("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_EORG1G2_WGS84.csv")
 
 
 notnull <- which(!unlist(lapply(mapply('[[', distXsp_v3, 1), is.null)))
@@ -339,6 +339,8 @@ length(unique(linkspeciesnumber$SpNum))
 length(morethan12) # minus 1 for the Boechera missing EOR
 
 max(linkspeciesnumber$Dist)
+
+linkspeciesnumber$Dist[linkspeciesnumber$SpNum==12]
 # Current Figure 2: see Herb to EORs_v4.Rmd 
 # Removing largest distance that would put the point 3155 miles away, Colorado is 380 miles wide
 # The second furthest is 668 miles away from somewhere in Colorado, that's outside of colorado
@@ -347,7 +349,19 @@ max(linkspeciesnumber$Dist)
 ```
 Table 1 - species in niche models, put a column indiciating which are SDM
 ```{r}
-coloradosps
+
+out <- Rmisc::summarySE(linkspeciesnumber, "Dist", "SpNum")
+
+tab1 <- do.call(rbind, lapply(split(linkspeciesnumber, linkspeciesnumber$SpNum), function(x){
+  data.frame(SpNum = unique(x$SpNum), Species = x$Species[1], DistAvg = summarySE(x, "Dist"), 
+             Area = unique(x$Area),
+             MinYear = min(x$Year), MaxYear = max(x$Year), AvgLat = summarySE(x, "decimalLatitude"))
+})) 
+
+write.csv(tab1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/table1.csv")
+library(Taxonstand)
+TPLtbl1 <- TPL(tab1$Species)
+write.csv(TPLtbl1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/TPLtbl1.csv")
 
 ```
 
@@ -497,6 +511,7 @@ bgEOR <- lapply(notnullEOR, function(x){
   })
 save(bgEOR, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgEOR.Rda")
 
+names(presvalsEOR[[1]])
 
 ```
 
@@ -530,11 +545,12 @@ rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
 
 presvalsHerb <- lapply(notnull, function(x){
   convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
-  dfp <- data.frame(pb = 1, extract(rasterstack, convertxy))
+  dfp <- data.frame(pb = 1, extract(rasterstack, convertxy),
+                    x1 = convertxy@coords[,1],x2 = convertxy@coords[,2])
   back <- bgHerb[[match(x,notnull)]]
   proj4string(back) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
   convertback <-spTransform(back, CRS("+proj=longlat +datum=WGS84"))
-  dfb <- data.frame(pb = 0, extract(rasterstack, convertback))
+  dfb <- data.frame(pb = 0, extract(rasterstack, convertback),convertback@coords)
   rbind(dfp,dfb)
 })
 
@@ -557,6 +573,20 @@ presvalsEOR <- lapply(notnullEOR, function(x){
 })
 
 save(presvalsEOR, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presvalsEOR.Rda")
+
+
+presvalsEORonly <- lapply(notnullEOR, function(x){
+  df <- distXsp_v3[[x]][[4]]
+  coordinates(df) <- ~x+y
+  proj4string(df) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+  convertEOR <- spTransform(df, CRS("+proj=longlat +datum=WGS84"))
+  dfp <- data.frame(pb = 1,  x1 = convertEOR@coords[,1],x2 = convertEOR@coords[,2])
+  back <- bgEOR[[match(x,notnullEOR)]]
+  proj4string(back) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
+  convertback <-spTransform(back, CRS("+proj=longlat +datum=WGS84"))
+  dfb <- data.frame(pb = 0, convertback@coords)
+  rbind(dfp,dfb)
+})
 
 #Still not same number of records! how, why, why!?!?
 for(i in notnull){
@@ -636,6 +666,8 @@ m <- do.call(merge, x)
 plot(m)
 
 ```
+
+
 ## Herbarium specimens
 ```{r}
 
@@ -695,7 +727,9 @@ for(x in morethan12[-1]){
 
 
 ```
-EOR 
+
+
+EOR make maxent models and 10 strips per each probablility map
 ```{r}
 
 ncores=10
@@ -753,7 +787,8 @@ for(x in morethan12[morethan12!=8]){
 ```
 
 
-# Now grab all the maxent models and get the predict and evalute data from them   
+## Herbarium specimen dataset
+Now grab all the maxent models and get the predict and evalute data from them      
 Crap, set seed not in there so the background group might be different than it was first, crap crap
 I think each maxent model took about 45 minutes 
 ```{r}
@@ -776,9 +811,69 @@ lapply(morethan12, function(x){
     e
     })
 
+# Looks good! matches!
+# for(i in morethan12){
+#   foo <- spTransform(distXsp_v3[[i]][[1]], CRS("+proj=longlat +datum=WGS84"))
+#   foobgpnts <- bgHerb[[match(i,notnull)]]
+#   proj4string(foobgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+#   foobgpnts <- spTransform(foobgpnts, CRS("+init=epsg:4326") )
+#   plot(foobgpnts, pch=20, col="green", cex=2)
+#   plot(foo, add=TRUE, col="blue", cex=0.5)
+# }
+
     
 ```
 
+
+
+# EOR dataset    
+Now grab all the maxent models and get the predict and evalute data from them  
+```{r}
+# They match, all looks good
+
+# for(i in morethan12[morethan12!=8]){
+#   fooEORxy <- distXsp_v3[[i]][[4]]
+#   coordinates(fooEORxy) <- ~ x + y
+#   proj4string(fooEORxy) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+#   fooEORxy <- spTransform(fooEORxy, CRS("+proj=longlat +datum=WGS84"))
+#   
+#   foobgpnts <- bgEOR[[match(i,notnullEOR)]]
+#     proj4string(foobgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+#     foobgpnts <- spTransform(foobgpnts, CRS("+init=epsg:4326") )
+#   plot(foobgpnts, pch=20, col="green", cex=2)
+#   plot(fooEORxy, add=TRUE, col="blue", cex=0.5)
+# }
+
+
+lapply(morethan12[morethan12!=8], function(x){
+    set.seed(1234)
+  sampleto <- nrow(distXsp_v3[[x]][[1]]@coords)
+    df <- distXsp_v3[[x]][[4]]
+    # There is one species that there are no EORs mapped and one that results in fewer points that for Herbarium specimens
+    if(  table(presvalsHerb[[match(x,notnull)]]$pb)[2]>
+         table(presvalsEOR[[match(x,notnullEOR )]]$pb)[2]){
+      df <- df[sample(nrow(df), sampleto, replace = TRUE), ]
+    } else {
+      df <- df[sample(nrow(df), sampleto), ]
+         }
+    coordinates(df) <- ~x+y
+    proj4string(df) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+    convertEOR <- spTransform(df, CRS("+proj=longlat +datum=WGS84"))
+    convertEOR$kfold <- kfold(convertEOR, k=4) # to have 75:25%
+    load(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/maxentEORSp",x,".Rda", sep=""))
+    gc()
+    bgpnts <- bgEOR[[match(x,notnullEOR)]]
+    proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+    bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
+    e <- evaluate(convertEOR[convertEOR$kfold==1,], bgpnts, xm, rasterstack)
+    save(e, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/evaluateEORSp",x,".Rda", sep=""))
+    e
+    })
+
+    
+```
+
+# Herbarium
 ```{r}
 
 evaluations <- do.call(rbind,lapply(morethan12, function(x) {
@@ -790,6 +885,82 @@ evaluations <- do.call(rbind,lapply(morethan12, function(x) {
 
 hist(evaluations$AUC)
 ```
+
+#CNHP/EOR
+```{r}
+
+evaluationsEOR <- do.call(rbind,lapply(morethan12[morethan12!=8], function(x) {
+  load(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/evaluateEORSp",x,".Rda", sep=""))
+  out <- data.frame(SpNum = x, AUC = e@auc)
+  out
+})
+)
+
+
+hist(evaluationsEOR$AUC, col=rgb(0,0,0,0.25), breaks=10, xlim=c(0,1),ylim=c(0,6)) #black
+hist(evaluations$AUC, col=rgb(1,0,0,0.25), breaks=10,add=TRUE) # red
+
+
+hist(evaluationsEOR$AUC - evaluations$AUC[evaluations$SpNum!=8], breaks=10)
+
+evaluations;evaluationsEOR
+match(evaluations$SpNum,evaluationsEOR$SpNum)
+
+plotAUCmerge <- merge(evaluations, evaluationsEOR, by = "SpNum")
+plotAUCmerge$AUC.diff <- plotAUCmerge$AUC.y - plotAUCmerge$AUC.x
+
+
+plotAUCdf <- rbind(data.frame(Dataset = "Herb", evaluations[evaluations$SpNum!=8]),
+                   data.frame(Dataset = "CNHP", evaluationsEOR))
+
+
+# presvalsHerb are in order of notnull
+pres4ssb <-lapply(morethan12, function(x){
+  set.seed(1234)
+  press <- presvalsHerb[[match(x,notnull)]][presvalsHerb[[match(x,notnull)]]$pb==1,]
+  press$kfold <- kfold(press, k=4)
+  back <-  presvalsHerb[[match(x,notnull)]][presvalsHerb[[match(x,notnull)]]$pb==0,]
+  back$kfold <- kfold(back, k=4)
+  out <- rbind(press,back)
+  out
+})
+
+pres4ssb[[1]]
+
+# sb <- ssb(pres_test, back_test, pres_train)
+ssb.herb <- lapply(pres4ssb, function(x){
+  out <- ssb(x[x$kfold==1&x$pb==1,c("x1","x2")], x[x$kfold==1&x$pb==0,c("x1","x2")],
+             x[x$kfold!=1&x$pb==1,c("x1","x2")])
+  out
+})
+
+
+# # an index of spatial sorting bias (1 is no bias, near 0 is extreme bias)
+biases <- unlist(lapply(ssb.herb, function(x){
+  x[1]/x[2]
+}))
+
+hist(biases, breaks=20)
+
+ssb.herb[[1]][1] / ssb.herb[[1]][2]
+
+
+```
+
+```{r}
+
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure4.jpg",
+     width=200, height=175,units='mm', res=300)
+
+hist(plotAUCmerge$AUC.diff, breaks=10, xlab=expression("AUC"["CNHP - Herb"]), main="")
+
+dev.off()
+
+
+```
+
+
+# Herbarium dataset
 
 # make all the rasters from the 10 strips
 ```{r}
@@ -812,6 +983,32 @@ for(x in morethan12){
     m <- do.call(merge, xout)
 }
 ```
+
+
+# make all the EOR rasters from the 10 strips
+
+# EOR dataset
+```{r}
+
+ext <- extent(template)
+
+for(x in morethan12[morethan12!=8]){
+    template <- raster(ext)
+    projection(template) <- '+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs'
+    writeRaster(template, file=paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/PredictallEORSp",x,sep=""), format="GTiff", overwrite=TRUE)
+    # get all these files we made
+    pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/"
+    resultpath <- list.files(path = pathstart, pattern = paste("PredictEOR",x,sep="") , full.names = TRUE) #[[1]]
+    xout <- lapply(resultpath, function(y){
+      raster(y)
+      })
+    
+    xout$filename <- paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/PredictallEORSp",x,".tif", sep="")
+    xout$overwrite <- TRUE
+    m <- do.call(merge, xout)
+}
+```
+
 
 Examine the maps
 ```{r}
