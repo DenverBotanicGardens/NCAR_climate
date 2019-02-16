@@ -1018,6 +1018,211 @@ plot(sp1, main=distXsp_v3[[1]][[1]]$scientificName[1])
 ```
 
 
+Why dont' have at least the number of points for EORs that have for Herb in some of them? 
+```{r}
+thin.max <- function(x, cols, npoints){
+  #Create empty vector for output
+  inds <- vector(mode="numeric")
+  
+  #Create distance matrix
+  this.dist <- as.matrix(dist(x[,cols], upper=TRUE))
+  
+  #Draw first index at random
+  inds <- c(inds, as.integer(runif(1, 1, length(this.dist[,1]))))
+  
+  #Get second index from maximally distant point from first one
+  #Necessary because apply needs at least two columns or it'll barf
+  #in the next bit
+  inds <- c(inds, which.max(this.dist[,inds]))
+  
+  while(length(inds) < npoints){
+    #For each point, find its distance to the closest point that's already been selected
+    min.dists <- apply(this.dist[,inds], 1, min)
+    
+    #Select the point that is furthest from everything we've already selected
+    this.ind <- which.max(min.dists)
+    
+    #Get rid of ties, if they exist
+    if(length(this.ind) > 1){
+      print("Breaking tie...")
+      this.ind <- this.ind[1]
+    }
+    inds <- c(inds, this.ind)
+  }
+  
+  return(x[inds,])
+}
+
+
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
+library(maptools)
+l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
+
+l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
+l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
+                                       function(x){
+              x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
+              x
+              }))
+coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences.csv")
+rowstomatch <- lapply(c("Taxon","AcceptedName"), function(x){
+   coloradosps[,"scientificName"] %in%  g1g2names[,x]
+})
+
+coloradosps.g1g2 <- unique(rbind(coloradosps[rowstomatch[[1]],],coloradosps[rowstomatch[[2]],]))
+coloradosps.g1g2$decimalLatitude <- 
+  as.numeric(as.character(coloradosps.g1g2$decimalLatitude))
+coloradosps.g1g2$decimalLongitude <- 
+  as.numeric(as.character(coloradosps.g1g2$decimalLongitude))
+coloradosps.g1g2$lon2 <- round(coloradosps.g1g2$decimalLongitude,2) # about 1.1 km 
+coloradosps.g1g2$lat2 <- round(coloradosps.g1g2$decimalLatitude,2)
+coloradosps.g1g2$lon3 <- round(coloradosps.g1g2$decimalLongitude,3) # about 110 m
+coloradosps.g1g2$lat3 <- round(coloradosps.g1g2$decimalLatitude,3)
+
+     library(splancs)
+```
+
+
+```{r}
+i<-notnullEOR[2]
+
+presenceEORpoints <- lapply(notnullEOR, function(i){
+  g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in%
+                                c(g1g2names$Taxon[i],g1g2names$AcceptedName[i])&
+                                !is.na(coloradosps.g1g2$decimalLatitude),]
+  
+  g1g2now <- g1g2now[as.numeric(as.character(g1g2now$year))>1980,]
+  g1g2now <- g1g2now[g1g2now$decimalLatitude>0,]
+  g1g2now <- g1g2now[grepl("Specimen",g1g2now$basisOfRecord),]
+  g1g2now <- g1g2now[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)]
+  
+  
+   polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                        g1g2names$Taxon[i]),] 
+    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+    
+    # years <- format(as.Date(polys$LASTOBS, format="%Y-%m-%d"),"%Y")
+    years <- as.numeric(substring(polys$LASTOBS,1,4))
+    yearlater1979 <- c()
+    for(l in 1:length(years)){
+      yearlater1979[l] <- if(years[l]>1979){ 
+                                      l } else {
+                                        NA
+                                      }
+    }
+    yearlater1979 <- yearlater1979[!is.na(yearlater1979)] 
+    
+    polys <- polys[yearlater1979,]
+    
+    totalarea <- sum(area((polys)))
+  # area of each polygon
+    areanow <- sapply(slot(polys,"polygons"), slot, "area")
+  # Proportional area to the whole area number to thin
+    EORpnts <- do.call(rbind, lapply(1:length(polys), function(f){
+      outline <- polys@polygons[[f]]@Polygons[[1]]@coords
+      grid <- makegrid(polys, cellsize = 50) # cellsize in map units!
+      names(grid) <- c("x","y")
+      gridout <- grid[inout(grid,outline), ]
+      if(nrow(gridout)>1){
+        gridthin <- thin.max(gridout,c("x","y"),(round(nrow(g1g2now)*(areanow[[f]]/totalarea),0))+1)
+        gc()
+        } else {
+          if(nrow(gridout)>0) {
+            gridthin <- gridout 
+          } else {
+            gridthin <- NULL
+          }
+          }
+      gridthin
+      }))
+    gc()
+    EORpnts
+})
+
+save(presenceEORpoints, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presenceEORpoints.Rda")
+
+
+yearsofPolys <- lapply(notnullEOR, function(i){
+    polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                        g1g2names$Taxon[i]),] 
+    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+    years <- format(as.Date(polys$LASTOBS, format="%Y-%m-%d"),"%Y")
+    yearlater1979 <- c()
+    for(l in 1:length(years)){
+      yearlater1979[l] <- if(years[l]>1979){ 
+        l } else {
+          NA
+        }
+    }
+    yearlater1979 <- yearlater1979[!is.na(yearlater1979)]  
+    table(years[which(years>1979)])
+})
+
+for(d in 1:length(yearsofPolys)){
+  print(yearsofPolys[[d]])
+}
+
+
+
+rm(l1eor,l1G1G2,g1g2names,coloradosps,coloradosps.g1g2)
+save(presenceEORpoints, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presenceEORpoints.Rda")
+
+notnull
+
+```
+
+```{r}
+#Could sample again to get same number of records for presence and absence for each
+jar <- paste(system.file(package="dismo"), "/java/maxent.jar", sep='')
+ncores=11
+    
+# should be able to do the ones that are 12 too!
+atleast12 <- c()
+for(l in notnull){
+  atleast12[match(l,notnull)] <- if(nrow(distXsp_v3[[l]][[1]]@coords)>11){ 
+    l } else {
+      NA
+    }
+}
+atleast12 <- atleast12[!is.na(atleast12)] 
+length(atleast12) # 28 vs. 24 over 12
+
+for(rep in 1:4){  
+    for(x in atleast12){
+      # To keep kfold same over all loops
+      set.seed(1234)
+        convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
+        convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
+        xm <- maxent(rasterstack,convertxy[convertxy$kfold!=rep,])
+        save(xm, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEntReplicates/maxentSp",x,"kfold",rep,".Rda", sep=""))
+       
+        gc()
+        
+        #register parallel computing backend
+        cl = parallel::makeCluster(ncores)
+        # doParallel::registerDoParallel(cl,ncores)
+        #compute indices for data splitting
+        rows = 1:nrow(rasterstack)
+        split = sort(rows%%ncores)+1
+        outname = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEntReplicates/Predict", x,"kfold",rep, sep="")
+        #perform the prediction on subsets of the predictor dataset
+        foreach(i=unique(split), .combine=c)%dopar%{
+          rows_sub = rows[split==i]
+          sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub), max(rows_sub), 
+                                                        1, ncol(rasterstack)))
+          raster::predict(sub, xm, filename=paste(outname, i, sep="_"), overwrite=TRUE)
+        }
+        rm(xm)
+        
+        gc()
+        stopCluster(cl)
+    }
+}
+
+
+
+```
+
 
 
 PCA for how different
