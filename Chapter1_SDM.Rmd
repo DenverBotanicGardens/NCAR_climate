@@ -1174,9 +1174,11 @@ notnull
 ```{r}
 #Could sample again to get same number of records for presence and absence for each
 jar <- paste(system.file(package="dismo"), "/java/maxent.jar", sep='')
-ncores=11
+ncores=10
     
 # should be able to do the ones that are 12 too!
+
+notnull <- which(!unlist(lapply(mapply('[[', distXsp_v3, 1), is.null)))
 atleast12 <- c()
 for(l in notnull){
   atleast12[match(l,notnull)] <- if(nrow(distXsp_v3[[l]][[1]]@coords)>11){ 
@@ -1187,15 +1189,29 @@ for(l in notnull){
 atleast12 <- atleast12[!is.na(atleast12)] 
 length(atleast12) # 28 vs. 24 over 12
 
-for(rep in 1:4){  
-    for(x in atleast12){
+# coplus50int.tif
+coElev_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled.tif")
+# aspect50int.tif
+coAspect_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/AspectResampled.tif")
+# COplus_ruggedInt50.tif
+coRugged_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/RuggedResampled.tif")
+bio1_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio1Resampled.tif")
+bio12_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled.tif")
+rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
+rm(l, coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
+
+
+# need to come back and do atleast12[4] with kfold==4
+
+for(x in atleast12[-c(1:4)]){
       # To keep kfold same over all loops
       set.seed(1234)
         convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
         convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
+  for(rep in 1:4){  
         xm <- maxent(rasterstack,convertxy[convertxy$kfold!=rep,])
-        save(xm, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEntReplicates/maxentSp",x,"kfold",rep,".Rda", sep=""))
-       
+        save(xm, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEntReplicates/maxentSp",x,"kfold",rep,".Rda", sep=""))        
+        rm(xm)
         gc()
         
         #register parallel computing backend
@@ -1212,11 +1228,11 @@ for(rep in 1:4){
                                                         1, ncol(rasterstack)))
           raster::predict(sub, xm, filename=paste(outname, i, sep="_"), overwrite=TRUE)
         }
-        rm(xm)
+
         
         gc()
         stopCluster(cl)
-    }
+  }
 }
 
 
