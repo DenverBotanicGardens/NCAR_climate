@@ -1201,22 +1201,22 @@ rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
 rm(l, coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
 
 
-# need to come back and do atleast12[4] with kfold==4
+# need to come back and do atleast12[4] with kfold==4; atleast12[-c(1:5)]
 
-for(x in atleast12[-c(1:4)]){
+for(x in atleast12[5]){
       # To keep kfold same over all loops
       set.seed(1234)
         convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
         convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
-  for(rep in 1:4){  
+  for(rep in 4){  
         xm <- maxent(rasterstack,convertxy[convertxy$kfold!=rep,])
         save(xm, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEntReplicates/maxentSp",x,"kfold",rep,".Rda", sep=""))        
-        rm(xm)
+
         gc()
         
         #register parallel computing backend
         cl = parallel::makeCluster(ncores)
-        # doParallel::registerDoParallel(cl,ncores)
+        doParallel::registerDoParallel(cl,ncores)
         #compute indices for data splitting
         rows = 1:nrow(rasterstack)
         split = sort(rows%%ncores)+1
@@ -1228,8 +1228,7 @@ for(x in atleast12[-c(1:4)]){
                                                         1, ncol(rasterstack)))
           raster::predict(sub, xm, filename=paste(outname, i, sep="_"), overwrite=TRUE)
         }
-
-        
+        rm(xm)
         gc()
         stopCluster(cl)
   }
