@@ -452,6 +452,8 @@ distXsp_v3 <- lapply(1:60, function(i){
     polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
                                         g1g2names$Taxon[i]),] 
     proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+
+    
     totalarea <- sum(area(disaggregate(polys)))
   # area of each polygon
     areanow <- sapply(slot(polys,"polygons"), slot, "area")
@@ -489,8 +491,6 @@ distXsp_v3 <- lapply(1:60, function(i){
     out
     }
   })
-
-# save(distXsp_chunck1, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_chunk1.Rda")
 
 save(distXsp_v3, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_v3.Rda") 
 
@@ -1374,24 +1374,104 @@ dev.off()
 Is there anything inherintly interesting about the genus? Maybe some genera are more likely to shift in range than others... so yes, keep in.  
 
 ```{r}
+# Don't need grid points for EOR but do want all records and see difference in years between herb and closest EOR
 
-#to do year next need to get as many years out as possible from character strings
-distXsp1$year <- (as.numeric(gsub("([0-9]+).*$", "\\1", distXsp1$year)))
+coloradosps.g1g2 <- read.csv("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_EORG1G2_WGS84.csv")
 
-f1 <- lm(dist ~ as.factor(New.Genus)*year + area, data= distXsp1)
-f2 <- lm(dist ~ year + area, data= distXsp1)
-f3 <- lm(dist ~ year, data= distXsp1)
-f4 <- lm(dist ~ area, data= distXsp1) #x is the area of the species known range
-f5 <- lm(dist ~ 1, data= distXsp1)
-f6 <- lm(dist ~ year*area, data= distXsp1) #year given the range
-f7 <- lm(dist ~ as.factor(New.Genus)*(year), data= distXsp1)
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
+l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
+
+#Each polygon might be made of multiple disconnected polygons. Need to separate and label
+l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
+l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
+                                       function(x){
+              x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
+              x
+              }))
+
+distXsp_noEORgrid <- lapply(1:60, function(i){
+  gc()
+  g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in%
+                                c(g1g2names$Taxon[i],g1g2names$AcceptedName[i])&
+                                !is.na(coloradosps.g1g2$decimalLatitude),]
+  
+  g1g2now <- g1g2now[as.numeric(as.character(g1g2now$year))>1800,]
+  # remove points not in Colorado
+  g1g2now <- g1g2now[g1g2now$decimalLatitude>35,]
+  g1g2now <- g1g2now[g1g2now$decimalLongitude>(-113),]
+  g1g2now <- g1g2now[grepl("Specimen",g1g2now$basisOfRecord),]
+  g1g2now <- g1g2now[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)]
+  gc()
+  
+  if(nrow(g1g2now)>0){
+  # put grid points across colorado, sample from it for each polygons
+    polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                        g1g2names$Taxon[i]),] 
+    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+    
+        
+    years <- as.numeric(substring(polys$LASTOBS,1,4))
+    yearsnotNA <- c()
+    for(l in 1:length(years)){
+      yearsnotNA[l] <- if(years[l]<9999){ 
+                                      l } else {
+                                        NA
+                                      }
+    }
+    yearsnotNA <- yearsnotNA[!is.na(yearsnotNA)] 
+    polys <- polys[yearsnotNA,]
+    
+    totalarea <- sum(area(disaggregate(polys)))
+  # area of each polygon
+    areanow <- sapply(slot(polys,"polygons"), slot, "area")
+    
+  #turn into spatialpointsdataframe for individual species
+    coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
+    proj4string(g1g2now) <- CRS("+init=epsg:4326")  # CRS("+proj=longlat +datum=WGS84")
+    g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
+  # The minimum distance from each point to the nearest polygon
+    distnow <- apply(gDistance(g1g2now,polys, byid=TRUE),2,min)
+    gc()
+   
+  out <- data.frame(Species = g1g2names$AcceptedName[i], g1g2now,Dist = distnow, Area = totalarea, 
+                    EORdate = polys$LASTOBS[apply(gDistance(g1g2now,polys, byid=TRUE),2,which.min)],
+                    Yeardiff = g1g2now$year- as.numeric(substring(as.character(polys$LASTOBS[apply(gDistance(g1g2now,polys, byid=TRUE),2,which.min)]),1,4)))
+    gc()
+    out
+    }
+  })
+save(distXsp_noEORgrid, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda") 
+```
+
+Yeardiff is the herbarium colleciton year - the polygon mapped year (LastOBS) so positive values are herbarium later than mapped, negative numbers are the herbarium colleciton before the mapped time
+```{r}
+
+distXspall <- do.call(rbind, distXsp_noEORgrid)
+distXspall$New.Genus <- gsub("([A-Za-z]+).*", "\\1", distXspall$Species)
+table(distXspall$Yeardiff) # 9999 for unknown year of EOR mapping --> removed now
+distXspall[distXspall$Yeardiff< -100,c("EORdate","year")]
+names(distXspall)
+```
+But isn't the whole point that I want to vary over lots of genera?   
+Models included (1) species range, (2) collection year, (3) Genus, (4) years between collection and mapping, (5) collection year + species range, (6) collection year * species range, (7) Genus * Year, (8) Genus * collection year * species range, (9) Genus * years between collection and mapping * species range, and (10) intercept only (null model).
+```{r}
+f1 <- lm(Dist ~ as.factor(New.Genus)*year + Area, data= distXspall)
+f2 <- lm(Dist ~ year + Area, data= distXspall)
+f3 <- lm(Dist ~ year, data= distXspall)
+f4 <- lm(Dist ~ Area, data= distXspall) #x is the area of the species known range
+f5 <- lm(Dist ~ 1, data= distXspall)
+f6 <- lm(Dist ~ year*Area, data= distXspall) #year given the range
+f7 <- lm(Dist ~ as.factor(New.Genus)*(year), data= distXspall)
+f8 <- lm(Dist ~ Yeardiff, data= distXspall) # range shift
+f9 <- lm(Dist ~ as.factor(New.Genus)*year*Area, data= distXspall)
+f10 <- lm(Dist ~ as.factor(New.Genus)*Yeardiff*Area, data= distXspall)
 
 
-(lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7),
-       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7),formula)))))
+(lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10),
+       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10),formula)))))
 
-evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6,f7),
-                modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7),formula)))))
+evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10),
+                modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10),formula)))))
 
 sapply(1:length(lmresults$Delta_AICc), function(i){
   exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
@@ -1400,38 +1480,72 @@ sapply(1:length(lmresults$Delta_AICc), function(i){
 (er1 <- exp(0.5*lmresults$Delta_AICc[2]))
 (er2 <- exp(0.5*lmresults$Delta_AICc[3]))
 
-summary(f2)
+```
+
+When ignoring genus since those are so unevenly applied (lots of mustards)
+```{r}
+# f1 <- lm(Dist ~ as.factor(New.Genus)*year + Area, data= distXspall)
+f2 <- lm(Dist ~ year + Area, data= distXspall)
+f3 <- lm(Dist ~ year, data= distXspall)
+f4 <- lm(Dist ~ Area, data= distXspall) #x is the area of the species known range
+f5 <- lm(Dist ~ 1, data= distXspall)
+f6 <- lm(Dist ~ year*Area, data= distXspall) #year given the range
+# f7 <- lm(Dist ~ as.factor(New.Genus)*(year), data= distXspall)
+f8 <- lm(Dist ~ Yeardiff, data= distXspall) # range shift
+# f9 <- lm(Dist ~ as.factor(New.Genus)*year*Area, data= distXspall)
+# f10 <- lm(Dist ~ as.factor(New.Genus)*Yeardiff*Area, data= distXspall)
+
+f11 <- lm(Dist ~ Yeardiff*Area, data= distXspall) # range shift by specificity
+
+f12 <- lm(Dist ~ Yeardiff+Area, data= distXspall) # range shift by specificity
+
+
+(lmresults <- aictab(list(f2,f3,f4,f5,f6,f8,f11,f12),
+       modnames=as.character(unlist(lapply(list(f2,f3,f4,f5,f6,f8,f11,f12),formula)))))
+
+evidence(aictab(cand.set = list(f2,f3,f4,f5,f6,f8,f11,f12),
+                modnames = as.character(unlist(lapply(list(f2,f3,f4,f5,f6,f8,f11,f12),formula)))))
+
+sapply(1:length(lmresults$Delta_AICc), function(i){
+  exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
+})
+
+(er1 <- exp(0.5*lmresults$Delta_AICc[2]))
+(er2 <- exp(0.5*lmresults$Delta_AICc[3]))
+(er3 <- exp(0.5*lmresults$Delta_AICc[4]))
+(er4 <- exp(0.5*lmresults$Delta_AICc[5]))
+(er5 <- exp(0.5*lmresults$Delta_AICc[6]))
+
 ```
 
 ```{r}
-distXsp1$areabin <- 100
-distXsp1$areabin[distXsp1$area < max(distXsp1$area)] <- 95
-distXsp1$areabin[distXsp1$area < quantile(distXsp1$area, .75)] <- 75
-distXsp1$areabin[distXsp1$area < quantile(distXsp1$area, .5)] <- 50
-distXsp1$areabin[distXsp1$area < quantile(distXsp1$area, .25)] <- 25
-distXsp1$areabin[distXsp1$area == min(distXsp1$area)] <- 1
-table(distXsp1$areabin)
+distXspall$areabin <- 100
+distXspall$areabin[distXspall$Area < max(distXspall$Area)] <- 95
+distXspall$areabin[distXspall$Area < quantile(distXspall$Area, .75)] <- 75
+distXspall$areabin[distXspall$Area < quantile(distXspall$Area, .5)] <- 50
+distXspall$areabin[distXspall$Area < quantile(distXspall$Area, .25)] <- 25
+distXspall$areabin[distXspall$Area == min(distXspall$Area)] <- 1
+table(distXspall$areabin)
 
-ggplot(distXsp1[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
-                distXsp1$area<=max(distXsp1$area),], aes(year, dist/1000))+
-  geom_jitter(position=position_jitter(1), aes(colour=area/(1000^2)), size=4, alpha=0.95, pch=16)+  # geom_point(aes(colour=year))+
+ggplot(distXspall, aes(Yeardiff, Dist/1000))+
+  geom_jitter(position=position_jitter(1), aes(colour=Area/(1000^2)), size=2, alpha=0.5, pch=16)+  # geom_point(aes(colour=year))+
   stat_smooth(method="lm")+
   theme_bw()+
-  facet_wrap(~areabin, nrow=2)+
-  xlab("Species Range")+
+  # facet_wrap(~areabin, nrow=2)+
+  xlab("Year (Herb - CNHP)")+
   ylab("Distance (km) to nearest EOR")+
   scale_colour_gradientn(colours = rev(c("#FF0000", "#FFA500", "#FFFF00", "#008000", "#9999ff", "#000066"))) # (low="black",high="lightgreen")+
 theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 ```{r}
-ggplot(distXsp1[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
-                distXsp1$area<=max(distXsp1$area),], aes(area/1000000, dist/1000))+
-  geom_jitter(position=position_jitter(1.5), aes(colour=year), size=2, alpha=0.95, pch=21)+  # geom_point(aes(colour=year))+
+ggplot(distXspall, aes(Area/1000000, Dist/1000))+
+  geom_jitter(position=position_jitter(1.5), aes(colour=Yeardiff), size=2, alpha=0.5, pch=21)+  # geom_point(aes(colour=year))+
   stat_smooth(method="lm")+
   theme_bw()+
   xlab("Species Range")+
   ylab("Distance (km) to nearest EOR")+
+  facet_wrap(~New.Genus)+
   scale_colour_gradientn(colours = rev(c("#FF0000", "#FFA500", "#FFFF00", "#008000", "#9999ff", "#000066"))) # (low="black",high="lightgreen")
 
 ```
@@ -1471,6 +1585,38 @@ for(i in 1:length(want)){
 
 ```
 
+```{r}
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure2_v2.jpg",
+     width=225, height=105,units='mm', res=300)
+
+layout(matrix(c(1,2,3), 1,3))
+plot(distXspall$Area,
+     distXspall$Dist,
+     xlab=expression(paste("Species Range km" ^2)),
+     ylab=expression(paste("km")),
+     pch=16, cex= .5, yaxt="n", xaxt="n")
+     axis(2, at=c(0,100,200,300,400)*1000, labels=c(0,100,200,300,400))
+     axis(1, at=c(0,10,20,30,40,50,60,70,80,90)*(1000^2), labels=c(0,10,20,30,40,50,60,70,80,90))
+abline(lm(Dist~Area, data=distXspall))
+mtext("a)", side=3, line=0, adj=0)
+plot(jitter(distXspall$year ),
+     distXspall$Dist,
+     xlab="Year",
+     ylab="",
+     pch=16, cex= .25, yaxt="n")
+     axis(2, at=c(0,100,200,300,400)*1000, labels=c(0,100,200,300,400))
+abline(lm(Dist~year, data=distXspall))
+mtext("b)", side=3, line=0, adj=0)
+plot(jitter(distXspall$Yeardiff ),
+     distXspall$Dist,
+     xlab="Difference in collection year and mapped year",
+     ylab="",
+     pch=16, cex= .25, yaxt="n")
+     axis(2, at=c(0,100,200,300,400)*1000, labels=c(0,100,200,300,400))
+abline(lm(Dist~Yeardiff, data=distXspall))
+mtext("c)", side=3, line=0, adj=0)
+dev.off()
+```
 
 #Spatial thinning
 <https://cran.r-project.org/web/packages/spThin/vignettes/spThin_vignette.html>     
@@ -2254,4 +2400,56 @@ backg_test <- backg[groupbk == 1,]
 
 
 ```
+
+While Chapter1_SDM is running making the strips of probability maps     
+Put together all the strips to make one probability map for each Herbarium species  
+```{r}
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_v3.Rda")
+notnull <- which(!unlist(lapply(mapply('[[', distXsp_v3, 1), is.null)))
+atleast12 <- c()
+for(l in notnull){
+  atleast12[match(l,notnull)] <- if(nrow(distXsp_v3[[l]][[1]]@coords)>11){ 
+    l } else {
+      NA
+    }
+}
+atleast12 <- atleast12[!is.na(atleast12)] 
+
+pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEntReplicates/"
+
+# Just did Sp1, as of 3:22pm on Feb 20th Sp55 is in the middle of running (for Herbarium specimens); 3:24 after Sp55 done by 4:11pm; sp11kfold4 didn't finish, no _8 .grd so need to fix and then do atleast12[5] for kfold 4; atleast12[6:28]
+lapply(atleast12[5], function(i){
+  resultpath <- list.files(path = pathstart, pattern = paste("Predict",i,"kfold", sep=""), full.names = TRUE)
+  lapply(1:4, function(k){
+    x <- lapply(resultpath[grep(paste("kfold",k,sep=""),resultpath)], function(x){
+      raster(x)
+    })
+    x$filename <- paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEntReplicates/ProbTiffSp",i,"Herbkfold",k,".tif", sep="")
+    x$overwrite <- TRUE
+    m <- do.call(merge, x)
+  })
+})
+
+
+
+
+```
+Average the 4 kfolds for each    
+```{r}
+library(snow)
+ncores <- 2 # define the number of cores you want to use, 2 on laptop, 12 on desktop
+# ,4:28
+lapply(atleast12[1], function(x){
+  resultpath <- list.files(path = pathstart, pattern = paste("ProbTiffSp",x,"Herbkfold", sep=""), full.names = TRUE)
+  allrasts <- stack(resultpath)
+  beginCluster(ncores)
+  ras.mean <- clusterR(allrasts, calc, args=list(mean, na.rm=T))
+  ras.SD <- clusterR(allrasts, calc, args=list(sd, na.rm=T))
+  writeRaster(ras.mean, file=paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEntReplicates/ProbMEANSp",x,sep=""), format="GTiff")
+  writeRaster(ras.SD, file=paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEntReplicates/ProbSDSp",x,sep=""), format="GTiff")
+  endCluster()
+})
+
+```
+
 
