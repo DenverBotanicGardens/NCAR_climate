@@ -1238,6 +1238,80 @@ for(x in atleast12[5]){
 
 ```
 
+EOR removing each of the four kfolds one at a time replicates   
+```{r}
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presenceEORpoints.Rda")
+length(presenceEORpoints)
+length(atleast12[atleast12!=8])
+
+xEOR <- mapply('[[', distXsp_v3, 4)
+EORcoords <- xEOR[!unlist(lapply(xEOR, is.null))]
+notnullEOR <- which(!unlist(lapply(xEOR, is.null)))
+notnullEOR
+
+presenceEORpoints[[match(atleast12[4],notnullEOR)]]
+
+library(rgdal)
+colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
+
+# Yes, these match up even though the first is pretty different, not many mapped where herb specimens are
+for(x in atleast12[atleast12!=8]){
+  plot(colocounties.UTM, main = paste("Species",x))
+  points(distXsp_v3[[x]][[1]]@coords, col="red", pch=16)
+  points(presenceEORpoints[[match(x,notnullEOR)]],col="blue")
+}
+
+# presenceEORpoints are spread out proportional to the area of each polygon to total species area
+# atleast12[atleast12!=8]
+# Should exclude 41, issues with the EOR mapped occurences!!!
+
+for(x in atleast12[c(2,4:28)]){
+  sampleto <- nrow(distXsp_v3[[x]][[1]]@coords)
+  df <- presenceEORpoints[[match(x,notnullEOR)]]
+  if(nrow(df)>sampleto){
+    df <- df[sample(1:nrow(df),sampleto),] # sample without replacement
+  } else {
+    df <- df[sample(1:nrow(df),sampleto, replace = TRUE),] 
+  }
+
+  coordinates(df) <- ~x+y
+  proj4string(df) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+  convertEOR <- spTransform(df, CRS("+proj=longlat +datum=WGS84"))
+  
+      # To keep kfold same over all loops
+      set.seed(1234)
+      
+  convertEOR$kfold <- kfold(convertEOR, k=4) # to have 75:25%
+  
+  for(rep in 1:4){  
+        xm <- maxent(rasterstack,convertxy[convertxy$kfold!=rep,])
+        save(xm, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEntReplicates/maxentEORSp",x,"kfold",rep,".Rda", sep=""))        
+
+        gc()
+        
+        #register parallel computing backend
+        cl = parallel::makeCluster(ncores)
+        doParallel::registerDoParallel(cl,ncores)
+        #compute indices for data splitting
+        rows = 1:nrow(rasterstack)
+        split = sort(rows%%ncores)+1
+        outname = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEntReplicates/PredictEOR", x,"kfold",rep, sep="")
+        #perform the prediction on subsets of the predictor dataset
+        foreach(i=unique(split), .combine=c)%dopar%{
+          rows_sub = rows[split==i]
+          sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub), max(rows_sub), 
+                                                        1, ncol(rasterstack)))
+          raster::predict(sub, xm, filename=paste(outname, i, sep="_"), overwrite=TRUE)
+        }
+        rm(xm)
+        gc()
+        stopCluster(cl)
+  }
+}
+
+```
+
+
 
 
 PCA for how different
