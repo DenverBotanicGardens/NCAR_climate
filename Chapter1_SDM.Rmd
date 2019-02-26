@@ -56,10 +56,23 @@ coAspect_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/a
 # COplus_ruggedInt50.tif
 coRugged_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/RuggedResampled_bioclim.tif")
 
-bio1_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio1Resampled.tif")
-bio12_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled.tif")
+plot(coRugged_res)
+bio1 <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/BioClim/20190122_WorldClimv2/wc2.0_bio_30s_01.tif")
+bio12 <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/BioClim/20190122_WorldClimv2/wc2.0_bio_30s_12.tif")
 
+bio1_res <- resample(bio1, coRugged_res, method="bilinear",
+                     filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio1Resampled_bioclim.tif", overwrite=TRUE)
 
+bio12_res <- resample(bio12, coRugged_res, method="bilinear",
+                      filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled.tif_bioclim", overwrite=TRUE)
+
+# 
+# bio1_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio1Resampled.tif")
+# bio12_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled.tif")
+gc()
+
+extent(bio1_res)
+extent(coRugged_res)
 rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
 
 
