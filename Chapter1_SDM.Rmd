@@ -3,6 +3,8 @@ title: "R Notebook"
 output: html_notebook
 ---
 
+Ignore blocks with 'morethan12' and skip to atleast12
+
 I think the outputs that don't have _EOR or _herb are the ones that used Herb to train and EOR to test. can see what the AUC patterns were for those. 
 Making new herb train and EOR test ones with VisTrails and same size EOR numbers
 ```{r}
@@ -16,17 +18,17 @@ library(parallel)
 library(doParallel)
 
 library(dismo)
-library(rgeos)
 library(Rmisc)
+library(rgdal)
 
 
 
 # Instead, load:
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_v3.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgHerb.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgEOR.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presvalsHerb.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presvalsEOR.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgHerb.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgEOR.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presvalsHerb.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presvalsEOR.Rda")
 
 
 notnull <- which(!unlist(lapply(mapply('[[', distXsp_v3, 1), is.null)))
@@ -56,305 +58,30 @@ coAspect_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/a
 # COplus_ruggedInt50.tif
 coRugged_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/RuggedResampled_bioclim.tif")
 
-plot(coRugged_res)
-bio1 <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/BioClim/20190122_WorldClimv2/wc2.0_bio_30s_01.tif")
-bio12 <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/BioClim/20190122_WorldClimv2/wc2.0_bio_30s_12.tif")
-
-bio1_res <- resample(bio1, coRugged_res, method="bilinear",
-                     filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio1Resampled_bioclim.tif", overwrite=TRUE)
-
-bio12_res <- resample(bio12, coRugged_res, method="bilinear",
-                      filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled.tif_bioclim", overwrite=TRUE)
-
+# plot(coRugged_res)
+# bio1 <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/BioClim/20190122_WorldClimv2/wc2.0_bio_30s_01.tif")
+# bio12 <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/BioClim/20190122_WorldClimv2/wc2.0_bio_30s_12.tif")
 # 
-# bio1_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio1Resampled.tif")
-# bio12_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled.tif")
+# bio1_res <- resample(bio1, coRugged_res, method="bilinear",
+#                      filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio1Resampled_bioclim.tif", overwrite=TRUE)
+# 
+# bio12_res <- resample(bio12, coRugged_res, method="bilinear",
+                       # filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled_bioclim.tif", overwrite=TRUE)
+
+
+bio1_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio1Resampled_bioclim.tif")
+bio12_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled_bioclim.tif")
 gc()
 
-extent(bio1_res)
-extent(coRugged_res)
 rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
 
 
 ```
 
-Get all the files that I'm making with VisTrails, then extract the information from the sets I want. Named similar runs the same way. 
-```{r}
-maxouts2 <- list.dirs(path = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/EORvHERB_2019/EORvHERB_2019",full.names = TRUE, recursive = TRUE)
-
-
-#EORsamesize matches _Sp with the same number
-# These all have k-fold of 5 so keeping out 20% each time to test but for some, too few points, so should compare to subsampling with replacement/bootstrapping 
-EORsame <- maxouts2[grepl("_EORsamesize", maxouts2)]
-speciesEOR <- unique(unlist(lapply(regmatches(EORsame, gregexpr("[[:digit:]]+", EORsame)),"[[", 3)))
-
-# Must be an easier way but only want the first folder, don't want to dig in any deeper
-EORsamesub <- EORsame[!grepl("Merged", EORsame)]
-EORsamesub <- EORsamesub[!grepl("plots", EORsamesub)]
-EORsamesub <- EORsamesub[!grepl("cvSplit", EORsamesub)]
-EORsamesub <- EORsamesub[!grepl("Expanded", EORsamesub)]
-EORsamesub <- EORsamesub[!grepl("responseCurves", EORsamesub)]
-
-# The 9th layer is the folder for that Maxent output
-unique(sapply(strsplit(EORsamesub,"/"), function(x){
-  x[9]
-}))
-
-# Which species number is each? 
-unique(sapply(strsplit(EORsame,"Sp"), function(x){
-  as.numeric(gsub("([0-9]+).*$", "\\1", x[2]))
-}))
-
-# Split at the Sp, take that second string that starts with the species number and extract the first number
-sapply(strsplit(EORsamesub, "Sp"), function(x){
-  as.numeric(gsub("([0-9]+).*$", "\\1", x[2]))
-})
-
-# Where is the information about EOR size and distances to match to the names? 
-AUCresults2 <- do.call(rbind,lapply(EORsamesub, function(x){
-  resultfile <- read.csv(paste(x,"/maxentResults.csv", sep=""))
-  resultfile$Species <- as.numeric(resultfile$Species)
-  y <- strsplit(x,"Sp")
-  resultfile$Species <- as.numeric(gsub("([0-9]+).*$", "\\1", y[[1]][2]))
-  resultfile
-}))
-
-hist(AUCresults2$Training.AUC)
-
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/AUC_EOR.jpg",
-     width=200, height=175,units='mm', res=300)
-hist(AUCresults2$Training.AUC, breaks = 10,
-     main="",
-     xlab="AUC")
-dev.off()
-```
-
-Now get these rasters and see where the EOR differs from the Herb
-```{r}
-# Need to resample to the bioclim extent - more like 1 km than the 30 meters. or slightly larger that I've got it to.
-bio1 <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/BioClim/20190122_WorldClimv2/wc2.0_bio_30s_01.tif")
-
-coElev <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/coplus50int.tif")
-coAspect <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/aspect50int.tif")
-coSlope <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/COplus_slope50.tif")
-coRugged <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/COplus_ruggedInt50.tif")
-
-# Bioclim and DEMs are in coord. ref. : +proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0 
-# toraster <- coElev
-# bio1_UTM <- projectRaster(bio1, toraster, method = "bilinear",
-#                           filename="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/bio1_UTM.tif")
-# plot(bio1_UTM)
-plot(bio1)
-
-bio1crop <- crop(bio1_UTM, extent(coElev), filename="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/bio1crop.tif")
-plot(bio1crop)
-
-resample(coAspect, bio1crop, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/AspectResampled_bioclim.tif")
-
-resample(coSlope, bio1crop, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/SlopeResampled_bioclim.tif")
-
-resample(coRugged, bio1crop, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/RuggedResampled_bioclim.tif")
-
-# Get raster1 to match coElev, no go coElev to raster1
-resample(coElev, bio1crop, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled_bioclim.tif")
-
-
-
-# Use the resampled one instead
-# coElev <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/coplus50int.tif")
-# coAspect <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/aspect50int.tif")
-# coSlope <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/COplus_slope50.tif")
-# coRugged <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/COplus_ruggedInt50.tif")
-
-# x<-EORsamesub[[1]]
-# raster1 <- raster(paste(x,"/Maxent_prob_map.tif", sep=""))
-
-# resample(coAspect, raster1, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/AspectResampled.tif")
-# 
-# resample(coSlope, raster1, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/SlopeResampled.tif")
-# 
-# resample(coRugged, raster1, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/RuggedResampled.tif")
-
-# Get raster1 to match coElev, no go coElev to raster1
-# resample(coElev, raster1, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled.tif")
-
-# resample(coElev, raster1, method="bilinear", filename = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled.tif")
-
-coElev_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled.tif")
-
-coAspect_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/AspectResampled.tif")
-
-coSlope_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/SlopeResampled.tif")
-
-coRugged_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/RuggedResampled.tif")
-
-# Function to calculate the linear model of one raster to another
-# 1 would be the intercept I guess, while y are the values for y (from the resulting probability map)
-# Don't quite get it
-          # X <- cbind(1, y)
-          # invXtX <- solve(t(X) %*% X) %*% t(X)
-          # quickfun <- function(i) (invXtX %*% i)
-          # # raster::calc calculates values for a new raster from another
-          # m <- calc(s, quickfun) 
-          # names(m) <- c('intercept', 'slope')
-# r <- calc(s, fun)
-# y <- values(raster1)
-# X1 <- values(coElev)
-
-# Could also ignore the not likely but that cuts off lots... maybe just the really near 0?
-raster1sm <- raster1
-raster1sm[raster1sm<0.05] <- NA
-
-# But this is basically just what maxent does, right? but with a prior that is flat or 'maximizes entropy'?
-s <- stack(raster1, coElev_res, coAspect_res, coSlope_res, coRugged_res)
-# Make it a little smaller
-v <- sampleRegular(s, 100000)  
-v <- data.frame(na.omit(v))
-variables <- names(v)
-m <- lm(v[,1] ~ v[,2] + v[,3] + v[,4] + v[,5])
-summary(m)
-plot(v[,5],v[,1],
-     xlab = names(v)[5],
-     ylab = names(v)[1])
-# I think I want to compare the EOR to climate and Herb and see if the slopes are different
-# What do I really want to see? Maybe AIC if the model is different for Herb vs. EOR? That would be similar to loadings fo ra PCA? 
-library(ks)
-library(MASS)
-?kde2d
-plot(v[,1],v[,2])
-contour(kde2d(v[,1], v[,2], lims = c(min(v[,1]), max(v[,1]),
-                                     min(v[,2]), max(v[,2]))), 
-        levels= c(min(v[,1]), max(v[,1]),
-                                     min(v[,2]), max(v[,2])))
-
-# X <- cbind(1, values(s))
-# X <- cbind(1, as.matrix(v))
-# invXtX <- solve(t(X) %*% X) %*% t(X)
-# quickfun <- function(i) (invXtX %*% i)
-# m <- quickfun(as.matrix(v))
-# summary(m)
-
-EORrasters <- lapply(EORsamesub, function(x){
-  raster1 <- raster(paste(x,"/Maxent_prob_map.tif", sep=""))
-  s <- stack(raster1, coElev_res, coAspect_res, coSlope_res, coRugged_res)
-  v <- sampleRegular(s, 100000)  
-  v <- data.frame(na.omit(v))
-  variables <- names(v)
-  m <- lm(v[,1] ~ v[,2])
-  summary(m)
-  plot(v[,2],v[,1])
-  abline(m)
-})
-
-```
-
-
-
-Now the herbarium specimens!
-```{r}
-# Compare to the Herb results
-Herbsame <- maxouts2[grepl("Maxent_Sp", maxouts2)]
-speciesHerb <- unique(unlist(lapply(regmatches(EORsame, gregexpr("[[:digit:]]+", EORsame)),"[[", 3)))
-match(speciesHerb,speciesEOR)
-
-# Must be an easier way but only want the first folder, don't want to dig in any deeper
-Herbsamesub <- Herbsame[!grepl("Merged", Herbsame)]
-Herbsamesub <- Herbsamesub[!grepl("plots", Herbsamesub)]
-Herbsamesub <- Herbsamesub[!grepl("cvSplit", Herbsamesub)]
-Herbsamesub <- Herbsamesub[!grepl("Expanded", Herbsamesub)]
-Herbsamesub <- Herbsamesub[!grepl("responseCurves", Herbsamesub)]
-
-# read.csv(paste(Herbsamesub[[5]],"/maxentResults.csv", sep=""))
-
-AUClist <- lapply(Herbsamesub, function(x){
-  resultfile <- read.csv(paste(x,"/maxentResults.csv", sep=""))
-  resultfile$Species <- as.numeric(resultfile$Species)
-  y <- strsplit(x,"Sp")
-  resultfile$Species <- as.numeric(gsub("([0-9]+).*$", "\\1", y[[1]][2]))
-  resultfile
-})
-
-
-# Go back and see if can run those without threshold and such so they're the same. 
-# don't want 5, 7, 10
-AUCresults3 <- do.call(rbind,lapply(c(1:4,6,8:9,11:14), function(x){
-  AUClist[[x]]
-}))
-
-
-# AUCresults3 <- do.call(rbind,lapply(Herbsamesub, function(x){
-#   read.csv(paste(x,"/maxentResults.csv", sep=""))
-# }))
-
-hist(AUCresults3$Training.AUC)
-
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/AUC_Herb.jpg",
-     width=200, height=175,units='mm', res=300)
-hist(AUCresults3$Training.AUC, breaks = 10,
-     main="",
-     xlab="AUC")
-dev.off()
-# TestEOR_ only want one per species, manually go in and delete extras that had mishaps
-
-```
-
-If i can get more, add 'em up
-```{r}
-
-
-
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/AUC_EORandHerb.jpg",
-     width=400, height=175,units='mm', res=300)
-
-layout(matrix(c(1,2), 1,2, byrow=FALSE),
-             width=c(6,6), height=c(1))
-hist(AUCresults2$Training.AUC, breaks = 10,
-     main="EOR",
-     xlab="AUC")
-
-hist(AUCresults3$Training.AUC, breaks = 10,
-     main="Herbarium",
-     xlab="AUC")
-
-dev.off()
-
-
-hist(AUCresults2$Training.AUC, breaks=15, col=rgb(1,0,0,0.5),
-     main="Red is EOR; Blue is Herb")  
-hist(AUCresults3$Training.AUC, add=TRUE,breaks=15, col=rgb(0,0,1,0.5))
-
-```
-
-# Rounds of VisTrails with elevation: coplus50int; aspect: aspect50int; ruggedness: COplus_ruggedInt50; annual temp Bio1 and annual precip Bio12 
-
-Name the EOR ones as EORSp1... and compare   
-<https://gis.stackexchange.com/questions/29118/how-to-find-the-average-raster-value-of-an-area-defined-by-a-shapefile-using-r> 
-```{r}
-dirs.vistrails <- list.dirs(path = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/EORvHERB_2019/EORvHERB_2019",full.names = TRUE, recursive = TRUE) 
-
-dirs.vistrails[grep("_Sp",dirs.vistrails)]
-
-
-```
 
 
 # Maxent 
-# VisTrails stopped working, error in making the probability maps so trying here
 ```{r}
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
-
-
-# linkspeciesnumber <- do.call(rbind,lapply(1:length(pca_data), function(x){
-#   data.frame(SpNum = x, Species = unique(pca_data[[x]]$GNAME[pca_data[[x]]$pa==3]),
-#              Dist = pca_data[[x]]$dist[pca_data[[x]]$pa==2], # pa==2 are herb
-#              SpeciesArea = unique(pca_data[[x]]$area[pca_data[[x]]$pa==1]))
-# }))
-# 
-# x <- mapply('[[', distXsp_v3, 1)
-# Herbcoords <- x[!unlist(lapply(x, is.null))]
-# notnull <- which(!unlist(lapply(x, is.null)))
-
-
 
 linkspeciesnumber <- do.call(rbind,lapply(notnull, function(x){
   data.frame(Species = distXsp_v3[[x]][[1]]@data$scientificName[1], Dist = distXsp_v3[[x]][[2]],
@@ -366,6 +93,7 @@ Years <- (as.numeric(gsub("([0-9]+).*$", "\\1", linkspeciesnumber$Year)))
 linkspeciesnumber$Year <- as.numeric(as.character(linkspeciesnumber$Year))
 linkspeciesnumber$Year <- Years
 hist(linkspeciesnumber$Year)
+# with distXsp_v3 I've got herbarium records after 1980 but all polygons for EORs
 
 ggplot(linkspeciesnumber, aes(Area, log(Dist)))+
   geom_point()+
@@ -1355,11 +1083,100 @@ for(x in atleast12[c(2,4:28)]){
 ```
 
 
+#  Habitat specificity    
+Principal components analysis of predictor variables    
+PCA for how different - 
+calculate the size of the ellipse <https://stackoverflow.com/questions/38782051/how-to-calculate-the-area-of-ellipse-drawn-by-ggplot2>
+```{r}
+habsp <- do.call(rbind,lapply(atleast12, function(x){
+  out <- do.call(rbind,lapply(1:4, function(rep){
+  load(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEntReplicates/maxentSp",x,"kfold",rep,".Rda", sep=""))
+  outinner <- data.frame(SpeciesNum = x, kfold = rep, xm@presence)
+  outinner
+  }))
+  out
+}))
+
+# Would need to add a column for species and another for replicate and then ignore those columns for the princomp of all species and replicates at a time
+prPCA <- princomp(habsp[,-c(1:2)])
+summary(prPCA)
+loadings(prPCA)
+
+allsphabsp <- data.frame(habsp[,1:2],prPCA$scores)
+
+# for one run of one species
+ggplot(allsphabsp, aes(Comp.1,Comp.2, colour=as.factor(SpeciesNum)))+
+  geom_point()+
+  stat_ellipse(segments=201)+ #default is to draw 51 line segments to make the ellipse
+  theme_bw()+
+  xlab(expression(atop("PC1 (97% variance explained)", "Elevation = 0.974; Bio12 = 0.227")))+
+  ylab(expression(atop("PC2 (2% variance explained)","Aspect = -0.999")))
+  
+
+# for all species
+habspecificity <- do.call(rbind,lapply(atleast12, function(x){
+  # get and average across the replicates
+  ellipseout <- do.call(rbind,lapply(1:4, function(rep){
+    p <- ggplot(allsphabsp[allsphabsp$SpeciesNum==x&allsphabsp$kfold==rep,], 
+                aes(Comp.1,Comp.2))+
+      geom_point()+
+      stat_ellipse(segments=201) #default is to draw 51 line segments to make the ellipse
+    # get ellipse coordinates
+    pb <- ggplot_build(p)
+    table(pb$data[[2]]$group)
+    
+    el <- pb$data[[2]][c("x","y")]
+    
+    # Center of ellipse
+    ctr <- MASS::cov.trob(el)$center
+    
+    # Distance to center from each point on ellipse
+    dist2center <- sqrt(rowSums((t(t(el)-ctr))^2))
+    
+    # Area of ellipse from semi-major and semi-minor axes which are largest and smallest of dist to center
+    habitatspecificity <- pi*min(dist2center)*max(dist2center)
+    hsout <- data.frame(SpeciesNum = x, kfold = rep, habspec = habitatspecificity)
+    hsout
+    }))
+  ellipseout
+  }))
+
+summaryhabspec <- summarySE(habspecificity, measurevar = "habspec", groupvars = c("SpeciesNum"))
+
+```
 
 
-PCA for how different
+Distance from all specimens to all EORs regardless of year      
+See distXsp_noEORgrid <- in "Herb to EORs_v4.Rmd"
+```{r}
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
+
+allspecies <- mapply(cbind, distXsp_noEORgrid, "SpeciesNum" = 1:60, SIMPLIFY = FALSE)
+allspecies <- do.call(rbind, allspecies[notnull])
+gc()
+
+```
+
+```{r}
+# Overlay area and spatial error for each species
+ggplot(habspecificity, aes(factor(SpeciesNum), habspec))+
+  geom_boxplot()+
+  geom_point(position=position_jitter()) +
+  theme_bw()+
+  ylab("Habitat specificity (95% CI)")+
+  xlab("Species ID")
+  # geom_boxplot(data=allspecies[allspecies$SpeciesNum %in% atleast12,], aes(factor(SpeciesNum), Dist), colour = "red", position=position_dodge(0.5))+
+  # geom_point(data=allspecies[allspecies$SpeciesNum %in% atleast12,], 
+  #            aes(factor(SpeciesNum), Area/(1000)),
+  #            colour="blue")
+
+
+  
+```
+Habitat specificity (average) by distance
 ```{r}
 
 
-
 ```
+
+
