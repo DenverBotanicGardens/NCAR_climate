@@ -100,10 +100,11 @@ distXspall <- do.call(rbind, distXsp_noEORgrid)
 #The over 400 km is clearly wrong; so are any above 300km is out of the state (if point is in the middle) so need to cutoff below 300,000
 distdistribution <- distXspall$Dist[distXspall$Dist<300000]
 
+
 maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10, 
-                      arguments = FALSE,
+                      maxentarguments = FALSE, predictorvariables = rasterstack, 
                       background_points, pathstart, filenames, kfoldnum = 4, 
-                      error = FALSE, distdistribution){
+                      error = FALSE, distdistribution = NULL){
         for(x in whichones){
           if(error == TRUE){
                 errorpoints <- spatialpointsdataframe_herb[[x]][[1]]
@@ -140,11 +141,11 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10,
                 
           for(rep in 1:numberofReps){
                 convertxy$kfold <- kfold(convertxy, k=kfoldnum) # to have 75:25%
-                if(arguments == TRUE){
-                  xm <- maxent(x = rasterstack,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords,
+                if(maxentarguments == TRUE){
+                  xm <- maxent(x = predictorvariables,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords,
                            args=c("noautofeature","noproduct","nothreshold"))
                 } else {
-                  xm <- maxent(x = rasterstack,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords)
+                  xm <- maxent(x = predictorvariables,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords)
                 }
                 
                 write.csv(data.frame(convertxy@coords,convertxy@data),
@@ -156,18 +157,18 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10,
                 cl = parallel::makeCluster(ncores)
                 doParallel::registerDoParallel(cl,ncores)
                 #compute indices for data splitting
-                rows = 1:nrow(rasterstack)
+                rows = 1:nrow(predictorvariables)
                 split = sort(rows%%ncores)+1
                 outname = paste(pathstart,"PredictHerb",filenames,"Sp", x,"kfold",rep, sep="")
                 #perform the prediction on subsets of the predictor dataset
                 foreach(i=unique(split), .combine=c)%dopar%{
                   rows_sub = rows[split==i]
-                  sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub), max(rows_sub), 
-                                                                1, ncol(rasterstack)))
+                  sub = raster::crop(predictorvariables,raster::extent(predictorvariables, min(rows_sub), max(rows_sub), 
+                                                                1, ncol(predictorvariables)))
                   raster::predict(sub, xm, filename=paste(outname, i, sep="_"), overwrite=TRUE)
                 }
         
-                e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, rasterstack)
+                e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, predictorvariables)
                 save(e, file= paste(pathstart,"evaluateHerb",filenames,"Sp",x,"kfold",rep,".Rda", sep=""))
         
                 rm(xm)
@@ -691,15 +692,17 @@ stitchtogether(atleast12[1:21], pathstart,"PredictHerbWITHerrorSp", "HerbWITHerr
 ```
 
 
-# Use the function to run maxent with or without arguments
+# Use the function to run maxent with or without arguments   
+Don't know how to make the function act like the for loop where lapply didnt' send info out of function and similarly the for loop within the function doesn't send the information out
 ```{r}
 
 pathstart2 <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_witharguments" 
 spatialpointsdataframe_herb <- distXsp_v3
 background_points <- bgHerb
 
-maxentrun(whichones = atleast12[1], spatialpointsdataframe_herb = spatialpointsdataframe_herb,
-          arguments = TRUE, background_points = background_points, filenames = "noerror")
+maxentrun(whichones = atleast12[1], numberofReps = 2, spatialpointsdataframe_herb = spatialpointsdataframe_herb,
+          maxentarguments = TRUE, background_points = background_points, filenames = "noFooerror", 
+          pathstart = pathstart2)
 
 ```
 
