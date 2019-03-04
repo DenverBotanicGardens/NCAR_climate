@@ -17,11 +17,35 @@ library(doParallel)
 library(dismo)
 library(Rmisc)
 library(rgdal)
+library(sf)
 
 
+# citation(dismo)
 
 # Instead, load:
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_v3.Rda")
+
+
+stitchtogether <- function(whichones, pathstart, patternmatch, rasternames){
+  lapply(whichones, function(i){
+  gc()
+  lapply(1:10, function(k){
+    resultpath <- list.files(path = pathstart, 
+                             pattern = paste(patternmatch,i,"kfold",k,"_",sep=""), 
+                             full.names=TRUE)
+    rastout <- lapply(resultpath, function(x){
+      raster(x)
+      })
+    rastout$filename <- paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/ProbTiffSp",i,rasternames,k,".tif", sep="")
+    rastout$overwrite <- TRUE
+    m <- do.call(merge, rastout)
+  })
+})
+}
+
+```
+
+```{r}
 
 
 #Could sample again to get same number of records for presence and absence for each
@@ -54,17 +78,70 @@ gc()
 
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgHerb.Rda")
 
-for(x in atleast12){
-        convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
-        bgpnts <- bgHerb[[match(x,notnull)]]
-        proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
-        bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
+distXspall <- do.call(rbind, distXsp_noEORgrid)
+distXspall$New.Genus <- gsub("([A-Za-z]+).*", "\\1", distXspall$Species)
+table(distXspall$Yeardiff) # 9999 for unknown year of EOR mapping --> removed now
+distXspall[distXspall$Yeardiff< -100,c("EORdate","year")]
+names(distXspall)
+
+hist(distXspall$Dist/1000,breaks=100)
+#The over 400 km is clearly wrong; so are any above 300km is out of the state (if point is in the middle) so need to cutoff below 300,000
+
+distdistribution <- distXspall$Dist[distXspall$Dist<300000]
+hist(distdistribution, breaks=100)
+
+```
+
+```{r}
+
+
+pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
+stitchtogether(atleast12[22:28], pathstart,"PredictHerbWITHerrorSp", "HerbWITHerrorkfold")
+
+stitchtogether(atleast12[1], pathstart,"PredictHerbnoerrorSp", "Herbnoerrorkfold")
+```
+
+
+
+<https://rpubs.com/frousseu/328065> 
+
+```{r}
+
+for(x in atleast12[20:28]){
+  rm(e)
+    errorpoints <- distXsp_v3[[x]][[1]]
+     # for each point I will draw a circle of size (drawn from the distribution of error seen distXspall$Dist) and then pick a random point along the circle.
+    errorpointsout <- do.call(rbind,lapply(1:nrow(errorpoints), function(r){
+      errordist <- sample(distdistribution, 1)
+      if(errordist>0){
+        erroraround <- gBuffer(errorpoints[r,], width=errordist)
+        newpoint <- erroraround@polygons[[1]]@Polygons[[1]]@coords
+        out <- newpoint[sample(1:nrow(newpoint),1),]
+      } else {
+          out <- errorpoints@coords[r,]
+      }
+      out
+    }))
+    
+    df <- data.frame(errorpointsout)
+    coordinates(df) <- ~x+y
+    proj4string(df) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+    circlesout <- circles(df, d = 5000) #Should be 5km around
+    polygns <- polygons(circlesout)
+    bgpnts <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
+    
+    convertxy <- spTransform(df, CRS("+proj=longlat +datum=WGS84"))
+    proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+    bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
         
   for(rep in 1:10){
         convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
-        xm <- maxent(rasterstack,convertxy[convertxy$kfold!=1,])
-        save(xm, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/maxentHerbnoerrorSp",x,"kfold",rep,".Rda", sep=""))        
-
+        xm <- maxent(x = rasterstack,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords) # ,
+                    # args=c("noautofeature","noproduct","nothreshold"))
+        write.csv(data.frame(convertxy@coords,convertxy@data),
+                  paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/presenceHerbWITHerrorSp",x,"kfold",rep,".csv", sep=""))
+        save(xm, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/maxentHerbWITHerrorSp",x,"kfold",rep,".Rda", sep=""))
         gc()
         #register parallel computing backend
         cl = parallel::makeCluster(ncores)
@@ -72,25 +149,26 @@ for(x in atleast12){
         #compute indices for data splitting
         rows = 1:nrow(rasterstack)
         split = sort(rows%%ncores)+1
-        outname = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/PredictHerbnoerrorSp", x,"kfold",rep, sep="")
+        outname = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/PredictHerbWITHerrorSp", x,"kfold",rep, sep="")
         #perform the prediction on subsets of the predictor dataset
         foreach(i=unique(split), .combine=c)%dopar%{
           rows_sub = rows[split==i]
-          sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub), max(rows_sub), 
-                                                        1, ncol(rasterstack)))
+          sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub),
+                                                        max(rows_sub), 1, ncol(rasterstack)))
           raster::predict(sub, xm, filename=paste(outname, i, sep="_"), overwrite=TRUE)
         }
 
-        e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, rasterstack)
-        save(e, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/evaluateHerbnoerrorSp",x,","kfold",rep,".Rda", sep=""))
-        
-        rm(xm)
         gc()
         stopCluster(cl)
+
+        e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, rasterstack)
+        save(e, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/evaluateHerbWITHerrorSp",x,"kfold",rep,".Rda", sep=""))
+
+        rm(xm, errorpointout, errorpoints,polygns)
   }
         e
 }
 
 ```
 
-```
+
