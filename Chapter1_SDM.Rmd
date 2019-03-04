@@ -78,6 +78,72 @@ gc()
 rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
 
 
+stitchtogether <- function(whichones, pathstart, patternmatch, rasternames){
+  lapply(whichones, function(i){
+  gc()
+  lapply(1:10, function(k){
+    resultpath <- list.files(path = pathstart, 
+                             pattern = paste(patternmatch,i,"kfold",k,"_",sep=""), 
+                             full.names=TRUE)
+    rastout <- lapply(resultpath, function(x){
+      raster(x)
+      })
+    rastout$filename <- paste(pathstart,"ProbTiffSp",i,rasternames,k,".tif", sep="")
+    rastout$overwrite <- TRUE
+    m <- do.call(merge, rastout)
+  })
+})
+}
+
+maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10, 
+                      arguments = FALSE,
+                      background_points, pathstart, filenames, kfoldnum = 4){
+        for(x in whichones){
+                convertxy <- spTransform(spatialpointsdataframe_herb[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
+                bgpnts <- background_points[[match(x,notnull)]]
+                proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+                bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
+                
+          for(rep in 1:numberofReps){
+                convertxy$kfold <- kfold(convertxy, k=kfoldnum) # to have 75:25%
+                if(arguments == TRUE){
+                  xm <- maxent(x = rasterstack,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords,
+                           args=c("noautofeature","noproduct","nothreshold"))
+                } else {
+                  xm <- maxent(x = rasterstack,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords)
+                }
+                
+                write.csv(data.frame(convertxy@coords,convertxy@data),
+                          paste(pathstart,"presenceHerb",filenames,"Sp",x,"kfold",rep,".csv", sep=""))
+                save(xm, file= paste(pathstart,"maxentHerb",filenames,"Sp",x,"kfold",rep,".Rda", sep=""))        
+        
+                gc()
+                #register parallel computing backend
+                cl = parallel::makeCluster(ncores)
+                doParallel::registerDoParallel(cl,ncores)
+                #compute indices for data splitting
+                rows = 1:nrow(rasterstack)
+                split = sort(rows%%ncores)+1
+                outname = paste(pathstart,"PredictHerb",filenames,"Sp", x,"kfold",rep, sep="")
+                #perform the prediction on subsets of the predictor dataset
+                foreach(i=unique(split), .combine=c)%dopar%{
+                  rows_sub = rows[split==i]
+                  sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub), max(rows_sub), 
+                                                                1, ncol(rasterstack)))
+                  raster::predict(sub, xm, filename=paste(outname, i, sep="_"), overwrite=TRUE)
+                }
+        
+                e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, rasterstack)
+                save(e, file= paste(pathstart,"evaluateHerb",filenames,"Sp",x,"kfold",rep,".Rda", sep=""))
+        
+                rm(xm)
+                gc()
+                stopCluster(cl)
+          }
+                e
+        }
+}
+
 ```
 
 
@@ -544,14 +610,13 @@ pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeli
 MAxent and stitch together rasters as functions
 ```{r}
 
-maxentrun <- function(whichones, spatialpointsdataframe_herb = distXsp_v3, numberofReps = 10, arguments)
 for(x in atleast12){
         convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
         bgpnts <- bgHerb[[match(x,notnull)]]
         proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
         bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
         
-  for(rep in 1:numberofReps){
+  for(rep in 1:10){
         convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
         xm <- maxent(x = rasterstack,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords) # , 
                     # args=c("noautofeature","noproduct","nothreshold"))
@@ -584,29 +649,22 @@ for(x in atleast12){
   }
         e
 }
-}
 
-stitchtogether <- function(whichones, pathstart, patternmatch, rasternames){
-  lapply(whichones, function(i){
-  gc()
-  lapply(1:10, function(k){
-    resultpath <- list.files(path = pathstart, 
-                             pattern = paste(patternmatch,i,"kfold",k,"_",sep=""), 
-                             full.names=TRUE)
-    rastout <- lapply(resultpath, function(x){
-      raster(x)
-      })
-    rastout$filename <- paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/ProbTiffSp",i,rasternames,k,".tif", sep="")
-    rastout$overwrite <- TRUE
-    m <- do.call(merge, rastout)
-  })
-})
-}
+
 
 pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
 stitchtogether(atleast12[1:21], pathstart,"PredictHerbWITHerrorSp", "HerbWITHerrorkfold")
 ```
 
+```{r}
+
+pathstart2 <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_witharguments" 
+spatialpointsdataframe_herb <- distXsp_v3
+background_points <- bgHerb
+
+maxentrun()
+
+```
 
 Take the overlap of all EOR polygons and the rasters to get the histograms of probability   
     1. Do I average over all the replicates? Then what do I do with the SD? That could also be extracted to see how much uncertainty falls within the spatial extent of the known populations. - that is another measure of precision.    
