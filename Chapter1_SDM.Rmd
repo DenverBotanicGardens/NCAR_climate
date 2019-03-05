@@ -813,6 +813,10 @@ maxones <- "maxentHerbnoerror"
 
 habspsame <- habitatSpecificity(whichones = atleast12, pathstart = pathstarterror,
                                 whichmaxentpoints = maxones, replicates = 10)
+
+habspwitherror <- habitatSpecificity(whichones = atleast12, pathstart = pathstarterror,
+                                whichmaxentpoints = "maxentHerbWITHerror", replicates = 10)
+
 ```
 
 Plot habitat specificity
@@ -844,9 +848,14 @@ ggplot(allsphabsp, aes(Comp.1,Comp.2, colour=as.factor(SpeciesNum)))+
 summaryhabspec <- summarySE(habspecificity, measurevar = "habspec", groupvars = c("SpeciesNum"))
 
 
+sumhabspec <- merge(summaryhabspec, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
+
 
 plot(summaryhabspec$SpeciesNum,summaryhabspec$habspec, pch=16, cex=2)
 points(habspsame$SpeciesNum, habspsame$habspec, col="red")
+
+boxplot(sumhabspec$habspec ~ sumhabspec$Area, 
+        col=c(rgb(0,0,0,.15),rgb(1,1,1,.15)),las=2, outline=F)
 
 ```
 
