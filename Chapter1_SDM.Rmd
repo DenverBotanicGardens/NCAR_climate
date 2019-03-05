@@ -183,56 +183,60 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10,
 
 
 
-# Maxent 
+# Maxent    
+Get the years of the herbarium specimens and the years of the EORs mapped from distXsp_noEORgrid from "Herb to EORs_v4"
 ```{r}
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
 
-linkspeciesnumber <- do.call(rbind,lapply(notnull, function(x){
-  data.frame(Species = distXsp_v3[[x]][[1]]@data$scientificName[1], Dist = distXsp_v3[[x]][[2]],
-             Area = sum(distXsp_v3[[x]][[3]]), SpNum = x, Year=distXsp_v3[[x]][[1]]@data$year,
-             distXsp_v3[[x]][[1]]@coords)
-}))
+length(distXsp_noEORgrid) # 60
+length(notnullEOR) # without #8
 
-Years <- (as.numeric(gsub("([0-9]+).*$", "\\1", linkspeciesnumber$Year)))
-linkspeciesnumber$Year <- as.numeric(as.character(linkspeciesnumber$Year))
-linkspeciesnumber$Year <- Years
-hist(linkspeciesnumber$Year)
-# with distXsp_v3 I've got herbarium records after 1980 but all polygons for EORs
+df_distances <- Map(cbind, distXsp_noEORgrid[notnull], 
+                    SpNum = notnull)
 
-ggplot(linkspeciesnumber, aes(Area, log(Dist)))+
+length(which(unlist(lapply(distXsp_noEORgrid, function(x) length(x)>0))) )
+
+identical(notnull, which(unlist(lapply(distXsp_noEORgrid, function(x) length(x)>0))))
+df_dist <- do.call(rbind, df_distances)
+str(df_dist)
+
+
+df_dist$EORYear <- as.numeric(substring(df_dist$EORdate,1,4))
+hist(df_dist$EORYear)
+
+ggplot(df_dist, aes(Area, log(Dist)))+
   geom_point()+
   stat_smooth(method="lm")+
   ylab("Distance (log(meters))")+
   theme_bw()
 
-plot(log(linkspeciesnumber$Area+1),log(linkspeciesnumber$Dist+1),
+plot(log(df_dist$Area+1),log(df_dist$Dist+1),
      xlab=expression(paste("Species Range log(meters" ^2,")" )),
      ylab=expression(paste("log (meters)")))
-abline(lm(log(Dist+1)~log(Area+1), data=linkspeciesnumber))
+abline(lm(log(Dist+1)~log(Area+1), data=df_dist))
 
-length(unique(linkspeciesnumber$SpNum))
-length(morethan12) # minus 1 for the Boechera missing EOR
+length(unique(df_dist$SpNum))
 
-max(linkspeciesnumber$Dist)
-
-linkspeciesnumber$Dist[linkspeciesnumber$SpNum==12]
-# Current Figure 2: see Herb to EORs_v4.Rmd 
-# Removing largest distance that would put the point 3155 miles away, Colorado is 380 miles wide
-# The second furthest is 668 miles away from somewhere in Colorado, that's outside of colorado
-# The three furthest couldn't fall within Colroado so are removed  
-# hypotenuse of colroado is about 472 miles, the third point is 406 miles from nearest EOR
+max(df_dist$Dist) # 411023.6 meters
 ```
+
 Table 1 - species in niche models, put a column indiciating which are SDM
 ```{r}
 
-out <- Rmisc::summarySE(linkspeciesnumber, "Dist", "SpNum")
+out <- Rmisc::summarySE(df_dist, "Dist", "SpNum")
 
-tab1 <- do.call(rbind, lapply(split(linkspeciesnumber, linkspeciesnumber$SpNum), function(x){
-  data.frame(SpNum = unique(x$SpNum), Species = x$Species[1], DistAvg = summarySE(x, "Dist"), 
-             Area = unique(x$Area),
-             MinYear = min(x$Year), MaxYear = max(x$Year), AvgLat = summarySE(x, "decimalLatitude"))
+tab1 <- do.call(rbind, lapply(split(df_dist, df_dist$SpNum), function(x){
+  data.frame(SpNum1 = unique(x$SpNum), Species = x$Species[1], DistAvg = summarySE(x, "Dist"), 
+             Area = unique(x$Area), minYearDiff = min(x$Yeardiff), maxYearDiff = max(x$Yeardiff),
+             SpNum= unique(x$SpNum), YearDiffAvg = summarySE(x, "Yeardiff"),
+             MinEORyear = min(x$EORYear), MaxEORyear = max(x$EORYear), 
+             MinYear = min(x$year), MaxYear = max(x$year), AvgLat = summarySE(x, "decimalLatitude"))
 })) 
 
+tab1$SDM[tab1$SpNum %in% atleast12] <- "x"
+
 write.csv(tab1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/table1.csv")
+
 library(Taxonstand)
 TPLtbl1 <- TPL(tab1$Species)
 write.csv(TPLtbl1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/TPLtbl1.csv")
@@ -244,27 +248,25 @@ write.csv(TPLtbl1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche m
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure2.jpg",
      width=225, height=105,units='mm', res=300)
 
-smallerthan <- sort(linkspeciesnumber$Dist)[length(linkspeciesnumber$Dist)-2]
-
 layout(matrix(c(1,2), 1,2))
 
-plot(linkspeciesnumber$Area[linkspeciesnumber$Dist<smallerthan],
-     linkspeciesnumber$Dist[linkspeciesnumber$Dist<smallerthan],
-     xlab=expression(paste("Species Range km" ^2)),
-     ylab=expression(paste("km")),
-     pch=16, cex= .5, yaxt="n", xaxt="n")
-     axis(2, at=c(0,100,200,300,400)*1000, labels=c(0,100,200,300,400))
-     axis(1, at=c(0,10,20,30,40,50,60,70,80,90)*(1000^2), labels=c(0,10,20,30,40,50,60,70,80,90))
-abline(lm(Dist~Area, data=linkspeciesnumber[linkspeciesnumber$Dist<smallerthan,]))
+#default margins par(mar=c(5.1, 4.1, 4.1, 2.1))
+
+par(mar=c(5.1, 4.1, 1.1, 0.1))
+plot(log(df_dist$Area+1),
+     log(df_dist$Dist+1),
+     xlab=expression(paste("Species Range log(km" ^2,")")),
+     ylab=expression(paste("log(km)")),
+     pch=16, cex= .5) 
+abline(lm((log(Dist+1))~ (log(Area+1)), data=df_dist))  # 
 mtext("a)", side=3, line=0, adj=0)
 
-plot(jitter(linkspeciesnumber$Year[linkspeciesnumber$Dist<smallerthan]),
-     linkspeciesnumber$Dist[linkspeciesnumber$Dist<smallerthan],
+par(mar=c(5.1, 2.1, 1.1, 0.1))
+plot(jitter(df_dist$year),log(df_dist$Dist+1),
      xlab="Year",
      ylab="",
-     pch=16, cex= .25, yaxt="n")
-     axis(2, at=c(0,100,200,300,400)*1000, labels=c(0,100,200,300,400))
-abline(lm(Dist~Year, data=linkspeciesnumber[linkspeciesnumber$Dist<smallerthan,]))
+     pch=16, cex= .25)
+abline(lm(log(Dist+1)~year, data=df_dist))
 mtext("b)", side=3, line=0, adj=0)
 
 
@@ -296,150 +298,77 @@ bgHerb <- lapply(notnull, function(x){
   bg
   })
 save(bgHerb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgHerb.Rda")
-
-# I know which they are, in order they are notnullEOR
-bgEOR <- lapply(notnullEOR, function(x){
-  df <- distXsp_v3[[x]][[4]]
-  coordinates(df) <- ~x+y
-  proj4string(df) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
-  circles <- circles(df, d = 5000) #Should be 5km around
-  polygns <- polygons(circles)
-  bg <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
-  # do I want to get just one per cell? I'm gonna skip cellFromXY(mask, bg) # where mask should be my one used to set the size and clip the others in vistrails
-  bg
-  })
-save(bgEOR, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgEOR.Rda")
+# 
+# # I know which they are, in order they are notnullEOR
+# bgEOR <- lapply(notnullEOR, function(x){
+#   df <- distXsp_v3[[x]][[4]]
+#   coordinates(df) <- ~x+y
+#   proj4string(df) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+#   circles <- circles(df, d = 5000) #Should be 5km around
+#   polygns <- polygons(circles)
+#   bg <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
+#   # do I want to get just one per cell? I'm gonna skip cellFromXY(mask, bg) # where mask should be my one used to set the size and clip the others in vistrails
+#   bg
+#   })
+# save(bgEOR, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgEOR.Rda")
 
 ```
-
-
-## Herbarium specimens as is, replicates instead of new kfold
-
-
-
 ###############################################################################################
-## Skip this
-Why dont' have at least the number of points for EORs that have for Herb in some of them? 
+Skip
 ```{r}
-thin.max <- function(x, cols, npoints){
-  #Create empty vector for output
-  inds <- vector(mode="numeric")
-  
-  #Create distance matrix
-  this.dist <- as.matrix(dist(x[,cols], upper=TRUE))
-  
-  #Draw first index at random
-  inds <- c(inds, as.integer(runif(1, 1, length(this.dist[,1]))))
-  
-  #Get second index from maximally distant point from first one
-  #Necessary because apply needs at least two columns or it'll barf
-  #in the next bit
-  inds <- c(inds, which.max(this.dist[,inds]))
-  
-  while(length(inds) < npoints){
-    #For each point, find its distance to the closest point that's already been selected
-    min.dists <- apply(this.dist[,inds], 1, min)
-    
-    #Select the point that is furthest from everything we've already selected
-    this.ind <- which.max(min.dists)
-    
-    #Get rid of ties, if they exist
-    if(length(this.ind) > 1){
-      print("Breaking tie...")
-      this.ind <- this.ind[1]
-    }
-    inds <- c(inds, this.ind)
-  }
-  
-  return(x[inds,])
-}
-
-
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
-library(maptools)
-l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
-
-l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
-l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
-                                       function(x){
-              x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
-              x
-              }))
-coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences.csv")
-rowstomatch <- lapply(c("Taxon","AcceptedName"), function(x){
-   coloradosps[,"scientificName"] %in%  g1g2names[,x]
-})
-
-coloradosps.g1g2 <- unique(rbind(coloradosps[rowstomatch[[1]],],coloradosps[rowstomatch[[2]],]))
-coloradosps.g1g2$decimalLatitude <- 
-  as.numeric(as.character(coloradosps.g1g2$decimalLatitude))
-coloradosps.g1g2$decimalLongitude <- 
-  as.numeric(as.character(coloradosps.g1g2$decimalLongitude))
-coloradosps.g1g2$lon2 <- round(coloradosps.g1g2$decimalLongitude,2) # about 1.1 km 
-coloradosps.g1g2$lat2 <- round(coloradosps.g1g2$decimalLatitude,2)
-coloradosps.g1g2$lon3 <- round(coloradosps.g1g2$decimalLongitude,3) # about 110 m
-coloradosps.g1g2$lat3 <- round(coloradosps.g1g2$decimalLatitude,3)
-
-     library(splancs)
-```
-
-
-```{r}
-
-presenceEORpoints <- lapply(notnullEOR, function(i){
-  g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in%
-                                c(g1g2names$Taxon[i],g1g2names$AcceptedName[i])&
-                                !is.na(coloradosps.g1g2$decimalLatitude),]
-  
-  g1g2now <- g1g2now[as.numeric(as.character(g1g2now$year))>1980,]
-  g1g2now <- g1g2now[g1g2now$decimalLatitude>0,]
-  g1g2now <- g1g2now[grepl("Specimen",g1g2now$basisOfRecord),]
-  g1g2now <- g1g2now[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)]
-  
-  
-   polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-                                        g1g2names$Taxon[i]),] 
-    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
-    
-    # years <- format(as.Date(polys$LASTOBS, format="%Y-%m-%d"),"%Y")
-    years <- as.numeric(substring(polys$LASTOBS,1,4))
-    yearlater1980 <- c()
-    for(l in 1:length(years)){
-      yearlater1980[l] <- if(years[l]>1980){ 
-                                      l } else {
-                                        NA
-                                      }
-    }
-    yearlater1980 <- yearlater1980[!is.na(yearlater1980)] 
-    
-    polys <- polys[yearlater1980,]
-    
-    totalarea <- sum(area((polys)))
-  # area of each polygon
-    areanow <- sapply(slot(polys,"polygons"), slot, "area")
-  # Proportional area to the whole area number to thin
-    EORpnts <- do.call(rbind, lapply(1:length(polys), function(f){
-      outline <- polys@polygons[[f]]@Polygons[[1]]@coords
-      grid <- makegrid(polys, cellsize = 50) # cellsize in map units!
-      names(grid) <- c("x","y")
-      gridout <- grid[inout(grid,outline), ]
-      if(nrow(gridout)>1){
-        gridthin <- thin.max(gridout,c("x","y"),(round(nrow(g1g2now)*(areanow[[f]]/totalarea),0))+1)
-        gc()
-        } else {
-          if(nrow(gridout)>0) {
-            gridthin <- gridout 
-          } else {
-            gridthin <- NULL
-          }
-          }
-      gridthin
-      }))
-    gc()
-    EORpnts
-})
-
-save(presenceEORpoints, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presenceEORpoints.Rda")
+ 
+# presenceEORpoints <- lapply(notnullEOR, function(i){
+#   g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in%
+#                                 c(g1g2names$Taxon[i],g1g2names$AcceptedName[i])&
+#                                 !is.na(coloradosps.g1g2$decimalLatitude),]
+#   
+#   g1g2now <- g1g2now[as.numeric(as.character(g1g2now$year))>1980,]
+#   g1g2now <- g1g2now[g1g2now$decimalLatitude>0,]
+#   g1g2now <- g1g2now[grepl("Specimen",g1g2now$basisOfRecord),]
+#   g1g2now <- g1g2now[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)]
+#   
+#   
+#    polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+#                                         g1g2names$Taxon[i]),] 
+#     proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+#     
+#     # years <- format(as.Date(polys$LASTOBS, format="%Y-%m-%d"),"%Y")
+#     years <- as.numeric(substring(polys$LASTOBS,1,4))
+#     yearlater1980 <- c()
+#     for(l in 1:length(years)){
+#       yearlater1980[l] <- if(years[l]>1980){ 
+#                                       l } else {
+#                                         NA
+#                                       }
+#     }
+#     yearlater1980 <- yearlater1980[!is.na(yearlater1980)] 
+#     polys <- polys[yearlater1980,]
+#     totalarea <- sum(area((polys)))
+#   # area of each polygon
+#     areanow <- sapply(slot(polys,"polygons"), slot, "area")
+#   # Proportional area to the whole area number to thin
+#     EORpnts <- do.call(rbind, lapply(1:length(polys), function(f){
+#       outline <- polys@polygons[[f]]@Polygons[[1]]@coords
+#       grid <- makegrid(polys, cellsize = 50) # cellsize in map units!
+#       names(grid) <- c("x","y")
+#       gridout <- grid[inout(grid,outline), ]
+#       if(nrow(gridout)>1){
+#         gridthin <- thin.max(gridout,c("x","y"),(round(nrow(g1g2now)*(areanow[[f]]/totalarea),0))+1)
+#         gc()
+#         } else {
+#           if(nrow(gridout)>0) {
+#             gridthin <- gridout 
+#           } else {
+#             gridthin <- NULL
+#           }
+#           }
+#       gridthin
+#       }))
+#     gc()
+#     EORpnts
+# })
+# 
+# save(presenceEORpoints, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presenceEORpoints.Rda")
 
 
 yearsofPolys <- lapply(notnullEOR, function(i){
@@ -462,13 +391,6 @@ for(d in 1:length(yearsofPolys)){
   print(yearsofPolys[[d]])
 }
 
-
-
-rm(l1eor,l1G1G2,g1g2names,coloradosps,coloradosps.g1g2)
-save(presenceEORpoints, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presenceEORpoints.Rda")
-
-presenceEORpoints[[3]]
-
 #These are all after 1980 but 
 bgHerb <- lapply(notnull, function(x){
   circles <- circles(distXsp_v3[[x]][[1]], d = 5000) #Should be 5km around
@@ -479,21 +401,19 @@ bgHerb <- lapply(notnull, function(x){
   })
 save(bgHerb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgHerb.Rda")
 
-# I know which they are, in order they are notnullEOR
-bgEOR <- lapply(presenceEORpoints, function(x){
-  df <- x
-  coordinates(df) <- ~x+y
-  proj4string(df) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
-  circles <- circles(df, d = 5000) #Should be 5km around
-  polygns <- polygons(circles)
-  bg <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
-  # do I want to get just one per cell? I'm gonna skip cellFromXY(mask, bg) # where mask should be my one used to set the size and clip the others in vistrails
-  bg
-  })
-save(bgEOR, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgEOR.Rda")
+# # I know which they are, in order they are notnullEOR
+# bgEOR <- lapply(presenceEORpoints, function(x){
+#   df <- x
+#   coordinates(df) <- ~x+y
+#   proj4string(df) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+#   circles <- circles(df, d = 5000) #Should be 5km around
+#   polygns <- polygons(circles)
+#   bg <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
+#   # do I want to get just one per cell? I'm gonna skip cellFromXY(mask, bg) # where mask should be my one used to set the size and clip the others in vistrails
+#   bg
+#   })
+# save(bgEOR, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgEOR.Rda")
 
-
-distXsp_v3[[1]][[4]]
 ```
 
 ###############################################################################################
@@ -684,7 +604,7 @@ for(x in atleast12){
   }
         e
 }
-
+################################# for loop works but lapply and function do not work
 
 
 pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
@@ -735,6 +655,7 @@ proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("
 plot(l1G1G2)
 plot(polys, add=TRUE, border="red", lwd=5)    
 
+# One probability map of one rep
 r <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/ProbTiffSp",i,"Herbnoerrorkfold",k,".tif", sep=""))
 
 polys <- spTransform(polys, CRS("+proj=longlat +datum=WGS84"))
@@ -747,6 +668,8 @@ load(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/
 plot(r)
 plot(polys, add=TRUE, border=rgb(1,1,0,0.5), lwd=15)  
 
+# Overlap of probability and SD for each polygon set mapped CNHP accuracy 
+
 f <- 
 cr <- crop(r, extent(f), snap="out")                    
 fr <- rasterize(f, cr)   
@@ -757,6 +680,7 @@ plot(lr)
 plot(f,add=T)
 
 
+# How degree of probability is hit over whole area precision
 ```
 
 
@@ -767,6 +691,132 @@ Principal components analysis of predictor variables
 PCA for how different - 
 calculate the size of the ellipse <https://stackoverflow.com/questions/38782051/how-to-calculate-the-area-of-ellipse-drawn-by-ggplot2>
 ```{r}
+habsp_EOR <- do.call(rbind, lapply(atleast12, function(i){
+  polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                        g1g2names$Taxon[i]),]
+  proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+  EORpnts <- do.call(rbind, lapply(1:length(polys), function(f){
+    # area <- sapply(slot(polys,"polygons"), slot, "area")[f]
+    # round(sqrt(area)/165,0) # meters along a 'side'; bioclim is at about 165 meters
+      outline <- polys@polygons[[f]]@Polygons[[1]]@coords # Use these and grid within
+      grid <- makegrid(polys, cellsize = 165) # cellsize in map units!
+      names(grid) <- c("x","y")
+      gridout <- grid[splancs::inout(grid,outline), ]
+      if(nrow(gridout)==0){
+        gridout <- data.frame(x=outline[,1],y=outline[,2])
+      }
+      gridout
+      }))
+  coordinates(EORpnts) <- ~x+y
+  proj4string(EORpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+  EORpnts <- spTransform(EORpnts, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+  gridextract <- extract(rasterstack,EORpnts)
+    out <- data.frame(SpeciesNum=i, Species=g1g2names$AcceptedName[i], EORpnts@coords, gridextract)
+    out
+    }))
+
+
+prPCAEOR <- princomp(habsp_EOR[,-c(1:4)])
+summary(prPCAEOR)
+loadings(prPCAEOR)
+
+allsphabsp_EOR <- data.frame(habsp_EOR[,1:2],prPCAEOR$scores)
+
+# for one run of one species
+ggplot(allsphabsp_EOR, aes(Comp.1,Comp.2, colour=as.factor(SpeciesNum)))+
+  geom_point(alpha=0.1)+
+  stat_ellipse(segments=201)+ #default is to draw 51 line segments to make the ellipse
+  theme_bw()+
+  xlab(expression(atop("PC1 (97% variance explained)", "Elevation = 0.981; Bio12 = 0.193")))+
+  ylab(expression(atop("PC2 (2% variance explained)","Aspect = -0.990; Bio12 = -0.139")))
+  
+
+table(allsphabsp_EOR$SpeciesNum) # 8 has one point, 51 has 2
+
+# for all species
+habspecificity_EOR <- do.call(rbind,lapply(atleast12[!atleast12 %in% c(8, 51)], function(x){
+  # get and average across the replicates
+  p <- ggplot(allsphabsp_EOR[allsphabsp_EOR$SpeciesNum==x,],
+              aes(Comp.1,Comp.2))+
+          geom_point()+
+          stat_ellipse(segments=201) #default is to draw 51 line segments to make the ellipse
+  # get ellipse coordinates
+  pb <- ggplot_build(p)
+  table(pb$data[[2]]$group)
+  el <- pb$data[[2]][c("x","y")]
+  
+  # Center of ellipse
+  ctr <- MASS::cov.trob(el)$center
+  
+  # Distance to center from each point on ellipse
+  dist2center <- sqrt(rowSums((t(t(el)-ctr))^2))
+  
+  # Area of ellipse from semi-major and semi-minor axes which are largest and smallest of dist to center
+  habitatspecificity <- pi*min(dist2center)*max(dist2center)
+  hsout <- data.frame(SpeciesNum = x, habspec = habitatspecificity)
+  hsout
+  }))
+
+```
+
+
+```{r}
+
+habitatSpecificity <- function(whichones, pathstart, whichmaxentpoints, replicates){
+  habsp <- do.call(rbind,lapply(whichones, function(x){
+  out <- do.call(rbind,lapply(1:replicates, function(rep){
+    load(paste(pathstart,whichmaxentpoints,"Sp", x,"kfold",rep, ".Rda",sep=""))
+    outinner <- data.frame(SpeciesNum = x, kfold = rep, xm@presence)
+    outinner
+    }))
+  out
+  }))
+  habsp
+  
+  prPCA <- princomp(habsp[,-c(1:2)])
+  allsphabsp <- data.frame(habsp[,1:2],prPCA$scores)
+
+  # for all species
+  habspecificity <- do.call(rbind,lapply(atleast12, function(x){
+    # get and average across the replicates
+    ellipseout <- do.call(rbind,lapply(1:10, function(rep){
+      p <- ggplot(allsphabsp[allsphabsp$SpeciesNum==x&allsphabsp$kfold==rep,], 
+                  aes(Comp.1,Comp.2))+
+        geom_point()+
+        stat_ellipse(segments=201) #default is to draw 51 line segments to make the ellipse
+      # get ellipse coordinates
+      pb <- ggplot_build(p)
+      table(pb$data[[2]]$group)
+      
+      el <- pb$data[[2]][c("x","y")]
+      
+      # Center of ellipse
+      ctr <- MASS::cov.trob(el)$center
+      
+      # Distance to center from each point on ellipse
+      dist2center <- sqrt(rowSums((t(t(el)-ctr))^2))
+      
+      # Area of ellipse from semi-major and semi-minor axes which are largest and smallest of dist to center
+      habitatspecificity <- pi*min(dist2center)*max(dist2center)
+      hsout <- data.frame(SpeciesNum = x, kfold = rep, habspec = habitatspecificity)
+      hsout
+      }))
+    ellipseout
+    }))
+  habspecificity
+}
+```
+
+```{r}
+pathstarterror <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
+maxones <- "maxentHerbnoerror"
+
+habspsame <- habitatSpecificity(whichones = atleast12, pathstart = pathstarterror,
+                                whichmaxentpoints = maxones, replicates = 10)
+```
+
+Plot habitat specificity
+```{r}
 habsp <- do.call(rbind,lapply(atleast12, function(x){
   out <- do.call(rbind,lapply(1:10, function(rep){
     load(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/maxentHerbnoerrorSp", x,"kfold",rep, ".Rda",sep=""))
@@ -775,8 +825,6 @@ habsp <- do.call(rbind,lapply(atleast12, function(x){
     }))
   out
   }))
-
-
 # Would need to add a column for species and another for replicate and then ignore those columns for the princomp of all species and replicates at a time
 prPCA <- princomp(habsp[,-c(1:2)])
 summary(prPCA)
@@ -793,35 +841,12 @@ ggplot(allsphabsp, aes(Comp.1,Comp.2, colour=as.factor(SpeciesNum)))+
   ylab(expression(atop("PC2 (2% variance explained)","Aspect = -0.999")))
   
 
-# for all species
-habspecificity <- do.call(rbind,lapply(atleast12, function(x){
-  # get and average across the replicates
-  ellipseout <- do.call(rbind,lapply(1:10, function(rep){
-    p <- ggplot(allsphabsp[allsphabsp$SpeciesNum==x&allsphabsp$kfold==rep,], 
-                aes(Comp.1,Comp.2))+
-      geom_point()+
-      stat_ellipse(segments=201) #default is to draw 51 line segments to make the ellipse
-    # get ellipse coordinates
-    pb <- ggplot_build(p)
-    table(pb$data[[2]]$group)
-    
-    el <- pb$data[[2]][c("x","y")]
-    
-    # Center of ellipse
-    ctr <- MASS::cov.trob(el)$center
-    
-    # Distance to center from each point on ellipse
-    dist2center <- sqrt(rowSums((t(t(el)-ctr))^2))
-    
-    # Area of ellipse from semi-major and semi-minor axes which are largest and smallest of dist to center
-    habitatspecificity <- pi*min(dist2center)*max(dist2center)
-    hsout <- data.frame(SpeciesNum = x, kfold = rep, habspec = habitatspecificity)
-    hsout
-    }))
-  ellipseout
-  }))
-
 summaryhabspec <- summarySE(habspecificity, measurevar = "habspec", groupvars = c("SpeciesNum"))
+
+
+
+plot(summaryhabspec$SpeciesNum,summaryhabspec$habspec, pch=16, cex=2)
+points(habspsame$SpeciesNum, habspsame$habspec, col="red")
 
 ```
 
