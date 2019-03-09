@@ -75,8 +75,10 @@ bio1_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GE
 bio12_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled_bioclim.tif")
 gc()
 
-rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
 
+rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
+rm(bio1_res,bio12_res,coAspect_res,coElev_res,coRugged_res)
+gc()
 
 stitchtogether <- function(whichones, pathstart, patternmatch, rasternames){
   lapply(whichones, function(i){
@@ -386,6 +388,7 @@ yearsofPolys <- lapply(notnullEOR, function(i){
     yearlater1980 <- yearlater1980[!is.na(yearlater1980)]  
     table(years[which(years>1980)])
 })
+rm(l)
 
 for(d in 1:length(yearsofPolys)){
   print(yearsofPolys[[d]])
@@ -616,7 +619,7 @@ stitchtogether(atleast12[1:21], pathstart,"PredictHerbWITHerrorSp", "HerbWITHerr
 Don't know how to make the function act like the for loop where lapply didnt' send info out of function and similarly the for loop within the function doesn't send the information out
 ```{r}
 
-pathstart2 <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_witharguments" 
+pathstart2 <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_witharguments/" 
 spatialpointsdataframe_herb <- distXsp_v3
 background_points <- bgHerb
 
@@ -628,7 +631,9 @@ maxentrun(whichones = atleast12[1], numberofReps = 2, spatialpointsdataframe_her
 
 Take the overlap of all EOR polygons and the rasters to get the histograms of probability   
     1. Do I average over all the replicates? Then what do I do with the SD? That could also be extracted to see how much uncertainty falls within the spatial extent of the known populations. - that is another measure of precision.    
-    2. I should get the EORs from Utah, Wyoming, Arizona?, and New Mexico 
+    2. I should get the EORs from Utah, Wyoming, Arizona?, and New Mexico   
+    
+Accuracy
 ```{r}
 
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
@@ -644,41 +649,124 @@ plot(l1G1G2)
 
 # Crop using extent, rasterize polygon and finally, create poly-raster
 #          **** This is the code that you are after ****  f is the polygon, r is the raster
-i<-atleast12[5]
-k<-8
 
-
-polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+# get map, make lists of 10 each for each replicate
+noerrorhists <- lapply(atleast12, function(i){
+  lrhist <- lapply(1:10, function(k){
+    r <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/ProbTiffSp",i,"Herbnoerrorkfold",k,".tif", sep=""))
+    
+    polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
                                     g1g2names$Taxon[i]),] 
-proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+    # Only want ones after 1980
+    years <- as.numeric(substring(polys$LASTOBS,1,4))
+    yearlater1980 <- c()
+    for(l in 1:length(years)){
+      yearlater1980[l] <- if(years[l]>1980){
+                                      l } else {
+                                        NA
+                                      }
+    }
+    yearlater1980 <- yearlater1980[!is.na(yearlater1980)]
+    polys <- polys[yearlater1980,]
+    
+    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+    
+    f <- spTransform(polys, CRS("+proj=longlat +datum=WGS84"))
+    # Overlap of probability and SD for each polygon set mapped CNHP accuracy 
+    cr <- crop(r, extent(f), snap="out")                    
+    fr <- rasterize(f, cr)   
+    lr <- mask(x=cr, mask=fr)
+    lr
+    })
+  lrhist
+  })
 
-plot(l1G1G2)
-plot(polys, add=TRUE, border="red", lwd=5)    
+# plot(r)
+# plot(polys, add=TRUE, border=rgb(1,1,0,0.5), lwd=15)  
 
-# One probability map of one rep
-r <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/ProbTiffSp",i,"Herbnoerrorkfold",k,".tif", sep=""))
+hist(noerrorhists[[1]][[1]])
 
-polys <- spTransform(polys, CRS("+proj=longlat +datum=WGS84"))
-load(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/evaluateHerbnoerrorSp", i,"kfold",k, ".Rda",sep=""))
-e@confusion
-e
+hist(noerrorhists[[1]])
 
-load(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/maxentHerbnoerrorSp", i,"kfold",k, ".Rda",sep=""))
+# Extract takes the raster value only when the center of the raster is covered by the polygon. I've got lots of polygons that do not cover the center of the larger raster cells. Use weights for partialy covered cells and argument small for getting values for small polygons. 
+#Many "no non-missing arguments to min; returning Inf"
+witherrorhists <- lapply(atleast12, function(i){
+  lrhist <- lapply(1:10, function(k){
+    r <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/ProbTiffSp",i,"HerbWITHerrorkfold",k,".tif", sep=""))
+    
+    polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                    g1g2names$Taxon[i]),] 
+    # Only want ones after 1980
+    years <- as.numeric(substring(polys$LASTOBS,1,4))
+    yearlater1980 <- c()
+    for(l in 1:length(years)){
+      yearlater1980[l] <- if(years[l]>1980){
+                                      l } else {
+                                        NA
+                                      }
+    }
+    yearlater1980 <- yearlater1980[!is.na(yearlater1980)]
+    polys <- polys[yearlater1980,]
+    
+    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+    
+    f <- spTransform(polys, CRS("+proj=longlat +datum=WGS84"))
+    # Overlap of probability and SD for each polygon set mapped CNHP accuracy 
+    # cr <- crop(r, extent(f), snap="out")                    
+    fr <- extract(r, f, small = TRUE, weights = TRUE)   # weights = TRUE
+    # lr <- mask(x=cr, mask=fr)
+    # lr
+    unlist(fr)
+    })
+  lrhist
+  })
 
-plot(r)
-plot(polys, add=TRUE, border=rgb(1,1,0,0.5), lwd=15)  
 
-# Overlap of probability and SD for each polygon set mapped CNHP accuracy 
+for(i in 1:28){
+  for(j in 1:10){
+    hist(witherrorhists[[i]][[j]], col=rgb(0,1,1,0.25), xlim=c(0,1), main=paste("Species",i,"Replicate",j))
+    hist(noerrorhists[[i]][[j]], col=rgb(1,1,0,0.25), add=TRUE)
+  }
+}
 
-f <- 
-cr <- crop(r, extent(f), snap="out")                    
-fr <- rasterize(f, cr)   
-lr <- mask(x=cr, mask=fr)
+witherrorhists[[17]][[1]]
 
+i <- atleast12[17]
+    r <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/ProbTiffSp",atleast12[17],"HerbWITHerrorkfold",1,".tif", sep=""))
+    
+    polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                    g1g2names$Taxon[i]),] 
+    # Only want ones after 1980
+    years <- as.numeric(substring(polys$LASTOBS,1,4))
+    yearlater1980 <- c()
+    for(l in 1:length(years)){
+      yearlater1980[l] <- if(years[l]>1980){
+                                      l } else {
+                                        NA
+                                      }
+    }
+    yearlater1980 <- yearlater1980[!is.na(yearlater1980)]
+    polys <- polys[yearlater1980,]
+    
+    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+    
+    f <- spTransform(polys, CRS("+proj=longlat +datum=WGS84"))
+    # Overlap of probability and SD for each polygon set mapped CNHP accuracy 
+    cr <- crop(r, extent(f), snap="out")                    
+    fr <- rasterize(f, cr)   
+    lr <- mask(x=cr, mask=fr)
+  
 # Plot results
-plot(lr)
+plot(r)
+plot(lr, add=TRUE)
 plot(f,add=T)
 
+plot(lr)
+plot(cr)
+plot(f, add=TRUE)
+
+
+plot(f)
 
 # How degree of probability is hit over whole area precision
 ```
@@ -807,6 +895,8 @@ habitatSpecificity <- function(whichones, pathstart, whichmaxentpoints, replicat
 }
 ```
 
+
+# Need to have both in same PCA!!! 
 ```{r}
 pathstarterror <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
 maxones <- "maxentHerbnoerror"
@@ -816,6 +906,62 @@ habspsame <- habitatSpecificity(whichones = atleast12, pathstart = pathstarterro
 
 habspwitherror <- habitatSpecificity(whichones = atleast12, pathstart = pathstarterror,
                                 whichmaxentpoints = "maxentHerbWITHerror", replicates = 10)
+
+
+### both at once in one PCA
+ habspno <- do.call(rbind,lapply(atleast12, function(x){
+  outno <- do.call(rbind,lapply(1:10, function(rep){
+    load(paste(pathstart,maxones,"Sp", x,"kfold",rep, ".Rda",sep=""))
+    outinner <- data.frame(ErrorType = "no", SpeciesNum = x, kfold = rep, xm@presence)
+    outinner
+    }))
+  outno
+  }))
+ habspwith <- do.call(rbind,lapply(atleast12, function(x){
+  outno <- do.call(rbind,lapply(1:10, function(rep){
+    load(paste(pathstart,"maxentHerbWITHerror","Sp", x,"kfold",rep, ".Rda",sep=""))
+    outinner <- data.frame(ErrorType = "yes", SpeciesNum = x, kfold = rep, xm@presence)
+    outinner
+    }))
+  outno
+  }))
+  
+ habsp <- rbind(habspno,habspwith)
+  prPCA <- princomp(habsp[,-c(1:3)])
+  allsphabsp <- data.frame(habsp[,1:3],prPCA$scores)
+
+  # for all species
+  habspecificity <- do.call(rbind,lapply(atleast12, function(x){
+    ellipseouterror <- do.call(rbind, lapply(c("no","yes"), function(errortype){
+    # get and average across the replicates
+    ellipseout <- do.call(rbind,lapply(1:10, function(rep){
+  p <- ggplot(allsphabsp[allsphabsp$SpeciesNum==x&allsphabsp$kfold==rep&allsphabsp$ErrorType==errortype,], 
+                  aes(Comp.1,Comp.2))+
+        geom_point()+
+        stat_ellipse(segments=201) #default is to draw 51 line segments to make the ellipse
+      # get ellipse coordinates
+      pb <- ggplot_build(p)
+      table(pb$data[[2]]$group)
+      
+      el <- pb$data[[2]][c("x","y")]
+      
+      # Center of ellipse
+      ctr <- MASS::cov.trob(el)$center
+      
+      # Distance to center from each point on ellipse
+      dist2center <- sqrt(rowSums((t(t(el)-ctr))^2))
+      
+      # Area of ellipse from semi-major and semi-minor axes which are largest and smallest of dist to center
+      habitatspecificity <- pi*min(dist2center)*max(dist2center)
+      hsout <- data.frame(ErrorType = errortype, SpeciesNum = x, kfold = rep, habspec = habitatspecificity)
+      hsout
+      }))
+    ellipseout
+    }))
+    ellipseouterror
+  }))
+  
+  
 
 ```
 
@@ -849,13 +995,52 @@ summaryhabspec <- summarySE(habspecificity, measurevar = "habspec", groupvars = 
 
 
 sumhabspec <- merge(summaryhabspec, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
-
+habspnoerror <- merge(habspsame, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
+habspWITHerror <- merge(habspwitherror, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
 
 plot(summaryhabspec$SpeciesNum,summaryhabspec$habspec, pch=16, cex=2)
 points(habspsame$SpeciesNum, habspsame$habspec, col="red")
 
-boxplot(sumhabspec$habspec ~ sumhabspec$Area, 
-        col=c(rgb(0,0,0,.15),rgb(1,1,1,.15)),las=2, outline=F)
+boxplot(habspnoerror$habspec ~ round(habspnoerror$Area/(1000^2),0), 
+        col=rgb(0,0,0,.15), las=2, outline=F, 
+        at = (1:length(unique(habspnoerror$Area)))-0.5) #c(,rgb(1,1,1,.15)),
+
+
+ggplot(habspnoerror, aes(as.factor(round(Area/(1000^2),0)), habspec, colour=as.factor(SpeciesNum)))+
+  geom_jitter()+
+  geom_boxplot(position=position_dodge(width=-0.5))+
+  theme_bw()+
+  theme(legend.position = "none")+
+  xlab(expression("Area km"^2))+
+  geom_boxplot()
+
+identical(names(habspnoerror),names(habspWITHerror))
+habspnoerror$ErrorType <- "no"
+habspWITHerror$ErrorType <- "yes"
+toplothabsp <- rbind(habspnoerror, habspWITHerror)
+
+habspall <- merge(habspecificity, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
+
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure2.jpg",
+     width=150, height=100,units='mm', res=300)
+
+ggplot(habspall, aes(Area/(1000^2), habspec/1000, shape=ErrorType, colour=ErrorType))+
+  geom_point(position = position_dodge(width=1))+
+  stat_smooth(method="lm", se=FALSE)+
+  theme_bw()+
+  scale_colour_grey()+
+  theme(legend.position = "none")+
+  xlab(expression("Area km"^2))+
+  ylab("Habitat specificity (size of 95% CI)")
+
+dev.off()
+
+# ggplot(toplothabsp, aes( habspec, DistAvg.Dist,shape=ErrorType, colour=ErrorType))+
+#   geom_point()+
+#   stat_smooth(method="lm")+
+#   theme_bw()
+#   # theme(legend.position = "none")+
+#   # xlab(expression("Area km"^2))
 
 ```
 
@@ -871,26 +1056,8 @@ gc()
 
 ```
 
-```{r}
-# Overlay area and spatial error for each species
-ggplot(habspecificity, aes(factor(SpeciesNum), habspec))+
-  geom_boxplot()+
-  geom_point(position=position_jitter()) +
-  theme_bw()+
-  ylab("Habitat specificity (95% CI)")+
-  xlab("Species ID")
-  # geom_boxplot(data=allspecies[allspecies$SpeciesNum %in% atleast12,], aes(factor(SpeciesNum), Dist), colour = "red", position=position_dodge(0.5))+
-  # geom_point(data=allspecies[allspecies$SpeciesNum %in% atleast12,], 
-  #            aes(factor(SpeciesNum), Area/(1000)),
-  #            colour="blue")
 
 
-  
-```
-Habitat specificity (average) by distance
-```{r}
 
-
-```
 
 
