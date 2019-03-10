@@ -34,14 +34,25 @@ load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/d
 
 
 notnull <- which(!unlist(lapply(mapply('[[', distXsp_v3, 1), is.null)))
-morethan12 <- c()
+atleast12 <- c()
 for(l in notnull){
-  morethan12[match(l,notnull)] <- if(nrow(distXsp_v3[[l]][[1]]@coords)>12){ 
+  atleast12[match(l,notnull)] <- if(nrow(distXsp_v3[[l]][[1]]@coords)>11){ 
     l } else {
       NA
     }
 }
-morethan12 <- morethan12[!is.na(morethan12)]  
+atleast12 <- atleast12[!is.na(atleast12)] 
+# length(atleast12) # 28 vs. 24 over 12
+# 
+# notnull <- which(!unlist(lapply(mapply('[[', distXsp_v3, 1), is.null)))
+# morethan12 <- c()
+# for(l in notnull){
+#   morethan12[match(l,notnull)] <- if(nrow(distXsp_v3[[l]][[1]]@coords)>12){ 
+#     l } else {
+#       NA
+#     }
+# }
+# morethan12 <- morethan12[!is.na(morethan12)]  
 
 
 xEOR <- mapply('[[', distXsp_v3, 4)
@@ -426,7 +437,7 @@ save(bgHerb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche m
 
 ## Herbarium without more error, 10 replicates   
 ```{r}
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presenceEORpoints.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presenceEORpoints.Rda")
 
 #Could sample again to get same number of records for presence and absence for each
 jar <- paste(system.file(package="dismo"), "/java/maxent.jar", sep='')
@@ -623,7 +634,7 @@ pathstart2 <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeli
 spatialpointsdataframe_herb <- distXsp_v3
 background_points <- bgHerb
 
-maxentrun(whichones = atleast12[1], numberofReps = 2, spatialpointsdataframe_herb = spatialpointsdataframe_herb,
+maxentrun(whichones = atleast12[1], numberofReps = 2, spatialpointsdataframe_herb = spatialpointsdataframe_herb,
           maxentarguments = TRUE, background_points = background_points, filenames = "noFooerror", 
           pathstart = pathstart2)
 
@@ -635,7 +646,6 @@ Take the overlap of all EOR polygons and the rasters to get the histograms of pr
     
 Accuracy
 ```{r}
-
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 library(maptools)
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
@@ -647,52 +657,69 @@ l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
               }))
 plot(l1G1G2)
 
-# Crop using extent, rasterize polygon and finally, create poly-raster
-#          **** This is the code that you are after ****  f is the polygon, r is the raster
 
-# get map, make lists of 10 each for each replicate
-noerrorhists <- lapply(atleast12, function(i){
-  lrhist <- lapply(1:10, function(k){
-    r <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/ProbTiffSp",i,"Herbnoerrorkfold",k,".tif", sep=""))
-    
-    polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-                                    g1g2names$Taxon[i]),] 
-    # Only want ones after 1980
-    years <- as.numeric(substring(polys$LASTOBS,1,4))
-    yearlater1980 <- c()
-    for(l in 1:length(years)){
-      yearlater1980[l] <- if(years[l]>1980){
-                                      l } else {
-                                        NA
-                                      }
-    }
-    yearlater1980 <- yearlater1980[!is.na(yearlater1980)]
-    polys <- polys[yearlater1980,]
-    
-    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
-    
-    f <- spTransform(polys, CRS("+proj=longlat +datum=WGS84"))
-    # Overlap of probability and SD for each polygon set mapped CNHP accuracy 
-    cr <- crop(r, extent(f), snap="out")                    
-    fr <- rasterize(f, cr)   
-    lr <- mask(x=cr, mask=fr)
-    lr
-    })
-  lrhist
+#Need to averge and SD each of the 10
+
+library(cluster)
+library(snow)
+
+forhistofaverage <- function(pathstart, patternmatch){
+  stacktoaverage <- lapply(atleast12, function(i){
+    rasterstoavg <- list.files(path = pathstart, 
+                               pattern = paste("ProbTiffSp",i,patternmatch,sep=""), 
+                               full.names=TRUE)
+    ras <- stack(lapply(rasterstoavg, function(y){
+      raster(y)
+    }))
+    beginCluster(10)
+    ras.mean <- clusterR(ras, calc, args=list(mean, na.rm=T))
+    writeRaster(ras.mean, paste(pathstart, "AvgTiffSp",i,patternmatch,g1g2names$AcceptedName[i],".tif", sep=""),overwrite=TRUE)
+          gc()
+    endCluster()
+    ras.mean
   })
+  stacktoaverage
+}
 
-# plot(r)
-# plot(polys, add=TRUE, border=rgb(1,1,0,0.5), lwd=15)  
+forhistofsd <- function(pathstart, patternmatch){
+  stacktoaverage <- lapply(atleast12, function(i){
+    rasterstoavg <- list.files(path = pathstart, 
+                               pattern = paste("ProbTiffSp",i,patternmatch,sep=""), 
+                               full.names=TRUE)
+    ras <- stack(lapply(rasterstoavg, function(y){
+      raster(y)
+    }))
+    beginCluster(10)
+    ras.mean <- clusterR(ras, calc, args=list(sd, na.rm=T))
+    writeRaster(ras.mean, paste(pathstart, "SDTiffSp",i,patternmatch,g1g2names$AcceptedName[i],".tif", sep=""),overwrite=TRUE)
+          gc()
+    endCluster()
+    ras.mean
+  })
+  stacktoaverage
+}
 
-hist(noerrorhists[[1]][[1]])
 
-hist(noerrorhists[[1]])
+
+pathstartwithnoerror <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
+patternmatchno <- "Herbnoerrorkfold"
+patternmatchwith <- "HerbWITHerrorkfold"
+
+noerroravg <- forhistofaverage(pathstartwithnoerror, patternmatchno)
+witherroravg <- forhistofaverage(pathstartwithnoerror, patternmatchwith)
+
+###COME BACK HERE DO THIS
+noerrorsd <- forhistofsd(pathstartwithnoerror, patternmatchno)
+witherrorsd <- forhistofsd(pathstartwithnoerror, patternmatchwith)
+
+
 
 # Extract takes the raster value only when the center of the raster is covered by the polygon. I've got lots of polygons that do not cover the center of the larger raster cells. Use weights for partialy covered cells and argument small for getting values for small polygons. 
-#Many "no non-missing arguments to min; returning Inf"
-witherrorhists <- lapply(atleast12, function(i){
-  lrhist <- lapply(1:10, function(k){
-    r <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/ProbTiffSp",i,"HerbWITHerrorkfold",k,".tif", sep=""))
+# get map, make lists of 10 each for each replicate
+accuracyhists <- function(pathstart, probmapnames, whichones, reps = 1:10){
+  lapply(whichones, function(i){
+  lrhist <- lapply(reps, function(k){
+    r <- raster(paste(pathstart,"ProbTiffSp",i,probmapnames,k,".tif", sep=""))
     
     polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
                                     g1g2names$Taxon[i]),] 
@@ -710,18 +737,57 @@ witherrorhists <- lapply(atleast12, function(i){
     
     proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
     
-    f <- spTransform(polys, CRS("+proj=longlat +datum=WGS84"))
-    # Overlap of probability and SD for each polygon set mapped CNHP accuracy 
-    # cr <- crop(r, extent(f), snap="out")                    
-    fr <- extract(r, f, small = TRUE, weights = TRUE)   # weights = TRUE
-    # lr <- mask(x=cr, mask=fr)
-    # lr
+    f <- spTransform(polys, CRS("+proj=longlat +datum=WGS84"))   
+    fr <- extract(r, f, small = TRUE, weights = TRUE)
     unlist(fr)
     })
   lrhist
   })
+}
 
+accuracyhistsOneperSp <- function(pathstart, probmapnames, whichones =  atleast12[atleast12!=8], SDorAVG = "Avg"){
+  lapply(whichones, function(i){
+    r <- raster(paste(pathstart,SDorAVG,"TiffSp",i,".tif", sep=""))
+    
+    polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                    g1g2names$Taxon[i]),] 
+    # Only want ones after 1980
+    years <- as.numeric(substring(polys$LASTOBS,1,4))
+    yearlater1980 <- c()
+    for(l in 1:length(years)){
+      yearlater1980[l] <- if(years[l]>1980){
+                                      l } else {
+                                        NA
+                                      }
+    }
+    yearlater1980 <- yearlater1980[!is.na(yearlater1980)]
+    polys <- polys[yearlater1980,]
+    
+    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+    
+    f <- spTransform(polys, CRS("+proj=longlat +datum=WGS84"))   
+    fr <- extract(r, f, small = TRUE, weights = TRUE)
+    unlist(fr)
+    })
+  lrhist
+  })
+}
 
+# plot(r)
+# plot(polys, add=TRUE, border=rgb(1,1,0,0.5), lwd=15)  
+pathstart1 <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
+probmapnames1 <- "Herbnoerrorkfold"
+whichones1 <- atleast12[atleast12!=8]
+
+noerrorhists <- accuracyhists(pathstart1, probmapnames1, whichones1)
+hist(noerrorhists[[1]][[2]])
+
+witherrorhists <- accuracyhists("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/", "HerbWITHerrorkfold", whichones1)
+
+```
+
+```{r}
+#Plot each
 for(i in 1:28){
   for(j in 1:10){
     hist(witherrorhists[[i]][[j]], col=rgb(0,1,1,0.25), xlim=c(0,1), main=paste("Species",i,"Replicate",j))
@@ -729,46 +795,12 @@ for(i in 1:28){
   }
 }
 
-witherrorhists[[17]][[1]]
-
-i <- atleast12[17]
-    r <- raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/ProbTiffSp",atleast12[17],"HerbWITHerrorkfold",1,".tif", sep=""))
-    
-    polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-                                    g1g2names$Taxon[i]),] 
-    # Only want ones after 1980
-    years <- as.numeric(substring(polys$LASTOBS,1,4))
-    yearlater1980 <- c()
-    for(l in 1:length(years)){
-      yearlater1980[l] <- if(years[l]>1980){
-                                      l } else {
-                                        NA
-                                      }
-    }
-    yearlater1980 <- yearlater1980[!is.na(yearlater1980)]
-    polys <- polys[yearlater1980,]
-    
-    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
-    
-    f <- spTransform(polys, CRS("+proj=longlat +datum=WGS84"))
-    # Overlap of probability and SD for each polygon set mapped CNHP accuracy 
-    cr <- crop(r, extent(f), snap="out")                    
-    fr <- rasterize(f, cr)   
-    lr <- mask(x=cr, mask=fr)
-  
-# Plot results
-plot(r)
-plot(lr, add=TRUE)
-plot(f,add=T)
-
-plot(lr)
-plot(cr)
-plot(f, add=TRUE)
+#Combine the replicates, avg or just all together??
 
 
-plot(f)
 
-# How degree of probability is hit over whole area precision
+#Find mean/mode/or median of each and compare the histogram of each
+
 ```
 
 
