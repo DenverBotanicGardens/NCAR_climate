@@ -194,6 +194,56 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10,
 
 ```
 
+# More functions 
+
+```{r}
+
+habitatSpecificity <- function(whichones, pathstart, whichmaxentpoints, replicates){
+  habsp <- do.call(rbind,lapply(whichones, function(x){
+  out <- do.call(rbind,lapply(1:replicates, function(rep){
+    load(paste(pathstart,whichmaxentpoints,"Sp", x,"kfold",rep, ".Rda",sep=""))
+    outinner <- data.frame(SpeciesNum = x, kfold = rep, xm@presence)
+    outinner
+    }))
+  out
+  }))
+  habsp
+  
+  prPCA <- princomp(habsp[,-c(1:2)])
+  allsphabsp <- data.frame(habsp[,1:2],prPCA$scores)
+
+  # for all species
+  habspecificity <- do.call(rbind,lapply(atleast12, function(x){
+    # get and average across the replicates
+    ellipseout <- do.call(rbind,lapply(1:10, function(rep){
+      p <- ggplot(allsphabsp[allsphabsp$SpeciesNum==x&allsphabsp$kfold==rep,], 
+                  aes(Comp.1,Comp.2))+
+        geom_point()+
+        stat_ellipse(segments=201) #default is to draw 51 line segments to make the ellipse
+      # get ellipse coordinates
+      pb <- ggplot_build(p)
+      table(pb$data[[2]]$group)
+      
+      el <- pb$data[[2]][c("x","y")]
+      
+      # Center of ellipse
+      ctr <- MASS::cov.trob(el)$center
+      
+      # Distance to center from each point on ellipse
+      dist2center <- sqrt(rowSums((t(t(el)-ctr))^2))
+      
+      # Area of ellipse from semi-major and semi-minor axes which are largest and smallest of dist to center
+      habitatspecificity <- pi*min(dist2center)*max(dist2center)
+      hsout <- data.frame(SpeciesNum = x, kfold = rep, habspec = habitatspecificity)
+      hsout
+      }))
+    ellipseout
+    }))
+  habspecificity
+}
+```
+
+
 
 
 # Maxent    
@@ -248,7 +298,7 @@ tab1 <- do.call(rbind, lapply(split(df_dist, df_dist$SpNum), function(x){
 
 tab1$SDM[tab1$SpNum %in% atleast12] <- "x"
 
-write.csv(tab1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/table1.csv")
+# write.csv(tab1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/table1.csv")
 
 library(Taxonstand)
 TPLtbl1 <- TPL(tab1$Species)
@@ -708,12 +758,6 @@ patternmatchwith <- "HerbWITHerrorkfold"
 noerroravg <- forhistofaverage(pathstartwithnoerror, patternmatchno)
 witherroravg <- forhistofaverage(pathstartwithnoerror, patternmatchwith)
 
-###COME BACK HERE DO THIS
-noerrorsd <- forhistofsd(pathstartwithnoerror, patternmatchno)
-witherrorsd <- forhistofsd(pathstartwithnoerror, patternmatchwith)
-
-
-
 # Extract takes the raster value only when the center of the raster is covered by the polygon. I've got lots of polygons that do not cover the center of the larger raster cells. Use weights for partialy covered cells and argument small for getting values for small polygons. 
 # get map, make lists of 10 each for each replicate
 accuracyhists <- function(pathstart, probmapnames, whichones, reps = 1:10){
@@ -739,16 +783,21 @@ accuracyhists <- function(pathstart, probmapnames, whichones, reps = 1:10){
     
     f <- spTransform(polys, CRS("+proj=longlat +datum=WGS84"))   
     fr <- extract(r, f, small = TRUE, weights = TRUE)
-    unlist(fr)
+    # Want the value [,1] for each polygon but use the weight [,2] to get the pro-rated cells 
+    out <- do.call(rbind,fr)
+    out
     })
   lrhist
   })
 }
 
-accuracyhistsOneperSp <- function(pathstart, probmapnames, whichones =  atleast12[atleast12!=8], SDorAVG = "Avg"){
+library(plotrix)
+accuracyhistsOneperSp <- function(pathstart, whichones =  atleast12[atleast12!=8], SDorAVG = "Avg", WithorNo = "WITH"){
   lapply(whichones, function(i){
-    r <- raster(paste(pathstart,SDorAVG,"TiffSp",i,".tif", sep=""))
-    
+    resultpath <- list.files(path = pathstart, 
+                             pattern = paste(SDorAVG,"TiffSp",i,"Herb",WithorNo, sep=""), 
+                             full.names=TRUE)
+    r <- raster(resultpath)
     polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
                                     g1g2names$Taxon[i]),] 
     # Only want ones after 1980
@@ -767,14 +816,12 @@ accuracyhistsOneperSp <- function(pathstart, probmapnames, whichones =  atleast1
     
     f <- spTransform(polys, CRS("+proj=longlat +datum=WGS84"))   
     fr <- extract(r, f, small = TRUE, weights = TRUE)
-    unlist(fr)
+    # Want the value [,1] for each polygon but use the weight [,2] to get the pro-rated cells 
+    out <- do.call(rbind,fr)
+    out
     })
-  lrhist
-  })
 }
 
-# plot(r)
-# plot(polys, add=TRUE, border=rgb(1,1,0,0.5), lwd=15)  
 pathstart1 <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
 probmapnames1 <- "Herbnoerrorkfold"
 whichones1 <- atleast12[atleast12!=8]
@@ -784,18 +831,69 @@ hist(noerrorhists[[1]][[2]])
 
 witherrorhists <- accuracyhists("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/", "HerbWITHerrorkfold", whichones1)
 
-```
+#Averaged and SD of probability maps second function
+noerrorhistsofavg <- accuracyhistsOneperSp(pathstart1, WithorNo = "no")
+witherrorhistsofavg <- accuracyhistsOneperSp(pathstart1)
 
-```{r}
-#Plot each
-for(i in 1:28){
-  for(j in 1:10){
-    hist(witherrorhists[[i]][[j]], col=rgb(0,1,1,0.25), xlim=c(0,1), main=paste("Species",i,"Replicate",j))
-    hist(noerrorhists[[i]][[j]], col=rgb(1,1,0,0.25), add=TRUE)
+weighted.hist(noerrorhistsofavg[[1]][,1],noerrorhistsofavg[[1]][,2])
+plot(density(noerrorhistsofavg[[1]][,1],
+             weights = noerrorhistsofavg[[1]][,2]/sum(noerrorhistsofavg[[1]][,2])),
+     main=g1g2names$AcceptedName[1])
+
+for(i in 1:length(noerrorhistsofavg)){
+  dno <- density(noerrorhistsofavg[[i]][,1],
+             weights = noerrorhistsofavg[[i]][,2]/sum(noerrorhistsofavg[[i]][,2]))
+  dwith <- density(witherrorhistsofavg[[i]][,1],
+             weights = witherrorhistsofavg[[i]][,2]/sum(witherrorhistsofavg[[i]][,2]))
+  if(max(dno$y)>max(dwith$y)){
+      plot(dno, main=paste("No=red, with=blue  ",g1g2names$AcceptedName[i]),xlim=c(0,1))
+      polygon(dno, col=rgb(1,0,0,0.5), border="black")
+      polygon(dwith, col=rgb(0,0,1,0.5), border="green")
+  } else {
+      plot(dwith, main=paste("No=red, with=blue  ",g1g2names$AcceptedName[i]),xlim=c(0,1))
+      polygon(dno, col=rgb(1,0,0,0.5), border="black")
+      polygon(dwith, col=rgb(0,0,1,0.5), border="green")
   }
 }
 
-#Combine the replicates, avg or just all together??
+
+
+```
+
+
+
+```{r}
+###COME BACK HERE DO THIS
+noerrorsd <- forhistofsd(pathstartwithnoerror, patternmatchno)
+witherrorsd <- forhistofsd(pathstartwithnoerror, patternmatchwith)
+
+
+noerrorhistsofsd <- accuracyhistsOneperSp(pathstart1, SDorAVG = "SD", WithorNo = "no")
+witherrorhistsofsd <- accuracyhistsOneperSp(pathstart1, SDorAVG = "SD")
+
+for(i in 1:length(noerrorhistsofsd)){
+  dno <- density(noerrorhistsofsd[[i]][,1],
+             weights = noerrorhistsofsd[[i]][,2]/sum(noerrorhistsofsd[[i]][,2]))
+  dwith <- density(witherrorhistsofsd[[i]][,1],
+             weights = witherrorhistsofsd[[i]][,2]/sum(witherrorhistsofsd[[i]][,2]))
+  if(max(dno$y)>max(dwith$y)){
+      plot(dno, main=paste("No=red, with=blue  ",g1g2names$AcceptedName[i]),xlim=c(0,0.3))
+      polygon(dno, col=rgb(1,0,0,0.5), border="black")
+      polygon(dwith, col=rgb(0,0,1,0.5), border="green")
+  } else {
+      plot(dwith, main=paste("No=red, with=blue  ",g1g2names$AcceptedName[i]),xlim=c(0,0.3))
+      polygon(dno, col=rgb(1,0,0,0.5), border="black")
+      polygon(dwith, col=rgb(0,0,1,0.5), border="green")
+  }
+}
+
+```
+
+
+
+
+
+```{r}
 
 
 
@@ -804,7 +902,7 @@ for(i in 1:28){
 ```
 
 
-
+# Precision
 
 #  Habitat specificity    
 Principal components analysis of predictor variables    
@@ -851,6 +949,14 @@ ggplot(allsphabsp_EOR, aes(Comp.1,Comp.2, colour=as.factor(SpeciesNum)))+
   ylab(expression(atop("PC2 (2% variance explained)","Aspect = -0.990; Bio12 = -0.139")))
   
 
+# link to all the data about from table 1
+habsp
+specificitytotab1 <- merge(allsphabsp_EOR, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
+
+
+ggplot()
+
+
 table(allsphabsp_EOR$SpeciesNum) # 8 has one point, 51 has 2
 
 # for all species
@@ -880,52 +986,6 @@ habspecificity_EOR <- do.call(rbind,lapply(atleast12[!atleast12 %in% c(8, 51)], 
 ```
 
 
-```{r}
-
-habitatSpecificity <- function(whichones, pathstart, whichmaxentpoints, replicates){
-  habsp <- do.call(rbind,lapply(whichones, function(x){
-  out <- do.call(rbind,lapply(1:replicates, function(rep){
-    load(paste(pathstart,whichmaxentpoints,"Sp", x,"kfold",rep, ".Rda",sep=""))
-    outinner <- data.frame(SpeciesNum = x, kfold = rep, xm@presence)
-    outinner
-    }))
-  out
-  }))
-  habsp
-  
-  prPCA <- princomp(habsp[,-c(1:2)])
-  allsphabsp <- data.frame(habsp[,1:2],prPCA$scores)
-
-  # for all species
-  habspecificity <- do.call(rbind,lapply(atleast12, function(x){
-    # get and average across the replicates
-    ellipseout <- do.call(rbind,lapply(1:10, function(rep){
-      p <- ggplot(allsphabsp[allsphabsp$SpeciesNum==x&allsphabsp$kfold==rep,], 
-                  aes(Comp.1,Comp.2))+
-        geom_point()+
-        stat_ellipse(segments=201) #default is to draw 51 line segments to make the ellipse
-      # get ellipse coordinates
-      pb <- ggplot_build(p)
-      table(pb$data[[2]]$group)
-      
-      el <- pb$data[[2]][c("x","y")]
-      
-      # Center of ellipse
-      ctr <- MASS::cov.trob(el)$center
-      
-      # Distance to center from each point on ellipse
-      dist2center <- sqrt(rowSums((t(t(el)-ctr))^2))
-      
-      # Area of ellipse from semi-major and semi-minor axes which are largest and smallest of dist to center
-      habitatspecificity <- pi*min(dist2center)*max(dist2center)
-      hsout <- data.frame(SpeciesNum = x, kfold = rep, habspec = habitatspecificity)
-      hsout
-      }))
-    ellipseout
-    }))
-  habspecificity
-}
-```
 
 
 # Need to have both in same PCA!!! 
@@ -942,13 +1002,14 @@ habspwitherror <- habitatSpecificity(whichones = atleast12, pathstart = pathstar
 
 ### both at once in one PCA
  habspno <- do.call(rbind,lapply(atleast12, function(x){
-  outno <- do.call(rbind,lapply(1:10, function(rep){
-    load(paste(pathstart,maxones,"Sp", x,"kfold",rep, ".Rda",sep=""))
-    outinner <- data.frame(ErrorType = "no", SpeciesNum = x, kfold = rep, xm@presence)
-    outinner
-    }))
-  outno
-  }))
+   outno <- do.call(rbind,lapply(1:10, function(rep){
+      load(paste(pathstart,maxones,"Sp", x,"kfold",rep, ".Rda",sep=""))
+      outinner <- data.frame(ErrorType = "no", SpeciesNum = x, kfold = rep, xm@presence)
+      outinner
+      }))
+   outno
+   }))
+ 
  habspwith <- do.call(rbind,lapply(atleast12, function(x){
   outno <- do.call(rbind,lapply(1:10, function(rep){
     load(paste(pathstart,"maxentHerbWITHerror","Sp", x,"kfold",rep, ".Rda",sep=""))
