@@ -356,13 +356,20 @@ plot(l1G1G2, border="gray60", add=TRUE, lwd=5) #
 plot(projected, add=TRUE, pch=20, cex=0.5)
 
 
-polys_46 <- l1G1G2[l1G1G2$GNAME %in% as.character(mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE)),]
-plot(polys)
+polys_46 <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[notnull],
+                                       g1g2names$Taxon[notnull]),] 
+    # l1G1G2[l1G1G2$GNAME %in% as.character(mapply(FUN=function(x) unique(x$GNAME)[1],g1g2names[notnull,])),]
+plot(polys, lwd=5)
 plot(polys_46, border="pink", add=TRUE)
-str(as.character(mapply(FUN=function(x) unique(x$GNAME)[1],pca_herb_SAE)))
+str(as.character(mapply(FUN=function(x) unique(x$GNAME)[1],g1g2names[notnull,])))
 
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/HerbPntsEORs_CO.jpg",
-     width=250, height=175,units='mm', res=300)
+# Was HerbPntsEORs_CO.jpg --> changing to Figure 1 in .eps format
+# grDevices::setEPS; says ps.options needs to be called before calling postscript and the override with more arguments to postscript
+
+setEPS()
+postscript("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure_1.eps", width=250, height=175)
+# jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure_1.eps",
+#      width=250, height=175,units='mm', res=300)
 
 plot(colocounties.UTM,border="gray70") #colocounties is in WGS84, not in same datum as l1G1G2
 plot(polys_46, border="gray60", add=TRUE, lwd=4) #
@@ -1383,12 +1390,17 @@ load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
 
 #Each polygon might be made of multiple disconnected polygons. Need to separate and label
-l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
+table(g1g2names$Taxon)
+table(l1eor$GRANK)
+# Added G1G2 on 3/12/2019
+l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2", "G1G2"),])
 l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
                                        function(x){
               x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
               x
               }))
+
+plot(l1G1G2)
 
 distXsp_noEORgrid <- lapply(1:60, function(i){
   gc()
@@ -1512,10 +1524,11 @@ AIC
 str(foo)
 
 (lmresults <- aictab(list(f2,f3,f4,f5,f6,f8,f11,f12),
-       modnames=as.character(unlist(lapply(list(f2,f3,f4,f5,f6,f8,f11,f12),formula)))))
+       modnames=as.character(unlist(lapply(list(f2,f3,f4,f5,f6,f8,f11,f12),formula))),
+       second.ord=FALSE))
 
 evidence(aictab(cand.set = list(f2,f3,f4,f5,f6,f8,f11,f12),
-                modnames = as.character(unlist(lapply(list(f2,f3,f4,f5,f6,f8,f11,f12),formula)))))
+                modnames = as.character(unlist(lapply(list(f2,f3,f4,f5,f6,f8,f11,f12),formula))))) #, second.ord=FALSE
 
 sapply(1:length(lmresults$Delta_AICc), function(i){
   exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
