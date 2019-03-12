@@ -41,6 +41,7 @@ require(lme4)
 require(lattice)
 require(AICcmodavg)
 
+
      library(splancs)
 
 # #Skip making these, takes a long time
@@ -1484,6 +1485,11 @@ sapply(1:length(lmresults$Delta_AICc), function(i){
 
 When ignoring genus since those are so unevenly applied (lots of mustards)
 ```{r}
+
+# Why is aictab adding an extra parameter
+# maybe AICc
+
+str(distXspall)
 # f1 <- lm(Dist ~ as.factor(New.Genus)*year + Area, data= distXspall)
 f2 <- lm(Dist ~ year + Area, data= distXspall)
 f3 <- lm(Dist ~ year, data= distXspall)
@@ -1499,6 +1505,11 @@ f11 <- lm(Dist ~ Yeardiff*Area, data= distXspall) # range shift by specificity
 
 f12 <- lm(Dist ~ Yeardiff+Area, data= distXspall) # range shift by specificity
 
+aictab(list(f4))
+
+AICc(f4, return.K = TRUE)
+AIC
+str(foo)
 
 (lmresults <- aictab(list(f2,f3,f4,f5,f6,f8,f11,f12),
        modnames=as.character(unlist(lapply(list(f2,f3,f4,f5,f6,f8,f11,f12),formula)))))
