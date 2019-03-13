@@ -362,17 +362,29 @@ polys_46 <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[notnull],
 plot(polys, lwd=5)
 plot(polys_46, border="pink", add=TRUE)
 str(as.character(mapply(FUN=function(x) unique(x$GNAME)[1],g1g2names[notnull,])))
+unique(as.character(polys_46$GNAME))
+
+l1G1G2_2 <- l1G1G2
+proj4string(l1G1G2_2) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
 
 # Was HerbPntsEORs_CO.jpg --> changing to Figure 1 in .eps format
 # grDevices::setEPS; says ps.options needs to be called before calling postscript and the override with more arguments to postscript
 
-setEPS()
-postscript("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure_1.eps", width=250, height=175)
-# jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure_1.eps",
-#      width=250, height=175,units='mm', res=300)
+outside <- extent(rasterstack[[1]])
+e <- as(outside, "SpatialPolygons")
+sp::proj4string(e) <-  CRS("+proj=longlat +datum=WGS84") 
 
-plot(colocounties.UTM,border="gray70") #colocounties is in WGS84, not in same datum as l1G1G2
-plot(polys_46, border="gray60", add=TRUE, lwd=4) #
+e.geo <- sp::spTransform(e, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+
+# setEPS()
+# postscript("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure_1.eps", width=250, height=175)
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure_1.jpg",
+     width=250, height=175,units='mm', res=300)
+
+# the extents of the rasters
+# plot(e.geo)
+plot(colocounties.UTM,border="gray60") #colocounties is in WGS84, not in same datum as l1G1G2
+plot(l1G1G2_2, border="gray60", add=TRUE, lwd=4) #
 plot(projected, add=TRUE, pch=20, cex=0.5)
 ScaleBar(colocounties.UTM,
              10, .25, .05, .85, .10, lwd=1)
@@ -1401,11 +1413,31 @@ l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
               }))
 
 plot(l1G1G2)
+G1G2all <- as.data.frame(table(as.character(l1G1G2$GRANK),as.character(l1G1G2$GNAME)))
+length(unique(G1G2all$Var2)) # 68 species with the G1G2s
+g1g2names68 <- unique(G1G2all$Var2)
+g1g2names68 <- TPL(g1g2names68)
+g1g2names68$AcceptedName <- paste(g1g2names68$New.Genus,g1g2names68$New.Species,sep=" ")
 
-distXsp_noEORgrid <- lapply(1:60, function(i){
+```
+
+#Poop, do I not have more, and we deleted all the polys?
+```{r}
+
+for(i in 1:68){
+   polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names68$AcceptedName[i],
+                                        g1g2names68$Taxon[i]),] 
+    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+    
+    print(paste(g1g2names68$AcceptedName[i],  g1g2names68$Taxon[i]))
+    print(table(as.character(polys$LASTOBS)))
+    print(as.numeric(substring(polys$LASTOBS,1,4)))
+}
+
+distXsp_noEORgrid68 <- lapply(1:nrow(g1g2names68), function(i){
   gc()
   g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in%
-                                c(g1g2names$Taxon[i],g1g2names$AcceptedName[i])&
+                                c(g1g2names68$Taxon[i],g1g2names68$AcceptedName[i])&
                                 !is.na(coloradosps.g1g2$decimalLatitude),]
   
   g1g2now <- g1g2now[as.numeric(as.character(g1g2now$year))>1800,]
@@ -1418,8 +1450,8 @@ distXsp_noEORgrid <- lapply(1:60, function(i){
   
   if(nrow(g1g2now)>0){
   # put grid points across colorado, sample from it for each polygons
-    polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-                                        g1g2names$Taxon[i]),] 
+    polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names68$AcceptedName[i],
+                                        g1g2names68$Taxon[i]),] 
     proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
     
         
@@ -1446,14 +1478,14 @@ distXsp_noEORgrid <- lapply(1:60, function(i){
     distnow <- apply(gDistance(g1g2now,polys, byid=TRUE),2,min)
     gc()
    
-  out <- data.frame(Species = g1g2names$AcceptedName[i], g1g2now,Dist = distnow, Area = totalarea, 
+  out <- data.frame(Species = g1g2names68$AcceptedName[i], g1g2now,Dist = distnow, Area = totalarea, 
                     EORdate = polys$LASTOBS[apply(gDistance(g1g2now,polys, byid=TRUE),2,which.min)],
                     Yeardiff = g1g2now$year- as.numeric(substring(as.character(polys$LASTOBS[apply(gDistance(g1g2now,polys, byid=TRUE),2,which.min)]),1,4)))
     gc()
     out
     }
   })
-save(distXsp_noEORgrid, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda") 
+save(distXsp_noEORgrid68, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid68.Rda") 
 ```
 
 Yeardiff is the herbarium colleciton year - the polygon mapped year (LastOBS) so positive values are herbarium later than mapped, negative numbers are the herbarium colleciton before the mapped time
