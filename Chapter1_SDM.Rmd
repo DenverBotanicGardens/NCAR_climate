@@ -856,8 +856,48 @@ for(i in 1:length(noerrorhistsofavg)){
   }
 }
 
+# kstest are they different or the same,
+# then 
+# lognormal distribution the median and geometric mean are identical. 
+# Oh, the log(mn) =  log(m) + log(n) where log(m/n) =  log(m) - log(n) and log(m^2) = n * log(m)
+
+# Check sum of logs first.. 
+# plots same or different 
+# AICc has wrong parameters
+
+ks.outs <- lapply(1:length(noerrorhistsofavg), function(i){
+  ks.test(log(data.frame(noerrorhistsofavg[[i]])$value)+
+             log(data.frame(noerrorhistsofavg[[i]])$weight),
+          log(data.frame(witherrorhistsofavg[[i]])$value)+
+             log(data.frame(witherrorhistsofavg[[i]])$weight))
+})
 
 
+
+sapply(ks.outs, '[',2)
+
+whichsigndiff <- sapply(1:length(noerrorhistsofavg), function(s){
+  if(ks.outs[[s]]$p.value < 0.05){
+    1
+  } else {
+    NA
+  }
+})
+
+
+# https://chemicalstatistician.wordpress.com/2013/06/24/exploratory-data-analysis-conceptual-foundations-of-empirical-cumulative-distribution-functions/  
+for(i in 1:length(noerrorhistsofavg)){
+  ecdfno <- ecdf(log(data.frame(noerrorhistsofavg[[i]])$value)+
+             log(data.frame(noerrorhistsofavg[[i]])$weight))
+  ecdfwith <- ecdf(log(data.frame(witherrorhistsofavg[[i]])$value)+
+             log(data.frame(witherrorhistsofavg[[i]])$weight))
+  plot(ecdfno)
+  lines(ecdfwith)
+}
+
+# try ks plot kernel smoothing, smothing optimized for display
+# plot ecdf, the sum of logs 
+?ecdf 
 ```
 
 
@@ -993,17 +1033,21 @@ habspecificity_EOR <- do.call(rbind,lapply(atleast12[!atleast12 %in% c(8, 51)], 
 pathstarterror <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
 maxones <- "maxentHerbnoerror"
 
+# But these treat each separetly and I need them together in one getting the ellipse model!
 habspsame <- habitatSpecificity(whichones = atleast12, pathstart = pathstarterror,
                                 whichmaxentpoints = maxones, replicates = 10)
 
 habspwitherror <- habitatSpecificity(whichones = atleast12, pathstart = pathstarterror,
                                 whichmaxentpoints = "maxentHerbWITHerror", replicates = 10)
+#####
 
+pathstarterrornoerror <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
 
 ### both at once in one PCA
+# HABitat SPecificity with NO error
  habspno <- do.call(rbind,lapply(atleast12, function(x){
    outno <- do.call(rbind,lapply(1:10, function(rep){
-      load(paste(pathstart,maxones,"Sp", x,"kfold",rep, ".Rda",sep=""))
+      load(paste(pathstarterrornoerror,"maxentHerbnoerror","Sp", x,"kfold",rep, ".Rda",sep=""))
       outinner <- data.frame(ErrorType = "no", SpeciesNum = x, kfold = rep, xm@presence)
       outinner
       }))
@@ -1012,48 +1056,93 @@ habspwitherror <- habitatSpecificity(whichones = atleast12, pathstart = pathstar
  
  habspwith <- do.call(rbind,lapply(atleast12, function(x){
   outno <- do.call(rbind,lapply(1:10, function(rep){
-    load(paste(pathstart,"maxentHerbWITHerror","Sp", x,"kfold",rep, ".Rda",sep=""))
+    load(paste(pathstarterrornoerror,"maxentHerbWITHerror","Sp", x,"kfold",rep, ".Rda",sep=""))
     outinner <- data.frame(ErrorType = "yes", SpeciesNum = x, kfold = rep, xm@presence)
     outinner
     }))
   outno
   }))
+ 
+ names(habsp_EOR)
+ names(habsp)
   
- habsp <- rbind(habspno,habspwith)
-  prPCA <- princomp(habsp[,-c(1:3)])
-  allsphabsp <- data.frame(habsp[,1:3],prPCA$scores)
+habsp <- rbind(habspno,habspwith)
+table(habsp$ErrorType)
+habsp_andEOR <- rbind(habsp, 
+                      data.frame(ErrorType = "EOR", SpeciesNum = habsp_EOR[,1], 
+                                 kfold = 1, habsp_EOR[,c(5:9)]))
 
-  # for all species
-  habspecificity <- do.call(rbind,lapply(atleast12, function(x){
-    ellipseouterror <- do.call(rbind, lapply(c("no","yes"), function(errortype){
+table(habsp_andEOR$ErrorType)
+
+# prPCA <- princomp(habsp[,-c(1:3)])
+# allsphabsp <- data.frame(habsp[,1:3],prPCA$scores)
+
+prPCA <- princomp(habsp_andEOR[,-c(1:3)])
+allsphabsp <- data.frame(habsp_andEOR[,1:3],prPCA$scores)
+
+for(i in atleast12){
+  print(paste(i,": ", nrow(allsphabsp[allsphabsp$SpeciesNum==i&allsphabsp$ErrorType=="EOR",])))
+}
+
+###BACK HERE TO FIX
+# for all species and EOR
+habspecificity <- do.call(rbind,lapply(atleast12[atleast12!=8], function(x){
+  if(nrow(allsphabsp[allsphabsp$SpeciesNum==i&allsphabsp$ErrorType=="EOR",])>2){
+        peor <- ggplot(allsphabsp[allsphabsp$SpeciesNum==x&allsphabsp$ErrorType=="EOR",], 
+                      aes(Comp.1,Comp.2))+
+            geom_point()+
+            stat_ellipse(segments=201) #default is to draw 51 line segments to make the ellipse
+          # get ellipse coordinates
+          pbeor <- ggplot_build(peor)
+          table(pbeor$data[[2]]$group)
+          
+          eleor <- pbeor$data[[2]][c("x","y")]
+          
+          # Center of ellipse
+          ctreor <- MASS::cov.trob(eleor)$center
+          
+          # Distance to center from each point on ellipse
+          dist2centereor <- sqrt(rowSums((t(t(eleor)-ctreor))^2))
+          
+          # Area of ellipse from semi-major and semi-minor axes which are largest and smallest of dist to center
+          habitatspecificityeor <- pi*min(dist2centereor)*max(dist2centereor)
+          hsout_eor <- data.frame(ErrorType = "EOR", SpeciesNum = x, 
+                              kfold = 1, habspec = habitatspecificityeor)
+  }
+    
+    
+  ellipseouterror <- do.call(rbind, lapply(c("no","yes"), function(errortype){
     # get and average across the replicates
     ellipseout <- do.call(rbind,lapply(1:10, function(rep){
-  p <- ggplot(allsphabsp[allsphabsp$SpeciesNum==x&allsphabsp$kfold==rep&allsphabsp$ErrorType==errortype,], 
-                  aes(Comp.1,Comp.2))+
-        geom_point()+
-        stat_ellipse(segments=201) #default is to draw 51 line segments to make the ellipse
-      # get ellipse coordinates
-      pb <- ggplot_build(p)
-      table(pb$data[[2]]$group)
-      
-      el <- pb$data[[2]][c("x","y")]
-      
-      # Center of ellipse
-      ctr <- MASS::cov.trob(el)$center
-      
-      # Distance to center from each point on ellipse
-      dist2center <- sqrt(rowSums((t(t(el)-ctr))^2))
-      
-      # Area of ellipse from semi-major and semi-minor axes which are largest and smallest of dist to center
-      habitatspecificity <- pi*min(dist2center)*max(dist2center)
-      hsout <- data.frame(ErrorType = errortype, SpeciesNum = x, kfold = rep, habspec = habitatspecificity)
-      hsout
+      if(nrow(allsphabsp[allsphabsp$SpeciesNum==x&allsphabsp$kfold==rep&allsphabsp$ErrorType==errortype,]>2)){
+        p <- ggplot(allsphabsp[allsphabsp$SpeciesNum==x&allsphabsp$kfold==rep&allsphabsp$ErrorType==errortype,],
+                    aes(Comp.1,Comp.2))+
+          geom_point()+
+          stat_ellipse(segments=201) #default is to draw 51 line segments to make the ellipse
+        # get ellipse coordinates
+        pb <- ggplot_build(p)
+        table(pb$data[[2]]$group)
+        
+        el <- pb$data[[2]][c("x","y")]
+        
+        # Center of ellipse
+        ctr <- MASS::cov.trob(el)$center
+        
+        # Distance to center from each point on ellipse
+        dist2center <- sqrt(rowSums((t(t(el)-ctr))^2))
+        
+        # Area of ellipse from semi-major and semi-minor axes which are largest and smallest of dist to center
+        habitatspecificity <- pi*min(dist2center)*max(dist2center)
+        hsout <- data.frame(ErrorType = errortype, SpeciesNum = x, kfold = rep, habspec = habitatspecificity)
+        hsout
+      }
+        }))
+      ellipseout
       }))
-    ellipseout
-    }))
-    ellipseouterror
-  }))
-  
+    allout <- rbind(ellipseouterror,hsout_eor)
+    allout
+}))
+
   
 
 ```
