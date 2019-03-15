@@ -26,12 +26,13 @@ library(Taxonstand)
 
 library(dismo)
 library(ENMeval)
-library(biomod2)
+# library(biomod2)
 library(spThin)
 
 library(tidyr)
 library(stringr)
 library(magrittr)
+devtools::install_github("ropensci/prism")
 library(prism)
 
 library(doParallel)
@@ -170,6 +171,21 @@ l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
               }))
 
 
+l1G1G2and <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2","G1G2"),])
+l1G1G2and$PolyID <- do.call(rbind, lapply(split(l1G1G2and,l1G1G2and$OBJECTID),
+                                       function(x){
+              x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
+              x
+              }))
+namesg1g2 <- table(as.character(l1G1G2$GNAME))
+length(namesg1g2) #60 species
+namesg1g2and <- table(as.character(l1G1G2and$GNAME))
+length(namesg1g2and) # 68
+namesg1g2and <- c(namesg1g2and[match(names(namesg1g2),names(namesg1g2and))],
+                  namesg1g2and[setdiff(names(namesg1g2and),names(namesg1g2))])
+g1g2names61_68 <- TPL(names(namesg1g2and[61:68]))
+proj4string(l1G1G2and) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
+
 # Could take all the synonyms and names of l1G1G2 to make the list of names to pull from SEINet big list
 namesg1g2 <- table(l1G1G2$GNAME)
 length(namesg1g2[namesg1g2 > 0]) #60 species
@@ -178,7 +194,6 @@ table(g1g2names$Taxonomic.status)
 # 2 not in there, "Gutierrezia elegans" "Oonopsis sp. 1", 10 synonyms, 3 unresolved
 # save(g1g2names, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 
-c
 g1g2names[g1g2names$Taxonomic.status == "Unresolved",]
 #Gilia sedifolia
 #Ipomopsis ramosa
@@ -364,9 +379,6 @@ plot(polys_46, border="pink", add=TRUE)
 str(as.character(mapply(FUN=function(x) unique(x$GNAME)[1],g1g2names[notnull,])))
 unique(as.character(polys_46$GNAME))
 
-l1G1G2_2 <- l1G1G2
-proj4string(l1G1G2_2) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
-
 # Was HerbPntsEORs_CO.jpg --> changing to Figure 1 in .eps format
 # grDevices::setEPS; says ps.options needs to be called before calling postscript and the override with more arguments to postscript
 
@@ -384,7 +396,7 @@ jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images
 # the extents of the rasters
 # plot(e.geo)
 plot(colocounties.UTM,border="gray60") #colocounties is in WGS84, not in same datum as l1G1G2
-plot(l1G1G2_2, border="gray60", add=TRUE, lwd=4) #
+plot(l1G1G2and, border="gray60", add=TRUE, lwd=4) #
 plot(projected, add=TRUE, pch=20, cex=0.5)
 ScaleBar(colocounties.UTM,
              10, .25, .05, .85, .10, lwd=1)
@@ -643,70 +655,6 @@ options(prism.path = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_
 rasterstack <- ls_prism_data() %>% prism_stack(.) # many skipping the first 6 that are provisional
 #get the projection from the raster stack
 rscrs <- rasterstack@crs@projargs # "+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"
-```
-
-
-# Already loaded, skip!
-```{r, eval=FALSE}
-
-pca_eorandherb <- lapply(1:nrow(g1g2names), function(sp){
-  #put grid points across colorado, sample from it for each polygons
-     polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[sp],
-                                         g1g2names$Taxon[sp]),] 
-      #area of each polygon
-      areanow <- sapply(slot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-                                             g1g2names$Taxon[i]),], "polygons"), 
-                        slot, "area")
-
-     cellsize <- 100
-     grid <- lapply(1:length(polys), function(i){
-       if(sqrt((polys[i,]@bbox[3]-polys[i,]@bbox[1])*(polys[i,]@bbox[4]-polys[i,]@bbox[2]))/cellsize < 1){
-         grid <- makegrid(polys[i,], cellsize = 10, pretty=FALSE) #0.1km
-         gridout <- SpatialPointsDataFrame(grid, data.frame(id=1:nrow(grid),polyid=i,
-                                                            polys@data$PolyID@data[i,]),
-                                             proj4string = CRS(proj4string(polys[i,])))
-           gridout
-         } else {
-           grid <- makegrid(polys[i,], cellsize = cellsize, pretty=FALSE) #1km 
-           gridout <- SpatialPointsDataFrame(grid, data.frame(id=1:nrow(grid),polyid=i,
-                                                              polys@data$PolyID@data[i,]),
-                                             proj4string = CRS(proj4string(polys[i,])))
-           gridout
-           }
-       })
-     
-
-     ov <- lapply(1:length(polys), function(i){
-         out <- grid[[i]][polys[i,],]
-         out
-         })
-
-     eor_data <- lapply(1:length(ov), function(x){
-       if(nrow(ov[[x]]@data)==0){
-         center <- gCentroid(polys[i,])
-         centerout <- SpatialPointsDataFrame(center, data.frame(id=1,polyid=x,
-                                                                polys@data$PolyID@data[i,]),
-                                             proj4string = CRS(proj4string(polys[i,])))
-         out <- spTransform(centerout, CRS(paste(rscrs)))
-         out
-       } else {
-         out <- spTransform(ov[[x]], CRS(paste(rscrs)))
-         out
-       }
-     })
-     
-     mergedEORs <- do.call(rbind,eor_data)
-     data_eor <- data.frame(coordinates(mergedEORs),id=mergedEORs$id,polyid=mergedEORs$polyid,
-                            Bestcrs=mergedEORs$BESTSRC, firstobs=mergedEORs$FIRSTOBS, 
-                            GRANK=mergedEORs$GRANK,
-                            GNAME=mergedEORs$GNAME,ENDEMIC=mergedEORs$ENDEMIC, 
-                            Lastobs=mergedEORs$LASTOBS,dist=NA,area=sum(areanow),
-                            extract(rasterstack, mergedEORs))
-     data_eor
-})
-
- save(pca_eorandherb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb.Rda") 
-
 ```
 
 
@@ -1412,35 +1360,73 @@ l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
               x
               }))
 
-plot(l1G1G2)
-G1G2all <- as.data.frame(table(as.character(l1G1G2$GRANK),as.character(l1G1G2$GNAME)))
-length(unique(G1G2all$Var2)) # 68 species with the G1G2s
-g1g2names68 <- unique(G1G2all$Var2)
-g1g2names68 <- TPL(g1g2names68)
-g1g2names68$AcceptedName <- paste(g1g2names68$New.Genus,g1g2names68$New.Species,sep=" ")
 
 ```
 
-#Poop, do I not have more, and we deleted all the polys?
-```{r}
 
-for(i in 1:68){
-   polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names68$AcceptedName[i],
-                                        g1g2names68$Taxon[i]),] 
+```{r}
+g1g2names61_68$AcceptedName <- paste(g1g2names61_68$New.Genus,g1g2names61_68$New.Species,sep=" ")
+l1G1G2and$GNAME <- as.character(l1G1G2and$GNAME)
+
+# The additional 8 when I add in the G1G2 not just the G1 and G2
+for(i in 61:68){
+   polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2names61_68$AcceptedName[i-60],
+                                        g1g2names61_68$Taxon[i-60]),] 
     proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
     
-    print(paste(g1g2names68$AcceptedName[i],  g1g2names68$Taxon[i]))
+    print(paste(g1g2names61_68$AcceptedName[i-60],  g1g2names61_68$Taxon[i-60]))
     print(table(as.character(polys$LASTOBS)))
-    print(as.numeric(substring(polys$LASTOBS,1,4)))
+    print(sort(as.numeric(substring(polys$LASTOBS,1,4))))
 }
 
-distXsp_noEORgrid68 <- lapply(1:nrow(g1g2names68), function(i){
+coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences.csv")
+
+rowstomatch <- lapply(c("Taxon","AcceptedName"), function(x){
+   coloradosps[,"scientificName"] %in%  g1g2names61_68[,x]
+})
+# Picks the ones that match either list one=Taxon, or list two AcceptedName for which some are duplicates, take unique rows. 
+coloradosps.g1g2_6168 <- unique(rbind(coloradosps[rowstomatch[[1]],],coloradosps[rowstomatch[[2]],]))
+nrow(coloradosps.g1g2_6168)
+
+coloradosps.g1g2_6168$decimalLatitude <- 
+  as.numeric(as.character(coloradosps.g1g2_6168$decimalLatitude))
+coloradosps.g1g2_6168$decimalLongitude <- 
+  as.numeric(as.character(coloradosps.g1g2_6168$decimalLongitude))
+coloradosps.g1g2_6168$lon2 <- round(coloradosps.g1g2_6168$decimalLongitude,2) # about 1.1 km 
+coloradosps.g1g2_6168$lat2 <- round(coloradosps.g1g2_6168$decimalLatitude,2)
+coloradosps.g1g2_6168$lon3 <- round(coloradosps.g1g2_6168$decimalLongitude,3) # about 110 m
+coloradosps.g1g2_6168$lat3 <- round(coloradosps.g1g2_6168$decimalLatitude,3)
+coloradosps.g1g2 <- read.csv("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_EORG1G2_WGS84.csv")
+namesg1g2 <- table(as.character(l1G1G2$GNAME))
+g1g2names <- TPL(names(namesg1g2))
+namesfoo <- lapply(1:2, function(i){
   gc()
   g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in%
-                                c(g1g2names68$Taxon[i],g1g2names68$AcceptedName[i])&
+                                c(g1g2names$Taxon[i],g1g2names$AcceptedName[i])&
                                 !is.na(coloradosps.g1g2$decimalLatitude),]
   
   g1g2now <- g1g2now[as.numeric(as.character(g1g2now$year))>1800,]
+  # remove points not in Colorado
+  g1g2now <- g1g2now[g1g2now$decimalLatitude>35,]
+  g1g2now <- g1g2now[g1g2now$decimalLongitude>(-113),]
+  g1g2now <- g1g2now[grepl("Specimen",g1g2now$basisOfRecord),]
+  g1g2now <- g1g2now[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)]
+  names(g1g2now)
+})
+namesfoo[[1]]
+names(distXsp_noEORgrid68[[1]])
+head(distXsp_noEORgrid68[[1]])
+## START HERE! can't figure out why rows are different in the old and new way!
+```
+
+```{r}
+distXsp_noEORgrid68 <- lapply(61:68, function(i){
+  gc()
+  g1g2now <- coloradosps.g1g2_6168[coloradosps.g1g2_6168$scientificName %in%
+                                c(g1g2names61_68$Taxon[i-60],g1g2names61_68$AcceptedName[i-60])&
+                                !is.na(coloradosps.g1g2_6168$decimalLatitude),]
+  g1g2now$year <- as.numeric(as.character(substring(g1g2now$year,1,4)))
+  g1g2now <- g1g2now[g1g2now$year>1800,]
   # remove points not in Colorado
   g1g2now <- g1g2now[g1g2now$decimalLatitude>35,]
   g1g2now <- g1g2now[g1g2now$decimalLongitude>(-113),]
@@ -1450,9 +1436,9 @@ distXsp_noEORgrid68 <- lapply(1:nrow(g1g2names68), function(i){
   
   if(nrow(g1g2now)>0){
   # put grid points across colorado, sample from it for each polygons
-    polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names68$AcceptedName[i],
-                                        g1g2names68$Taxon[i]),] 
-    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+    polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2names61_68$AcceptedName[i-60],
+                                        g1g2names61_68$Taxon[i-60]),] 
+    # proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
     
         
     years <- as.numeric(substring(polys$LASTOBS,1,4))
@@ -1472,13 +1458,13 @@ distXsp_noEORgrid68 <- lapply(1:nrow(g1g2names68), function(i){
     
   #turn into spatialpointsdataframe for individual species
     coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
-    proj4string(g1g2now) <- CRS("+init=epsg:4326")  # CRS("+proj=longlat +datum=WGS84")
+    proj4string(g1g2now) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
     g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
   # The minimum distance from each point to the nearest polygon
     distnow <- apply(gDistance(g1g2now,polys, byid=TRUE),2,min)
     gc()
    
-  out <- data.frame(Species = g1g2names68$AcceptedName[i], g1g2now,Dist = distnow, Area = totalarea, 
+  out <- data.frame(Species = g1g2names61_68$AcceptedName[i-60], g1g2now,Dist = distnow, Area = totalarea, 
                     EORdate = polys$LASTOBS[apply(gDistance(g1g2now,polys, byid=TRUE),2,which.min)],
                     Yeardiff = g1g2now$year- as.numeric(substring(as.character(polys$LASTOBS[apply(gDistance(g1g2now,polys, byid=TRUE),2,which.min)]),1,4)))
     gc()
@@ -1486,12 +1472,17 @@ distXsp_noEORgrid68 <- lapply(1:nrow(g1g2names68), function(i){
     }
   })
 save(distXsp_noEORgrid68, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid68.Rda") 
+
+distXsp_noEORgrid68[[1]]
 ```
 
 Yeardiff is the herbarium colleciton year - the polygon mapped year (LastOBS) so positive values are herbarium later than mapped, negative numbers are the herbarium colleciton before the mapped time
 ```{r}
+distXspall[,which(is.na(match(names(distXspall),names(distXsp_noEORgrid68[[1]]))))]
 
 distXspall <- do.call(rbind, distXsp_noEORgrid)
+distXspall <- rbind(distXspall[,-c(doesntmatch)],
+                    do.call(rbind, distXsp_noEORgrid68)[,-c(doesntmatch)])
 distXspall$New.Genus <- gsub("([A-Za-z]+).*", "\\1", distXspall$Species)
 table(distXspall$Yeardiff) # 9999 for unknown year of EOR mapping --> removed now
 distXspall[distXspall$Yeardiff< -100,c("EORdate","year")]
@@ -1513,7 +1504,8 @@ f10 <- lm(Dist ~ as.factor(New.Genus)*Yeardiff*Area, data= distXspall)
 
 
 (lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10),
-       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10),formula)))))
+       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10),formula))),
+       second.ord = FALSE))
 
 evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10),
                 modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10),formula)))))
@@ -1913,7 +1905,7 @@ https://www.molecularecologist.com/2013/04/species-distribution-models-in-r/
 ```{r}
 #Create bckground points, give them a 0 and same column names with lat long. Give eors a 1 and herb a 2 for looking at groups but then do a clustering
 
-sort(unique(coloradosps.g1g2$scientificName)) #68 names since a few synonyms 
+sort(unique(coloradosps.g1g2_6168$scientificName)) #68 names since a few synonyms 
 sort(unique(g1g2names$AcceptedName)) #60 names, why no Astragalus anisus??  
 sort(unique(g1g2names$Taxon)) #60 names, why no Astragalus anisus??   
 
