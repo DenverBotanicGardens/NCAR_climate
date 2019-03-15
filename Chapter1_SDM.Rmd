@@ -17,49 +17,53 @@ library(foreach)
 library(parallel)
 library(doParallel)
 
-
+library(maptools)
 library(dismo)
 library(Rmisc)
 library(rgdal)
 library(ENMeval)
 
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
+l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
+#Each polygon might be made of multiple disconnected polygons. Need to separate and label
+l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
+l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
+                                       function(x){
+              x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
+              x
+              }))
 
+l1G1G2and <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2","G1G2"),])
+l1G1G2and$PolyID <- do.call(rbind, lapply(split(l1G1G2and,l1G1G2and$OBJECTID),
+                                       function(x){
+              x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
+              x
+              }))
+namesg1g2 <- table(as.character(l1G1G2$GNAME))
+length(namesg1g2) #60 species
+namesg1g2and <- table(as.character(l1G1G2and$GNAME))
+length(namesg1g2and) # 68
+#What? are some in twice? 
+namesg1g2and <- c(namesg1g2and[match(names(namesg1g2),names(namesg1g2and))],
+                  namesg1g2and[setdiff(names(namesg1g2and),names(namesg1g2))])
+namesg1g2and
+# g1g2names <- TPL(names(namesg1g2))
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
+g1g2names61_68 <- TPL(names(namesg1g2and[61:68]))
 
-# Instead, load:
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_v3.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgHerb.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgEOR.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presvalsHerb.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presvalsEOR.Rda")
+plot(l1G1G2and, border="red")
+plot(l1G1G2, border="blue", add=TRUE)
 
-
-notnull <- which(!unlist(lapply(mapply('[[', distXsp_v3, 1), is.null)))
+notnull <- which(!unlist(lapply(mapply('[[', distXsp_noEORgrid, 1), is.null)))
 atleast12 <- c()
 for(l in notnull){
-  atleast12[match(l,notnull)] <- if(nrow(distXsp_v3[[l]][[1]]@coords)>11){ 
+  atleast12[match(l,notnull)] <- if(nrow(distXsp_noEORgrid[[l]])>11){ 
     l } else {
       NA
     }
 }
 atleast12 <- atleast12[!is.na(atleast12)] 
-# length(atleast12) # 28 vs. 24 over 12
-# 
-# notnull <- which(!unlist(lapply(mapply('[[', distXsp_v3, 1), is.null)))
-# morethan12 <- c()
-# for(l in notnull){
-#   morethan12[match(l,notnull)] <- if(nrow(distXsp_v3[[l]][[1]]@coords)>12){ 
-#     l } else {
-#       NA
-#     }
-# }
-# morethan12 <- morethan12[!is.na(morethan12)]  
-
-
-xEOR <- mapply('[[', distXsp_v3, 4)
-EORcoords <- xEOR[!unlist(lapply(xEOR, is.null))]
-notnullEOR <- which(!unlist(lapply(xEOR, is.null)))
-
-# template <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/PARC_COplus_slope25/COplus_slope50.tif")
+rm(l)
 
 
 # February 26, 2019 added _bioclim where I've resampled to the bioclim raster cell size (less than 1km)
@@ -249,8 +253,6 @@ habitatSpecificity <- function(whichones, pathstart, whichmaxentpoints, replicat
 # Maxent    
 Get the years of the herbarium specimens and the years of the EORs mapped from distXsp_noEORgrid from "Herb to EORs_v4"
 ```{r}
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
-
 length(distXsp_noEORgrid) # 60
 length(notnullEOR) # without #8
 
@@ -306,7 +308,7 @@ write.csv(TPLtbl1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche m
 
 ```
 
-#Should redo this to make sure all correct years per each
+
 ```{r}
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure2.jpg",
      width=225, height=105,units='mm', res=300)
@@ -835,26 +837,26 @@ witherrorhists <- accuracyhists("Q:/Research/Projects/alpine-phenology/Uncertain
 noerrorhistsofavg <- accuracyhistsOneperSp(pathstart1, WithorNo = "no")
 witherrorhistsofavg <- accuracyhistsOneperSp(pathstart1)
 
-weighted.hist(noerrorhistsofavg[[1]][,1],noerrorhistsofavg[[1]][,2])
-plot(density(noerrorhistsofavg[[1]][,1],
-             weights = noerrorhistsofavg[[1]][,2]/sum(noerrorhistsofavg[[1]][,2])),
-     main=g1g2names$AcceptedName[1])
-
-for(i in 1:length(noerrorhistsofavg)){
-  dno <- density(noerrorhistsofavg[[i]][,1],
-             weights = noerrorhistsofavg[[i]][,2]/sum(noerrorhistsofavg[[i]][,2]))
-  dwith <- density(witherrorhistsofavg[[i]][,1],
-             weights = witherrorhistsofavg[[i]][,2]/sum(witherrorhistsofavg[[i]][,2]))
-  if(max(dno$y)>max(dwith$y)){
-      plot(dno, main=paste("No=red, with=blue  ",g1g2names$AcceptedName[i]),xlim=c(0,1))
-      polygon(dno, col=rgb(1,0,0,0.5), border="black")
-      polygon(dwith, col=rgb(0,0,1,0.5), border="green")
-  } else {
-      plot(dwith, main=paste("No=red, with=blue  ",g1g2names$AcceptedName[i]),xlim=c(0,1))
-      polygon(dno, col=rgb(1,0,0,0.5), border="black")
-      polygon(dwith, col=rgb(0,0,1,0.5), border="green")
-  }
-}
+# weighted.hist(noerrorhistsofavg[[1]][,1],noerrorhistsofavg[[1]][,2])
+# plot(density(noerrorhistsofavg[[1]][,1],
+#              weights = noerrorhistsofavg[[1]][,2]/sum(noerrorhistsofavg[[1]][,2])),
+#      main=g1g2names$AcceptedName[1])
+# 
+# for(i in 1:length(noerrorhistsofavg)){
+#   dno <- density(noerrorhistsofavg[[i]][,1],
+#              weights = noerrorhistsofavg[[i]][,2]/sum(noerrorhistsofavg[[i]][,2]))
+#   dwith <- density(witherrorhistsofavg[[i]][,1],
+#              weights = witherrorhistsofavg[[i]][,2]/sum(witherrorhistsofavg[[i]][,2]))
+#   if(max(dno$y)>max(dwith$y)){
+#       plot(dno, main=paste("No=red, with=blue  ",g1g2names$AcceptedName[i]),xlim=c(0,1))
+#       polygon(dno, col=rgb(1,0,0,0.5), border="black")
+#       polygon(dwith, col=rgb(0,0,1,0.5), border="green")
+#   } else {
+#       plot(dwith, main=paste("No=red, with=blue  ",g1g2names$AcceptedName[i]),xlim=c(0,1))
+#       polygon(dno, col=rgb(1,0,0,0.5), border="black")
+#       polygon(dwith, col=rgb(0,0,1,0.5), border="green")
+#   }
+# }
 
 # kstest are they different or the same,
 # then 
@@ -885,15 +887,37 @@ whichsigndiff <- sapply(1:length(noerrorhistsofavg), function(s){
 })
 
 
+whichsigndiff
+which(!unlist(lapply(whichsigndiff, is.na)))
+
+# There are 27 because did atleast12[atleast12!=8] since #8 didnt' work. 
+
+# install.packages("latticeExtra")
+# library(latticeExtra)
+length(which(!unlist(lapply(whichsigndiff, is.na)))) # 14
+# Default margins
+par(mar=c(5.1, 4.1, 4.1, 2.1))
+
 # https://chemicalstatistician.wordpress.com/2013/06/24/exploratory-data-analysis-conceptual-foundations-of-empirical-cumulative-distribution-functions/  
-for(i in 1:length(noerrorhistsofavg)){
-  ecdfno <- ecdf(log(data.frame(noerrorhistsofavg[[i]])$value)+
+
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure4_accuracy.jpg",
+     width=200, height=700,units='mm', res=300)
+
+layout(matrix(c(1:14), 7,2))
+
+par(mar=c(5.1,4.1,4.1,0.1))
+for(i in which(!unlist(lapply(whichsigndiff, is.na)))){
+  as_is <- ecdf(log(data.frame(noerrorhistsofavg[[i]])$value)+
              log(data.frame(noerrorhistsofavg[[i]])$weight))
-  ecdfwith <- ecdf(log(data.frame(witherrorhistsofavg[[i]])$value)+
+  additional  <- ecdf(log(data.frame(witherrorhistsofavg[[i]])$value)+
              log(data.frame(witherrorhistsofavg[[i]])$weight))
-  plot(ecdfno)
-  lines(ecdfwith)
+  plot(as_is, col = "blue", main=paste(g1g2names$AcceptedName[atleast12[atleast12!=8][[i]]]))  
+  lines(additional, col = rgb(0,1,0,0.5))
 }
+
+
+dev.off()
+
 
 # try ks plot kernel smoothing, smothing optimized for display
 # plot ecdf, the sum of logs 
