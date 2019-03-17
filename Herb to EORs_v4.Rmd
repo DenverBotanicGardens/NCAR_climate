@@ -56,6 +56,8 @@ require(AICcmodavg)
 # load("P:/hackathon/Simulations/EORgrid.thin.Rda")
 
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
+
 
 load("P:/hackathon/Simulations/coloradosps.Rda")
 # load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorsinglecell.Rda")
@@ -186,7 +188,6 @@ namesg1g2and <- c(namesg1g2and[match(names(namesg1g2),names(namesg1g2and))],
 g1g2names61_68 <- TPL(names(namesg1g2and[61:68]))
 proj4string(l1G1G2and) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
 
-# Could take all the synonyms and names of l1G1G2 to make the list of names to pull from SEINet big list
 namesg1g2 <- table(l1G1G2$GNAME)
 length(namesg1g2[namesg1g2 > 0]) #60 species
 g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
@@ -198,56 +199,6 @@ g1g2names[g1g2names$Taxonomic.status == "Unresolved",]
 #Gilia sedifolia
 #Ipomopsis ramosa
 #Packera mancosana
-
-
-# Check when names are good or not from herbarium specimens
-seinet <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/seinet_colorado_with_coordinates_ALLG1G2.csv")
-
-seinet <- seinet[seinet$genus != "",]
-
-#table(seinet$basisOfRec) #PreservedSpecimen: 1871 and HumanObservation: 4
-seinet <- seinet[seinet$basisOfRecord != "HumanObservation",]
-namesSEINet <- names(table(seinet$scientificName)) #93 names
-SEINet_names <- TPL(namesSEINet)
-#table(SEINet_names$Taxonomic.status) #
-#             Accepted    Synonym Unresolved 
-#         2         75          9          7 
-SEINet_names$scientificNameAccpt <-paste(SEINet_names$New.Genus, SEINet_names$New.Species)
-#write.table(SEINet_names[SEINet_names$Taxonomic.status != "Accepted",c(1,14,16,12)], "clipboard", sep="\t", row.names=FALSE)
-#SEINet_names[SEINet_names$Taxonomic.status != "Accepted",c(1,14,16,12)]
-
-seinet_TPL <- merge(seinet, SEINet_names, by.x = "scientificName", by.y = "Taxon")
-#head(seinet_TPL) # all the information from herbarium collections and if they're accepted names or not
-
-seinet_TPL$family <- toupper(seinet_TPL$family)
-
-#seinet_TPL[seinet_TPL$institutionCode=="USU",]
-#seinet_TPL$institutionCode[seinet_TPL$institutionCode=="USU"] <- "USUUB"
-
-namesbyyear <- table(seinet_TPL$Taxonomic.status,seinet_TPL$year)
-plot(as.numeric(dimnames(namesbyyear)[[2]]),namesbyyear[2,],col="blue", type="l",
-     xlab="Year",ylab="Specimens", ylim=c(0,max(namesbyyear))) #accepted
-lines(as.numeric(dimnames(namesbyyear)[[2]]),namesbyyear[3,],col="green") #synonym
-lines(as.numeric(dimnames(namesbyyear)[[2]]),namesbyyear[4,],col="orange") #Unresolved
-lines(as.numeric(dimnames(namesbyyear)[[2]]),namesbyyear[1,],col="pink") #not in TPL
-```
-#Families collected over time
-```{r}
-familyxyear <- data.frame(table(seinet_TPL$year,seinet_TPL$family)) #now changed toupper lowercase $family has 44 levels, inconsistent capitals and lowercase..
-familyxyear$Var1 <- as.numeric(as.character(familyxyear$Var1))
-
-library(lattice)
-xyplot(Freq ~ Var1|Var2, familyxyear[familyxyear$Freq>0,],
-       type = c("g","p","r"),
-       index = function(x,y) coef(lm(y ~ x))[1],
-       xlab = "Year of Collection",
-       ylab = "Number of Collections", aspect = "xy")
-
-herbariumxyear <- data.frame(table(seinet_TPL$year,seinet_TPL$institutionCode)) 
-ggplot(herbariumxyear[herbariumxyear$Freq>0,],aes(Var1, Freq, colour=Var2 ))+
-  geom_point()+
-  theme_bw()
-
 ```
 
 Cite MODIS data: <https://lpdaac.usgs.gov/citing_our_data>   
@@ -569,298 +520,10 @@ mm
 
 
 ```{r}
-
-distXsp1 <- mapply('[[', distXsp, 1)
-distXsp1 <- do.call(rbind,distXsp1[!is.na(distXsp1)])
-plot(dist~as.factor(scientificName), distXsp1[distXsp1$dist<500000,], las=2)
-
- # distXsp1_tpl <- TPL(distXsp1$scientificName)
-# save(distXsp1_tpl, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1_tpl.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1_tpl.Rda")
-
-nrow(distXsp1);nrow(distXsp1_tpl)
-distXsp1 <- data.frame(distXsp1,distXsp1_tpl)
-
-plot(dist~as.factor(Family), distXsp1[distXsp1$dist<500000,], las=2,
-     xlab="",ylab="")
-
-#Write table for VisTrails field data
-#nrow(seinet_TPL)
-# seinet_TPL.cc <- seinet_TPL[seinet_TPL$decimalLongitude > -110,]
-# seinet_TPL.cc <- seinet_TPL.cc[seinet_TPL.cc$decimalLatitude > 35, ]
-# 
-# plot(seinet_TPL.cc$decimalLongitude,seinet_TPL.cc$decimalLatitude)
-# 
-# write.csv(seinet_TPL.cc, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORG1G2.csv")
-# 
-# write.csv(seinet_TPL.cc, "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Alpine_Phenology_2/Species_SEINet/FieldData_EORG1G2.csv")
-
-```
-
-
-
-Get the coordiates from each saved to use as csvs in VisTrails. 
-```{r}
-
-#distXsp[[i]][[1]] are the herbarium points, SpatialPointsDataFrame
-want <- which(!is.na(mapply('[[', distXsp, 1)))
-wantEOR <- which(!is.na(mapply('[[', distXsp, 4)))
-
-
-#points in the EORs
-EORsxsp <- mapply('[[', distXsp, 4)
-
-# ctrl+shift+c to uncomment out
-# for(i in wantEOR){
-#   write.csv((EORsxsp[[i]]@coords),
-#             paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORG1G2",g1g2names$AcceptedName[i],".csv", sep=""))
-# }
-# 
-# 
-# # make them match the number of points that the herbarium specimens have
-# for(i in wantEOR){
-#   if(nrow(EORsxsp[[i]]@coords)>herbspecimennumxsp[i]){
-#   write.csv(EORsxsp[[i]]@coords[sample(1:nrow(EORsxsp[[i]]@coords), herbspecimennumxsp[i]),],
-#             paste("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/FieldData_EORsamplesizematch",g1g2names$AcceptedName[i],".csv", sep=""))
-#   }
-# }
-
-# spatial thinning instead of just matching the points that the herbarium specimens have. Spatially thin the herbarium specimens as well. 
-
-```
-
-    
-
-#Instead of PRISM, use the elevation, slope, and aspect   
-```{r}
-rasterstack_2 <- stack(list(coElev, coAspect, coSlope))
-
-rscrs_2 <- rasterstack_2@crs@projargs # "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
-
-```
-
-
-  
-
-Test a PCoA for all grid EOR points and all Herb points. Then limit by year, can we figure out which EOR are historic points? 
-```{r}
-
-options(prism.path = "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Prism_Climate_Data/30Year_Normal") 
-
-#get_prism_normals(type="tmax", resolution = "800m", keepZip = FALSE, mon = 1:12)
-#get_prism_normals(type="tmin", resolution = "800m", keepZip = FALSE, mon = 1:12)
-#get_prism_normals(type="ppt", resolution = "800m", keepZip = FALSE, mon = 1:12)
-
-# stack rasters
-rasterstack <- ls_prism_data() %>% prism_stack(.) # many skipping the first 6 that are provisional
-#get the projection from the raster stack
-rscrs <- rasterstack@crs@projargs # "+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"
-```
-
-
-Get rid of data from polygons only seen before 1981
-get rid of repeted values for all the climate things, do only one row for each cell
-Column 4 is each polygon's id so there's only one point for each raster grid over a polygon but at least one point per polygon.   
-#Already loaded, skip!
-```{r}
-
-pca_eorandherb[[1]][!duplicated(pca_eorandherb[[1]][,grep("PRISM",colnames(pca_eorandherb[[1]]))]),]
-
-pca_eorsinglecell <- lapply(pca_eorandherb, function(x){
-  x[!duplicated(x[,grep("PRISM",colnames(x))]),]
-})
-
-pca_eorpost1980single <- lapply(pca_eorandherb, function(x){
-  x <- x[!grepl("-99",x$Lastobs),]
-  x <- x[(as.Date(x$Lastobs)>"1980-12-31"),]
-  out <- x[!duplicated(x[,c(4,11:length(x))]),]
-  out
-})
-
-pca_eorpost1980 <- lapply(pca_eorandherb, function(x){
-  x <- x[!grepl("-99",x$Lastobs),]
-  x <- x[(as.Date(x$Lastobs)>"1980-12-31"),]
-  x
-})
-
-save(pca_eorsinglecell, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorsinglecell.Rda")
-save(pca_eorandherb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb.Rda")
-save(pca_eorpost1980, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorpost1980.Rda")
-save(pca_eorpost1980single, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorpost1980single.Rda")
-
-
-```
-
-
-```{r}
-
-#make into spatialpointsdataframes, make in UTM like EORs
-eorsinglecell <- lapply(pca_eorsinglecell, function(x){
-  coordinates(x) <- ~ x1+x2
-  proj4string(x) <- CRS(paste(rscrs))
-  projectedx <- spTransform(x, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
-})
-
-eorlotsofcell <- lapply(pca_eorandherb, function(x){
-  coordinates(x) <- ~ x1+x2
-  proj4string(x) <- CRS(paste(rscrs))
-  projectedx <- spTransform(x, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
-})
-
-eorpost1980 <- lapply(pca_eorpost1980, function(x){
-  coordinates(x) <- ~ x1+x2
-  proj4string(x) <- CRS(paste(rscrs))
-  projectedx <- spTransform(x, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
-})
-
-
-polys <- lapply(1:nrow(g1g2names), function(i){
-  #put grid points across colorado, sample from it for each polygons
-     polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-                                         g1g2names$Taxon[i]),]
-     polys
-     })
-```
-
-Visual checks of data
-```{r}
-polys <- lapply(1:nrow(g1g2names), function(i){
-  #put grid points across colorado, sample from it for each polygons
-     polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-                                         g1g2names$Taxon[i]),]
-     polys
-     })
-
-eorpost1980 <- lapply(pca_eorpost1980, function(x){
-  coordinates(x) <- ~ x1+x2
-  proj4string(x) <- CRS("+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0")
-  projectedx <- spTransform(x, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
-})
-
-for(j in 10:13){
-  for(i in 1:length(polys[[j]])){
-    plot(polys[[j]][i,], border="blue",lwd=3, main=polys[[j]][i,]@data$LASTOBS)
-    plot(eorpost1980[[j]], pch=21, col="red",add=TRUE)
-    plot(polys[[j]], border="yellow", add=TRUE)
-    ScaleBar(polys[[j]][i,],
-             0.01, .05, .20, .95, .17, lwd=1) #first is round to nearest km
-  }
-}
-
-
-for(j in 3:5){
-  for(i in 1:length(polys[[j]])){
-    plot(polys[[j]][i,], border="blue", main=polys[[j]][i,]@data$LASTOBS)
-    plot(eorlotsofcell[[j]], pch=21, col="red",add=TRUE)
-    ScaleBar(polys[[j]][i,],
-             0.01, .25, .20, .15, .17, lwd=2) #first is round to nearest km
-  }
-}
-
-
-for(j in 3:5){
-  for(i in 1:length(polys[[j]])){
-    plot(polys[[j]][i,], border="blue", main=polys[[j]][i,]@data$LASTOBS)
-    plot(eorpost1980[[j]], pch=21, col="red",add=TRUE)
-    ScaleBar(polys[[j]][i,],
-             0.01, .25, .20, .15, .17, lwd=2) #first is round to nearest km
-  }
-}
-
-for(i in 10:23){
-  plot(polys[[i]], border="goldenrod", lwd=10, main=polys[[j]][i,]@data$LASTOBS)
-  plot(eorsinglecell[[i]], add=TRUE)
-    ScaleBar(polys[[j]][i,],
-             0.01, .25, .20, .15, .17, lwd=2) #first is round to nearest km
-}
-
-for(i in 1:length(polys)){
-  plot(polys[[i]], border="blue")
-  plot(grid[i], pch=20, cex=0.5, add=TRUE)
-  ScaleBar(polys[[i]],
-           0.01, .25, .20, .15, .17, lwd=2) #first is round to nearest km
-}
-
-```
-
-#Already loaded, skip
-```{r}
-#The first in all these are the herbarium records
-(distXsp[[1]][[1]]) #+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0   Need to transform
-
-distXsp1_pca <- do.call(c,mapply('[[', distXsp, 1))
-distXsp1_pca <- distXsp1_pca[!is.na(distXsp1_pca)]
-
-pca_herb <- lapply(distXsp1_pca, function(x){
-#  transdf <- data.frame(distXsp[[x]][[1]],dist=distXsp[[x]][[2]],area=distXsp[[x]][[3]])
-  out <- spTransform(x, CRS(paste(rscrs)))
-  pca_herbout <- data.frame(coordinates(out),id=out$id,polyid=NA,
-                            Bestcrs=out$institutionCode, firstobs=out$eventDate, 
-                            GRANK=NA,
-                            GNAME=out$scientificName,ENDEMIC=NA, 
-                            Lastobs=out$eventDate,dist=out$dist,area=out$area,
-                            extract(rasterstack, out))
-  pca_herbout
-})
-
-
-save(pca_herb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herb.Rda")
-
-# since sampling bias is known issue, only one point per climate raster value (columns 11:length) are kept; don't know if sampling density is due to bias or higher area of suitability. hummm. 
-pca_herbpost1980single <- lapply(pca_herb, function(x){
-  colnames(x) <- c("x1","x2",colnames(x)[3:length(x)])
-  x <- x[(which(nchar(as.character(x$Lastobs)) == 10)),]
-  x <- x[!grepl("-99",x$Lastobs),]
-  x <- x[(as.Date(x$Lastobs)>"1980-12-31"),]
-  out <- x[!duplicated(x[,c(11:length(x))]),]
-  out
-})
-
-pca_herbpost1980 <- lapply(pca_herb, function(x){
-  colnames(x) <- c("x1","x2",colnames(x)[3:length(x)])
-  x <- x[(which(nchar(as.character(x$Lastobs)) == 10)),]
-  x <- x[!grepl("-99",x$Lastobs),]
-  x <- x[(as.Date(x$Lastobs)>"1980-12-31"),]
-  x
-})
-
-save(pca_herbpost1980, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herbpost1980.Rda")
-
-save(pca_herbpost1980single, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herbpost1980single.Rda")
-
 g1g2names[g1g2names$Family=="Plantaginaceae",]#Add the Family for Gutierrezia: Asteraceae  and Oonopsis: Asteraceae
 g1g2names$Family[g1g2names$Family==""] <- "Asteraceae"
 g1g2names$Family[g1g2names$Family=="Compositae"] <- "Asteraceae"
 g1g2names$Family[g1g2names$Family=="Leguminosae"] <- "Fabaceae"
-# 
-# want <- which(!is.na(mapply('[[', distXsp, 1)))
-# wantEOR <- which(!is.na(mapply('[[', distXsp, 4)))
-# 
-# # Not going to work for the ones missing Herbarium records
-# data.frame(distXsp[[4]][[1]],g1g2names[4,])
-# 
-# x_Herbs= mapply('[[', distXsp, 1)
-# x_EORs <- mapply('[[', distXsp, 4)
-# 
-# x_Herbs[[1]]@coords
-# 
-# ToVisTrails_G1G2Herb <- do.call(rbind,
-#                                 lapply(want, function(x) data.frame(x_Herbs[[x]],g1g2names[x,])))
-#                                 
-# # ToVisTrails_G1G2EOR <- data.frame(matrix(ncol = length(ToVisTrails_G1G2Herb), nrow = 0))
-# # colnames(ToVisTrails_G1G2EOR) <- colnames(ToVisTrails_G1G2Herb)
-# 
-# EOR_G1G2tomerge <- do.call(rbind,
-#                                 lapply(wantEOR, function(x) data.frame(x_EORs[[x]],g1g2names[x,])))
-# 
-# 
-# names(ToVisTrails_G1G2Herb)
-# names(EOR_G1G2tomerge)
-# 
-# head(ToVisTrails_G1G2Herb[,c(89:90,92:117)])
-# head(EOR_G1G2tomerge)
-# 
-# write.csv()
 
 ```
 
@@ -911,119 +574,10 @@ First published: 02 July 2018
 4. use makegrid with n = the probability? 
 
 
-
-
- From VisTrails   
-Need to test overlap amount.   
-Calculate the amount of overlap between rasters
-```{r}
-DrEx_EOR <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/NicheModels/Draba exunguiculata_EOR/Maxent_EORvHerb_1/maxent_bin_map.tif")
-
-DrEx <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/NicheModels/Draba exunguiculata/Maxent_1/maxent_bin_map.tif")
-
-#DrExEORmatchss <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/NicheModels/Draba exunguiculata_EORsamplesizematch/Maxent_EORvHerb_1/maxent_bin_map.tif")
-
-
-#Following my code from Elevation_nichemodels_Vistrails.Rmd, make overlap be 3, 2 be EOR, and Herbarium be 1
-#EOR <- DrEx_EOR
-
-plot(DrEx_EOR)
-plot(DrEx)
-#plot(DrExEORmatchss)
-
-AsMi_EOR <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/NicheModels/Astragalus microcymbus_EOR/Maxent_EORvHerb_1/maxent_bin_map.tif")
-
-AsMi <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/NicheModels/Astragalus microcymbus/Maxent_1/maxent_bin_map.tif")
-
-#Following my code from Elevation_nichemodels_Vistrails.Rmd, make overlap be 3, 2 be EOR, and Herbarium be 1
-
-AsMiEORmatchss <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/NicheModels/Astragalus microcymbus_EORsamplesizematch/Maxent_EORvHerb_1/maxent_bin_map.tif")
-
-
-plot(AsMi_EOR,main="EOR")
-plot(colocounties, add=TRUE)
-plot(AsMi, main="Herb")
-plot(colocounties, add=TRUE)
-plot(AsMiEORmatchss, main="EOR sample size match herb")
-plot(colocounties, add=TRUE)
-points(projected[grep("micro", projected$scientificName),])
-
-
-#Make a copy of each to compare overlap O1 and O2
-OAsMiEormatch <- AsMiEORmatchss
-Oasmi <- AsMi 
-
-#Where there is overlap between AsMiEormatchss and AsMi assign a 2 instead of 1 to AsMiEormatchss
-OAsMiEormatch[Oasmi==1] <- 2 #change to 2 where overlap
-out <- AsMi+OAsMiEormatch    #When added together will be 1 if only in one, 2 if only in AsMiEormatchss, 3 if in both
-outcat <- ratify(out)        #To add ID for each
-levelplot(outcat, col.regions =  c("white","green","darkred"), att="ID")
-
-#Overlap of the other
-Oasmi[AsMiEORmatchss==1] <- 2
-out2 <- Oasmi+AsMiEORmatchss
-outcat2 <- ratify(out2)
-levelplot(outcat2, col.regions =  c("white","green","darkred"), att="ID")
-#to get area, easier to be in meters, UTM so convert to proj4string(colocounties.UTM)
-class(outcat)
-# outcat <- projectRaster(outcat, crs = (proj4string(colocounties.UTM)))
-# outcat2 <- projectRaster(outcat2, crs = (proj4string(colocounties.UTM))) 
-
-areaoutcat <- outcat
-areaoutcat[areaoutcat!=3] <- NA
-sum(raster::area(areaoutcat, na.rm=TRUE))
-
-areaoutcat2 <- outcat2
-areaoutcat2[areaoutcat2!=3] <- NA
-#tryagain<- projectRaster(outcat, crs = "+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0", method="ngb")
-raster::area(areaoutcat2, na.rm=TRUE)
-
-areaoutcat2raster <- rasterToPolygons(areaoutcat2)
-out2proj <- spTransform(areaoutcat2raster, CRS(proj4string(colocounties.UTM)))
-sum(gArea(out2proj, byid=TRUE))/(1000^2) #divided by 1km squared: 1043.532 square km
-
-#Sum rasters that are overlap ==3 and multiply by cell size, but this is in decimal seconds at this latitude so about 1km is 1 and this is 0.00083 or whatevers
-sum(outcat[] == 3)*res(outcat)[1]^2
-sum(outcat2[] == 3)*res(outcat2)[1]^2
-
-```
      1. Could use the comparison of more points (appropriate density?) within EORs vs. the sparse data because of biases and practices of herbarium collections to compare overlap of niche models for herb, eor, and sample size same eor. how many background?    
      2. Can't I get the background points from VisTrails? Yes! Background points were always set to 300 for my first crack at it. Too many? Maybe, maybe fine. Or just understand the bias it creats for AUC, sensitivity, specificity and such. 
 
 
-
-layout plot     
-Plot the Herb and the EOR and then the overlap
-```{r}
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/EOR_Herb_EORthin_AsMi.jpg",
-     width=700, height=170,units='mm', res=300)
-
-nf <- layout(matrix(c(1,2,3), 1,3, byrow=FALSE),
-             width=c(6,6,6), height=c(1))
-layout.show(nf)
-
-op <- par(no.readonly=TRUE)
-par(mai=c(1.5,2,3.5,3)/4)
-
-#EOR
-plot(AsMi_EOR)
-plot(colocounties, add=TRUE)
-mtext("a)", side=3, cex=2, line=0.5, at=par("usr")[1]+0.05*diff(par("usr")[1:2]))
-points(distXsp[[4]][[4]],pch=20, cex=0.5)
-
-#Herbarium collections
-plot(AsMi)
-plot(colocounties, add=TRUE)
-mtext("b)", side=3,cex=2,  line=0.5, at=par("usr")[1]+0.05*diff(par("usr")[1:2]))
-
-#Thinned EOR points to match Herbarium points
-plot(AsMiEORmatchss)
-plot(colocounties, add=TRUE)
-mtext("c)", side=3,cex=2,  line=0.5, at=par("usr")[1]+0.05*diff(par("usr")[1:2]))
-
-dev.off()
-
-```
 
 
 http://www.earthskysea.org/!ecology/sdmShortCourseKState2012/grinnellExercise/exercise-tuning-maxent-using-beta-and-aic.html  
@@ -1057,311 +611,8 @@ dd <- gDistance(localroads.latlon, as(r, "SpatialPoints"), byid=TRUE)
 ```
 
 
-Geographic distance from herbarium points to EORs  
-```{r}
-hist(distXsp1$dist[distXsp1$dist<700000]/1000, main = "Distance (km) from points to nearest EOR",
-     xlab="km", breaks=50)#, xlim=c(1,612))
-
-plot(density(distXsp1$dist[distXsp1$dist<700000]/1000))
-
-vals <- density(distXsp1$dist)
-pStar <- vals$x[which(vals$y==max(vals$y))]
-
-plot(density(distXsp1$dist), xlim=c(0,50000))
-abline(v=pStar, col="red")
-abline(h=max(vals$y)-qlnorm(0.95))
-
-length(distXsp1$dist[distXsp1$dist>100])/ #816
-length(distXsp1$dist)
-
-length(distXsp1$dist[distXsp1$dist<=100])/ #275
-length(distXsp1$dist)
-
-length(distXsp1$dist[distXsp1$dist>1000])/ #556
-length(distXsp1$dist)
-
-median(distXsp1$dist) #1083.777
-
-reps <- 50000
-ssize <- 500
-rand.diff <- unlist(lapply(1:reps, function(x) median(sample(distXsp1$dist,ssize))))
-ctrl95CI <- sd(rand.diff)/sqrt(ssize)*qt(0.975,df=ssize) 
-ctrl95CI.l <- sd(rand.diff)/sqrt(ssize)*qt(0.025,df=ssize)
-
-
-hist(rand.diff, main="Median distance from points to nearest EOR",
-     xlab="meters")
-abline(v=mean(rand.diff)+ctrl95CI, col="red")
-abline(v=mean(rand.diff)+ctrl95CI.l, col="red")
-
-```
-
-```{r}
-for(i in want){
-  plot(distXsp[[i]][[1]], pch=16, cex=0.5, col=rgb(0,0,0,0.75), main=g1g2names$AcceptedName[i])
-  plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),],
-       border = rgb(1,0,0,0.5), lwd=3, add=TRUE)
-  ScaleBar(raster(l1G1G2[l1G1G2$GNAME %in%
-                           c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),]), #reference raster
-           0.1, .5, .15, .15, .05, lwd=2) #round to nearest km, width, % y from bottom, % x from left, y text
-}
-```
-
-
-```{r}
-for(i in want){
-  plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),],
-       border = rgb(1,0,0,0.5),  main=g1g2names$AcceptedName[i], lwd=3,
-       xlim=c(min(distXsp[[i]][[1]]@coords[,1])-100,max(distXsp[[i]][[1]]@coords[,1]))+100,
-       ylim=c(min(distXsp[[i]][[1]]@coords[,2]-100),max(distXsp[[i]][[1]]@coords[,2]))+100)
-  points(distXsp[[i]][[1]], pch=16, cex=0.5, col=rgb(0,0,0,0.75))
-  ScaleBar(raster(l1G1G2[l1G1G2$GNAME %in%
-                           c(g1g2names$AcceptedName[i],g1g2names$Taxon[i]),]), #reference raster
-           0.1, .25, .15, .15, .10, lwd=2) #round to nearest km, width, % y from bottom, % x from left, y text
-}
-```
-
-```{r}
-i <- sapply(colo.all, is.factor)
-colo.all[i]<-lapply(colo.all[i], as.character)
-
-colo.all$year <- as.numeric(colo.all$year)
-colo.all$decimalLatitude <- as.numeric(colo.all$decimalLatitude)
-colo.all$decimalLongitude <- as.numeric(colo.all$decimalLongitude)
-colo.all$minimumElevationInMeters <- as.numeric(colo.all$minimumElevationInMeters)
-
-colo.all[colo.all$recordNumber == 9088,] #year is 1999, not recorded at Fort Lewis
-colo.all[colo.all$recordNumber == 1596,] #another repeat, should be 1997 not 1007
-## Ok to get rid of duplicates that resulted in wrong years
-colo.all <- colo.all[colo.all$year > 1800,]
-
-colo.all$coordinateUncertaintyInMeters <-
-  as.numeric(colo.all$coordinateUncertaintyInMeters)
-#How many specimens give an uncertainty in meters (square meters?)
-length(colo.all$coordinateUncertaintyInMeters[!is.na(colo.all$coordinateUncertaintyInMeters) & !is.na(colo.all$decimalLatitude)])/
-  length(colo.all$coordinateUncertaintyInMeters[!is.na(colo.all$decimalLatitude)])
-
-colo.all[is.na(colo.all$coordinateUncertaintyInMeters),]
-
-colo.all[colo.all$dist>50000 & !is.na(colo.all$dist),c(56,57,83,61,63,66,67)] #611551meters is width of colorado about
-
-#Can't have missing data
-colo.all.ll <- colo.all[!is.na(colo.all$decimalLatitude)&
-                       !is.na(colo.all$decimalLongitude),]
-coordinates(colo.all.ll) <-~decimalLongitude+decimalLatitude
-proj4string(colo.all.ll) <- CRS("+proj=longlat +datum=WGS84") 
-colo.all.ll <- spTransform(colo.all.ll, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
-
-all.county <- over(colo.all.ll, colocounties.UTM[,"COUNTY"])
-colo.all.ll$InCounty <- all.county[,1]
-
-
-table(colo.all.ll$county[colo.all.ll$county != colo.all.ll$InCounty])
-colo.all.ll@data[colo.all.ll$county != colo.all.ll$InCounty &
-              !is.na(colo.all.ll$county),c("scientificName","institutionCode","county","InCounty","georeferencedBy")]
-
-#Which county are the points really in
-colocounties.UTM.df <- as.data.frame(colocounties.UTM)
-colocounties.UTM.df$id <- as.numeric(rownames(colocounties.UTM.df))
-
-plot(colocounties.UTM, border="grey80")
-plot(colo.all.ll, add=TRUE, pch=16, cex=0.5)
-
-#Make a Levenshtein distance matric between names (like that paper!)
-countymatch<- adist(colo.all.ll@data$county[!is.na(colo.all.ll@data$county)&
-                                              colo.all.ll@data$county!=""],
-                    colo.all.ll@data$InCounty[!is.na(colo.all.ll@data$county)&
-                                              colo.all.ll@data$county!=""],
-                    partial=TRUE,ignore.case = TRUE)
-#Single linkage method
-#hcfar <- hclust(as.dist(countymatch), method='single')
-
-
-#errors so try clean up county column
-colo.all.ll$countyclean <- gsub("Co.*","",colo.all.ll$county)
-#trim trailing white space
-colo.all.ll$countyclean <- sub("\\s+$", "", colo.all.ll$countyclean)
-colo.all.ll$countyclean <- toupper(colo.all.ll$countyclean)
-
-colo.all.ll@data[!(colo.all.ll$countyclean %in%colo.all.ll$InCounty),]
-
-nrow(colo.all.ll@data[!(colo.all.ll$countyclean %in%colo.all.ll$InCounty),])/
-       nrow(colo.all.ll)
-
-colo.all.ll@data[!(colo.all.ll$countyclean %in%colo.all.ll$InCounty),]
-
-
-```
-
-Total area of EOR polygons per spcies for the the 46 species with mapped herbarium records 
-```{r}
-#n <- length(x); sort(x,partial=n-1)[n-1]   for the second to largest value
-plotDistxRange <- ggplot(distXsp1[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
-                distXsp1$area<=max(distXsp1$area),], aes(sqrt(area), dist/1000))+
-  geom_point()+
-  theme_bw()+
-  ggtitle("a)")+
-  stat_smooth(method="lm", colour="black", level=0)+
-  ylab("Distance (km) to nearest EOR")+
-  xlab(expression(paste("Species range (km"^"2",")")))
-
-ggplot(distXsp1[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
-                distXsp1$area<=max(distXsp1$area),], aes(area, log(dist/1000)))+
-  geom_point()+
-  theme_bw()+
-  stat_smooth(method="lm", colour="black", level=0)+
-  ylab("Distance (km) to nearest EOR")+
-  xlab(expression(paste("Species range (km"^"2",")")))
-
-#to do year next need to get as many years out as possible from character strings
-distXsp1$year <- (as.numeric(gsub("([0-9]+).*$", "\\1", distXsp1$year)))
-
-```
-
-
-
-```{r}
-#get rid of the three that are out of the state issues
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/distanceXrange.jpg",
-     width=100, height=75,units='mm', res=300)
-
-plotDistxRange
-
-dev.off()
-
-#get rid of the three that are out of the state issues
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/distanceXyear.jpg",
-     width=200, height=75,units='mm', res=300)
-
-layout(matrix(c(1,2), 1,2, byrow=FALSE),
-             width=c(6,6), height=c(1))
-
-par(mar=c(2,4.5,4.5,0.5))
-
-plotDistxRange
-
-ggplot(distXsp1[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
-                distXsp1$area<=max(distXsp1$area),], aes(year, dist/1000))+
-  geom_point(pch=16)+
-  theme_bw()+
-  stat_smooth(method="lm",colour="black", level=0)+
-  ylab("")+
-  ggtitle("b)")+
-  # ylab("Distance (km) to nearest EOR")+
-  xlab("Year")# +
-  # theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-
-dev.off()
-```
-
-```{r}
-
-#get rid of the three that are out of the state issues
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure2.jpg",
-     width=275, height=125,units='mm', res=300)
-
-layout(matrix(c(1,2), 1,2, byrow=FALSE),
-             width=c(6,6), height=c(1))
-
-par(mar=c(4,4,1,0.5))
-
-plot(sqrt(distXsp1$area[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
-                distXsp1$area<=max(distXsp1$area)]),
-     (distXsp1$dist[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
-                distXsp1$area<=max(distXsp1$area)])/1000,
-     pch=16, cex=0.5, 
-     xlab=expression(paste("Species range (km"^"2",")")),
-     ylab="Distance (km) to nearest EOR")
-abline(lm((distXsp1$dist[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
-                distXsp1$area<=max(distXsp1$area)])/1000~
-            sqrt(distXsp1$area[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
-                distXsp1$area<=max(distXsp1$area)])))
-mtext("a)", side=3, line=0, at=par("usr")[1]+0.01*diff(par("usr")[1:2]),
-             cex=1.2)
-
-plot(distXsp1$year[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
-                distXsp1$area<=max(distXsp1$area)],
-     (distXsp1$dist[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
-                distXsp1$area<=max(distXsp1$area)])/1000,
-     pch=16, cex=0.5, 
-     ylab="",
-     xlab="Year")
-abline(lm((distXsp1$dist[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
-                distXsp1$area<=max(distXsp1$area)])/1000~
-            distXsp1$year[distXsp1$dist<sort(distXsp1$dist,
-                                             partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
-                            distXsp1$area<=max(distXsp1$area)]))
-mtext("b)", side=3, line=0, at=par("usr")[1]+0.01*diff(par("usr")[1:2]),
-             cex=1.2)
-
-dev.off()
-```
-
-
-```{r}
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/distanceXSpeciesRange.jpg",
-     width=150, height=100,units='mm', res=300)
-
-
-
-ggplot(distXsp1[distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
-                distXsp1$area<=max(distXsp1$area),], aes(area/1000000, dist/1000))+
-  geom_point(pch=16)+
-  theme_bw()+
-  stat_smooth(method="lm")+
-  ylab("Distance (km) to nearest EOR")+
-  xlab(expression(paste("Species range (km"^"2",")")))
-
-
-dev.off()
-```
-
-```{r}
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/distanceXYear_SpeciesRange.jpg",
-     width=275, height=200,units='mm', res=300)
-
-
-ggplot(distXsp1[which(distXsp1$dist<sort(distXsp1$dist,partial=(nrow(distXsp1))-2)[(nrow(distXsp1))-2]&
-                distXsp1$area<=max(distXsp1$area) & !is.na(distXsp1$New.Genus)),], 
-       aes(year, dist/1000, color=as.numeric(as.factor(New.Species))))+
-  geom_point()+
-  theme_bw()+
-  stat_smooth(method="lm")+
-  facet_wrap(~New.Genus)+
-  ylab("Distance (km) to nearest EOR")+
-  xlab("Year")+ 
-  scale_color_gradientn(colours = rainbow(length( table(distXsp1$Taxon))))+
-  theme(legend.position="none")+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-dev.off()
-```
-
 
 Is there anything inherintly interesting about the genus? Maybe some genera are more likely to shift in range than others... so yes, keep in.  
-
-```{r}
-# Don't need grid points for EOR but do want all records and see difference in years between herb and closest EOR
-
-coloradosps.g1g2 <- read.csv("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_EORG1G2_WGS84.csv")
-
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
-l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
-
-#Each polygon might be made of multiple disconnected polygons. Need to separate and label
-table(g1g2names$Taxon)
-table(l1eor$GRANK)
-# Added G1G2 on 3/12/2019
-l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2", "G1G2"),])
-l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
-                                       function(x){
-              x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
-              x
-              }))
-
-
-```
 
 
 ```{r}
@@ -1377,16 +628,20 @@ for(i in 61:68){
     print(paste(g1g2names61_68$AcceptedName[i-60],  g1g2names61_68$Taxon[i-60]))
     print(table(as.character(polys$LASTOBS)))
     print(sort(as.numeric(substring(polys$LASTOBS,1,4))))
+    names(coloradosps.g1g2_6168[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)])
+names(coloradosps.g1g2[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)])
 }
 
 coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences.csv")
 
-rowstomatch <- lapply(c("Taxon","AcceptedName"), function(x){
+rowstomatch6168 <- lapply(c("Taxon","AcceptedName"), function(x){
    coloradosps[,"scientificName"] %in%  g1g2names61_68[,x]
 })
 # Picks the ones that match either list one=Taxon, or list two AcceptedName for which some are duplicates, take unique rows. 
-coloradosps.g1g2_6168 <- unique(rbind(coloradosps[rowstomatch[[1]],],coloradosps[rowstomatch[[2]],]))
+coloradosps.g1g2_6168 <- unique(rbind(coloradosps[rowstomatch6168[[1]],],
+                                      coloradosps[rowstomatch6168[[2]],]))
 nrow(coloradosps.g1g2_6168)
+
 
 coloradosps.g1g2_6168$decimalLatitude <- 
   as.numeric(as.character(coloradosps.g1g2_6168$decimalLatitude))
@@ -1396,6 +651,10 @@ coloradosps.g1g2_6168$lon2 <- round(coloradosps.g1g2_6168$decimalLongitude,2) # 
 coloradosps.g1g2_6168$lat2 <- round(coloradosps.g1g2_6168$decimalLatitude,2)
 coloradosps.g1g2_6168$lon3 <- round(coloradosps.g1g2_6168$decimalLongitude,3) # about 110 m
 coloradosps.g1g2_6168$lat3 <- round(coloradosps.g1g2_6168$decimalLatitude,3)
+
+names(coloradosps.g1g2_6168[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)])
+names(coloradosps.g1g2[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)])
+
 coloradosps.g1g2 <- read.csv("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/VisTrails/FieldData_EORG1G2_WGS84.csv")
 namesg1g2 <- table(as.character(l1G1G2$GNAME))
 g1g2names <- TPL(names(namesg1g2))
@@ -1413,9 +672,11 @@ namesfoo <- lapply(1:2, function(i){
   g1g2now <- g1g2now[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)]
   names(g1g2now)
 })
-namesfoo[[1]]
 names(distXsp_noEORgrid68[[1]])
 head(distXsp_noEORgrid68[[1]])
+names(distXsp_noEORgrid[[1]])
+      namesfoo[[1]]
+
 ## START HERE! can't figure out why rows are different in the old and new way!
 ```
 
@@ -1723,180 +984,6 @@ Can either do bounding box (plus some buffer) or circles at some diameter
     - 46 species have herbarium data avalaible through SEINet    
     - wantEOR are the ones from the 60 that have EOR data so wantEOR[i] in a loop would get the ones I want    
     - want[i] would get teh 46 that have herbarium data from the list of 60 species   
-
-##SKIP!! you already loaded these
-```{r}
-#Circles around herbarium points
-circleHerb <- list()
-for(i in 1:length(want)){
-  circleHerb[[i]] <- circles(pointsXsp.latlon[[i]]@coords, d=50000, lonlat=TRUE)
-}
-
-save(circleHerb, file= "P:/hackathon/Simulations/circleHerb.Rda")
-
-#Circles around EOR points. 
-circle <- list()
-for(i in 1:length(wantEOR)){
-  circle[[i]] <- circles(EORsxsp[[wantEOR[i]]]@coords, d=50000, lonlat=TRUE)
-}
-
-save(circle, file= "P:/hackathon/Simulations/circleEOR.Rda")
-```
-
-
-```{r}
-plot(colocounties)
-plot(circle[[2]], add=TRUE)
-points(EORsxsp[[2]]@coords, pch=16)
-plot(circle[[3]], add=TRUE, border="red")
-points(EORsxsp[[3]]@coords, pch=16)
-plot(circle[[4]], add=TRUE, border="blue")
-points(EORsxsp[[4]]@coords, pch=16)
-plot(circle[[5]], add=TRUE, border="orange")
-points(EORsxsp[[5]]@coords, pch=16)
-```
-
-#SKIP!!! already loaded
-```{r}
-# Need stack of environmental layers  
-#Raster stack of just the bioclim variables
-#class(bioclim.colorado)
-
-# Get backgrounds for each species
-envs.backg <- list()
-for(i in 1:length(wantEOR)){
-  envs.backg[[i]] <- crop(bioclim.colorado, circle[[i]]@polygons)
-}
-
-for(i in 1:length(wantEOR)){
-  envs.backg[[i]] <- mask(envs.backg[[i]], circle[[i]]@polygons)
-}
-
-
-#Get backgrounds for each species according to the herbarium specimens
-envs.backg.herb <- list()
-for(i in 1:length(want)){
-  envs.backg.herb[[i]] <- crop(bioclim.colorado, circleHerb[[i]]@polygons)
-}
-
-for(i in 1:length(want)){
-  envs.backg.herb[[i]] <- mask(envs.backg.herb[[i]], circleHerb[[i]]@polygons)
-}
-
-
-save(envs.backg, file= "P:/hackathon/Simulations/envs.backgEOR.Rda")
-save(envs.backg.herb, file= "P:/hackathon/Simulations/envs.backgHerb.Rda")
-```
-
-
-### NEED TO LOAD STUFF UP TOP TO DO THIS!
-
-```{r}
-#Plot presence points
-plot(envs.backg[[wantEOR[19]]][[1]], main=g1g2names$AcceptedName[wantEOR[19]])
-points(EORsxsp[[wantEOR[19]]], pch=16)
-
-for(i in 1:length(envs.backg.herb)){
-  plot(envs.backg.herb[[i]][[1]], main=g1g2names$AcceptedName[want[match(i,want)]] )
-  plot(colocounties, add=TRUE)
-  points(pointsXsp.latlon[[i]])
-}
-
-```
-
-
-Background points for EORs
-```{r}
-# Background points from set area, select number of background points equal to the number of presence points
-#Amend to 25% more background than presence. 
-
-pca_eorandherb[[1]]
-
-#bg <- list()
-bg <- lapply(1:length(wantEOR), function(i){
-  background <- as.data.frame(randomPoints(envs.backg[[i]][[1]], n=nrow(EORsxsp[[wantEOR[i]]]@coords)+
-                                          0.25*(nrow(EORsxsp[[wantEOR[i]]]@coords))))
-  out <- data.frame(x1 = background$x, x2 = background$y, id = NA, polyid=NA, Bestcrs=NA, firstobs=NA,
-                           GRANK=NA, GNAME=g1g2names$AcceptedName[i], ENDEMIC=NA, Lastobs=NA,
-                    dist=NA,area=NA,
-                    raster::extract(rasterstack, background))
-  out
-})
-
-save(bg, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bg.Rda")
-
-
-```
-
-
-Background points for herbs
-```{r}
-# Background points from set area, select number of background points equal to the number of presence points
-#Amend to 25% more background than presence. 
-
-length(pointsXsp.latlon) #46
-
-#bg <- list()
-bg.herb <- lapply(1:length(want), function(i){
-  background <- as.data.frame(randomPoints(envs.backg.herb[[i]][[1]], n=nrow(pointsXsp.latlon[[i]]@coords)+
-                                          0.25*(nrow(pointsXsp.latlon[[i]]@coords))))
-  out <- data.frame(x1 = background$x, x2 = background$y, id = NA, polyid=NA, Bestcrs=NA, firstobs=NA,
-                           GRANK=NA, GNAME=g1g2names$AcceptedName[i],ENDEMIC=NA, Lastobs=NA,
-                    dist=NA,area=NA,
-                    raster::extract(rasterstack, background))
-  out
-})
-
-save(bg.herb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bg.herb.Rda")
-```
-
-
-
-Background points given roads raster, point in each grid, extract values, run the binomial distribution function probably over it. 
-
-```{r}
-#Plot presence and background points
-for(i in 1:length(wantEOR)){
-  plot(envs.backg[[i]][[1]])
-  plot(colocounties, add=TRUE)
-  points(EORsxsp[[i]], pch=16, cex=0.5)
-  points(bg[[i]], pch=21, cex=0.5, col="red")
-  scalebar(100, type="line", divs = 4, below="kilometers", lonlat = TRUE)
-}
-
-#Try some thinning first, for some that's lots of points that are 
-
-```
-
-Partitioning occurrences for evalutaiton of models to reduce overinflated performace due to biased sampling/autocorrelation among points   
-```{r}
-#Block partitioning spatially by dividing the data into four bins based on their position in relation to a north/south and east/west partitioning that gets the points into nearly 4 equal size groups. 
-
-#NEED to do this for the herbarium specemins too, not just the EORS!!!
-
-blocks <- list()
-for(i in 1:length(pointsXsp.latlon)){ #46 species with points
-  blocks[[i]] <- get.block(pointsXsp.latlon[[i]]@coords, bg[[want[i]]])
-  
-  plot(envs.backg[[i]][[1]], col="gray", legend=FALSE)
-  points(EORsxsp[[i]]@coords, pch=21, bg=blocks[[i]]$occ.grp) #In CRS("+proj=longlat +datum=WGS84"), grid points every 100 meters (map units which was UTM) within EOR polygons.
-  points(pointsXsp.latlon[[i]])
-  
-}
-```
-
-
-
-```{r}
-bkgrnd <- calc(r.smaller, fun= function(X) sampleRandom(r.smaller, size= x))
-
-samplesize <- calc(r.smaller, fun=function(x) spsample)
-
-hist(samplesize)
-
-layerbackgroundpoints <- sampleRandom(r.smaller, size = ) 
-
-```
 
 
 Create the full dataframes for each species   
@@ -2501,3 +1588,61 @@ lapply(atleast12[1], function(x){
 ```
 
 
+
+
+# Loaded at the beginning
+```{r}
+
+distXsp_noEORgrid <- lapply(1:60, function(i){
+  gc()
+  g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in%
+                                c(g1g2names$Taxon[i],g1g2names$AcceptedName[i])&
+                                !is.na(coloradosps.g1g2$decimalLatitude),]
+  
+  g1g2now <- g1g2now[as.numeric(as.character(g1g2now$year))>1800,]
+  # remove points not in Colorado
+  g1g2now <- g1g2now[g1g2now$decimalLatitude>35,]
+  g1g2now <- g1g2now[g1g2now$decimalLongitude>(-113),]
+  g1g2now <- g1g2now[grepl("Specimen",g1g2now$basisOfRecord),]
+  g1g2now <- g1g2now[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)]
+  gc()
+  
+  if(nrow(g1g2now)>0){
+  # put grid points across colorado, sample from it for each polygons
+    polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                        g1g2names$Taxon[i]),] 
+    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+    
+        
+    years <- as.numeric(substring(polys$LASTOBS,1,4))
+    yearsnotNA <- c()
+    for(l in 1:length(years)){
+      yearsnotNA[l] <- if(years[l]<9999){ 
+                                      l } else {
+                                        NA
+                                      }
+    }
+    yearsnotNA <- yearsnotNA[!is.na(yearsnotNA)] 
+    polys <- polys[yearsnotNA,]
+    
+    totalarea <- sum(area(disaggregate(polys)))
+  # area of each polygon
+    areanow <- sapply(slot(polys,"polygons"), slot, "area")
+    
+  #turn into spatialpointsdataframe for individual species
+    coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
+    proj4string(g1g2now) <- CRS("+init=epsg:4326")  # CRS("+proj=longlat +datum=WGS84")
+    g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
+  # The minimum distance from each point to the nearest polygon
+    distnow <- apply(gDistance(g1g2now,polys, byid=TRUE),2,min)
+    gc()
+   
+  out <- data.frame(Species = g1g2names$AcceptedName[i], g1g2now,Dist = distnow, Area = totalarea, 
+                    EORdate = polys$LASTOBS[apply(gDistance(g1g2now,polys, byid=TRUE),2,which.min)],
+                    Yeardiff = g1g2now$year- as.numeric(substring(as.character(polys$LASTOBS[apply(gDistance(g1g2now,polys, byid=TRUE),2,which.min)]),1,4)))
+    gc()
+    out
+    }
+  })
+save(distXsp_noEORgrid, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda") 
+```
