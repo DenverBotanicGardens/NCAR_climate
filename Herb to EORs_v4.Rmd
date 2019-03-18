@@ -603,11 +603,17 @@ coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/
 rowstomatch6168 <- lapply(c("Taxon","AcceptedName"), function(x){
    coloradosps[,"scientificName"] %in%  g1g2names61_68[,x]
 })
+
+rowstomatch1_68 <- lapply(c("Taxon","AcceptedName"), function(x){
+   coloradosps[,"scientificName"] %in%  g1g2namesall68[,x]
+})
 # Picks the ones that match either list one=Taxon, or list two AcceptedName for which some are duplicates, take unique rows. 
 coloradosps.g1g2_6168 <- unique(rbind(coloradosps[rowstomatch6168[[1]],],
                                       coloradosps[rowstomatch6168[[2]],]))
-nrow(coloradosps.g1g2_6168)
 
+coloradosps.g1g2_168 <- unique(rbind(coloradosps[rowstomatch1_68[[1]],],
+                                      coloradosps[rowstomatch1_68[[2]],]))
+table(as.character(coloradosps.g1g2_168$scientificName))
 
 coloradosps.g1g2_6168$decimalLatitude <- 
   as.numeric(as.character(coloradosps.g1g2_6168$decimalLatitude))
@@ -1095,37 +1101,42 @@ distXsp_noEORgrid <- lapply(1:60, function(i){
 save(distXsp_noEORgrid, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda") 
 ```
 
-# Loaded at the beginning
+# Loaded 61 - 68 at the beginning
 ```{r}
 g1g2namesall68 <- rbind(g1g2names,g1g2names61_68)
 nrow(g1g2namesall68)
-table(as.character(coloradosps.g1g2_6168$scientificName))
+table(as.character(coloradosps.g1g2_168$scientificName))
 colospsall <- rbind(coloradosps.g1g2,coloradosps.g1g2_6168)
 
 whichnull <- lapply(1:68, function(i){
   gc()
-  g1g2now <- colospsall[colospsall$scientificName %in%
+  g1g2now <- coloradosps.g1g2_168[coloradosps.g1g2_168$scientificName %in%
                                 c(g1g2namesall68$Taxon[i],g1g2namesall68$AcceptedName[i])&
-                                !is.na(colospsall$decimalLatitude),]
+                                !is.na(coloradosps.g1g2_168$decimalLatitude),]
   if(nrow(g1g2now)>0){
     g1g2namesall68$AcceptedName[i]
   }
 })
   
 notnulls68 <- which(!unlist(lapply(whichnull, is.null)))
+```
 
-distXsp_noEORgrid68 <- lapply(notnulls68[notnulls68!=8], function(i){
+```{r}
+distXsp_noEORgrid1_68 <- lapply(notnulls68, function(i){
   gc()
-  g1g2now <- colospsall[colospsall$scientificName %in%
+  g1g2now <- coloradosps.g1g2_168[coloradosps.g1g2_168$scientificName %in%
                                 c(g1g2namesall68$Taxon[i],g1g2namesall68$AcceptedName[i])&
-                                !is.na(colospsall$decimalLatitude),]
+                                !is.na(coloradosps.g1g2_168$decimalLatitude),]
   g1g2now$year <- as.numeric(as.character(g1g2now$year))
+  g1g2now$decimalLatitude <- as.numeric(as.character(g1g2now$decimalLatitude))
+  g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
   g1g2now <- g1g2now[g1g2now$year>1800,]
   # remove points not in Colorado
   g1g2now <- g1g2now[g1g2now$decimalLatitude>35,]
   g1g2now <- g1g2now[g1g2now$decimalLongitude>(-113),]
   g1g2now <- g1g2now[grepl("Specimen",g1g2now$basisOfRecord),]
-  g1g2now <- g1g2now[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)]
+  g1g2now <- g1g2now[,c("scientificName","scientificNameAuthorship","institutionCode", 
+                        "recordedBy","year","decimalLatitude","decimalLongitude")]
   gc()
   
   if(nrow(g1g2now)>0){
@@ -1133,8 +1144,7 @@ distXsp_noEORgrid68 <- lapply(notnulls68[notnulls68!=8], function(i){
     polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[i],
                                         g1g2namesall68$Taxon[i]),] 
     proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
-    
-        
+
     years <- as.numeric(substring(polys$LASTOBS,1,4))
     yearsnotNA <- c()
     for(l in 1:length(years)){
@@ -1165,9 +1175,9 @@ distXsp_noEORgrid68 <- lapply(notnulls68[notnulls68!=8], function(i){
     out
     }
   })
-save(distXsp_noEORgrid68, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid68.Rda") 
+save(distXsp_noEORgrid1_68, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid1_68.Rda") 
 
-distXsp_noEORgrid68[[1]]
+distXsp_noEORgrid1_68[[66]]
 length(distXsp_noEORgrid68)
 
 ```
