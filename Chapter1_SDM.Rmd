@@ -22,8 +22,10 @@ library(dismo)
 library(Rmisc)
 library(rgdal)
 library(ENMeval)
+library(Taxonstand)
 
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid68.Rda")
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
 #Each polygon might be made of multiple disconnected polygons. Need to separate and label
 l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
@@ -65,6 +67,43 @@ for(l in notnull){
 atleast12 <- atleast12[!is.na(atleast12)] 
 rm(l)
 
+
+#Each polygon might be made of multiple disconnected polygons. Need to separate and label
+length(namesg1g2) #60 species
+length(namesg1g2and) # 68
+g1g2namesall68 <- TPL(names(namesg1g2and))
+g1g2namesall68$AcceptedName <- paste(g1g2namesall68$New.Genus,g1g2namesall68$New.Species)
+
+# All are fine, should work. 
+EORpolys <- lapply(1:68, function(i){
+  polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[i],
+                                        g1g2namesall68$Taxon[i]),]
+  polys
+})
+
+names(EORpolys[[12]]@data) <- names(EORpolys[[1]]@data)
+plot(EORpolys[[12]])
+table(as.character(EORpolys[[12]]@data$LASTOBS))
+
+notnull <- which(!unlist(lapply(distXsp_noEORgrid, is.null)))
+notnull61668 <- which(!unlist(lapply(distXsp_noEORgrid68, is.null)))
+
+distXspall <- do.call(rbind, Map(cbind, distXsp_noEORgrid[notnull], 
+                     SpNum = notnull))
+distXsp6168 <- do.call(rbind, Map(cbind, distXsp_noEORgrid68[notnull61668],
+                                  SpNum = notnull61668+60))
+
+
+
+atleast1268 <- c()
+for(l in notnull61668){
+  atleast12[match(l,notnull)] <- if(nrow(distXsp_noEORgrid[[l]])>11){ 
+    l } else {
+      NA
+    }
+}
+atleast12 <- atleast12[!is.na(atleast12)] 
+rm(l)
 
 # February 26, 2019 added _bioclim where I've resampled to the bioclim raster cell size (less than 1km)
 # coplus50int.tif
@@ -253,35 +292,19 @@ habitatSpecificity <- function(whichones, pathstart, whichmaxentpoints, replicat
 # Maxent    
 Get the years of the herbarium specimens and the years of the EORs mapped from distXsp_noEORgrid from "Herb to EORs_v4"
 ```{r}
-length(distXsp_noEORgrid) # 60
-length(notnullEOR) # without #8
 
-df_distances <- Map(cbind, distXsp_noEORgrid[notnull], 
-                    SpNum = notnull)
-
-length(which(unlist(lapply(distXsp_noEORgrid, function(x) length(x)>0))) )
-
-identical(notnull, which(unlist(lapply(distXsp_noEORgrid, function(x) length(x)>0))))
-df_dist <- do.call(rbind, df_distances)
-str(df_dist)
-
+# "institutionCode", 
+df_dist <- rbind(distXspall[,c("SpNum","year","Species","family","decimalLongitude","decimalLatitude", "Dist", "Area", "EORdate","Yeardiff")],
+                    distXsp6168[,c("SpNum","year","Species","family","decimalLongitude","decimalLatitude", "Dist", "Area", "EORdate", "Yeardiff")])
 
 df_dist$EORYear <- as.numeric(substring(df_dist$EORdate,1,4))
 hist(df_dist$EORYear)
-
-ggplot(df_dist, aes(Area, log(Dist)))+
-  geom_point()+
-  stat_smooth(method="lm")+
-  ylab("Distance (log(meters))")+
-  theme_bw()
 
 plot(log(df_dist$Area+1),log(df_dist$Dist+1),
      xlab=expression(paste("Species Range log(meters" ^2,")" )),
      ylab=expression(paste("log (meters)")))
 abline(lm(log(Dist+1)~log(Area+1), data=df_dist))
-
 length(unique(df_dist$SpNum))
-
 max(df_dist$Dist) # 411023.6 meters
 ```
 
@@ -378,63 +401,7 @@ save(bgHerb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche m
 # save(bgEOR, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgEOR.Rda")
 
 ```
-###############################################################################################
-Skip
 ```{r}
- 
-# presenceEORpoints <- lapply(notnullEOR, function(i){
-#   g1g2now <- coloradosps.g1g2[coloradosps.g1g2$scientificName %in%
-#                                 c(g1g2names$Taxon[i],g1g2names$AcceptedName[i])&
-#                                 !is.na(coloradosps.g1g2$decimalLatitude),]
-#   
-#   g1g2now <- g1g2now[as.numeric(as.character(g1g2now$year))>1980,]
-#   g1g2now <- g1g2now[g1g2now$decimalLatitude>0,]
-#   g1g2now <- g1g2now[grepl("Specimen",g1g2now$basisOfRecord),]
-#   g1g2now <- g1g2now[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)]
-#   
-#   
-#    polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-#                                         g1g2names$Taxon[i]),] 
-#     proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
-#     
-#     # years <- format(as.Date(polys$LASTOBS, format="%Y-%m-%d"),"%Y")
-#     years <- as.numeric(substring(polys$LASTOBS,1,4))
-#     yearlater1980 <- c()
-#     for(l in 1:length(years)){
-#       yearlater1980[l] <- if(years[l]>1980){ 
-#                                       l } else {
-#                                         NA
-#                                       }
-#     }
-#     yearlater1980 <- yearlater1980[!is.na(yearlater1980)] 
-#     polys <- polys[yearlater1980,]
-#     totalarea <- sum(area((polys)))
-#   # area of each polygon
-#     areanow <- sapply(slot(polys,"polygons"), slot, "area")
-#   # Proportional area to the whole area number to thin
-#     EORpnts <- do.call(rbind, lapply(1:length(polys), function(f){
-#       outline <- polys@polygons[[f]]@Polygons[[1]]@coords
-#       grid <- makegrid(polys, cellsize = 50) # cellsize in map units!
-#       names(grid) <- c("x","y")
-#       gridout <- grid[inout(grid,outline), ]
-#       if(nrow(gridout)>1){
-#         gridthin <- thin.max(gridout,c("x","y"),(round(nrow(g1g2now)*(areanow[[f]]/totalarea),0))+1)
-#         gc()
-#         } else {
-#           if(nrow(gridout)>0) {
-#             gridthin <- gridout 
-#           } else {
-#             gridthin <- NULL
-#           }
-#           }
-#       gridthin
-#       }))
-#     gc()
-#     EORpnts
-# })
-# 
-# save(presenceEORpoints, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/presenceEORpoints.Rda")
-
 
 yearsofPolys <- lapply(notnullEOR, function(i){
     polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
@@ -467,23 +434,7 @@ bgHerb <- lapply(notnull, function(x){
   })
 save(bgHerb, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgHerb.Rda")
 
-# # I know which they are, in order they are notnullEOR
-# bgEOR <- lapply(presenceEORpoints, function(x){
-#   df <- x
-#   coordinates(df) <- ~x+y
-#   proj4string(df) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
-#   circles <- circles(df, d = 5000) #Should be 5km around
-#   polygns <- polygons(circles)
-#   bg <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
-#   # do I want to get just one per cell? I'm gonna skip cellFromXY(mask, bg) # where mask should be my one used to set the size and clip the others in vistrails
-#   bg
-#   })
-# save(bgEOR, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/bgEOR.Rda")
-
 ```
-
-###############################################################################################
-
 
 
 
