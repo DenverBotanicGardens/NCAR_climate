@@ -45,29 +45,11 @@ require(AICcmodavg)
 
      library(splancs)
 
-# #Skip making these, takes a long time
-# load("P:/hackathon/Simulations/circleEOR.Rda")
-# load("P:/hackathon/Simulations/circleHerb.Rda")
-# load("P:/hackathon/Simulations/EORgrid.thin.Rda")
-# # load("P:/hackathon/Simulations/circleEOR.Rda")
-# load("P:/hackathon/Simulations/envs.backgEOR.Rda")
-# load("P:/hackathon/Simulations/envs.backgHerb.Rda")
-# load("P:/hackathon/Simulations/Herb.thin1000.Rda")
-# load("P:/hackathon/Simulations/EORgrid.thin.Rda")
-
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
 
 
-load("P:/hackathon/Simulations/coloradosps.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorsinglecell.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorandherb.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp1.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_herbpost1980.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_eorpost1980.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/pca_data2.Rda")
-# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/Maxent46species.Rda")
+# load("P:/hackathon/Simulations/coloradosps.Rda")
 
 colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
 colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
@@ -136,27 +118,6 @@ thin.max <- function(x, cols, npoints){
 
 ```
 
-Want to use elevation, slope and aspect, ruggedness
-```{r}
-
-# coElev <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Elevation_VT/CO_Mosaic_Elevation_VT/co_elev_VT_WGS84.tif")
-# 
-# coElev_biosize <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Elevation_VT/co_elev_WGS84_30sec.tif")
-# 
-# coAspect <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Aspect_VT/co_aspect_VT_WGS84.tif")
-# 
-# coSlope <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/Slope_VT/co_slope_VT_WGS84.tif")
-
-coElev <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/coplus50int.tif")
-
-coAspect <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/aspect50int.tif")
-
-coSlope <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/COplus_slope50.tif")
-
-coRugged <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/COplus_ruggedInt50.tif")
-
-
-```
 
 
 
@@ -186,6 +147,7 @@ length(namesg1g2and) # 68
 namesg1g2and <- c(namesg1g2and[match(names(namesg1g2),names(namesg1g2and))],
                   namesg1g2and[setdiff(names(namesg1g2and),names(namesg1g2))])
 g1g2names61_68 <- TPL(names(namesg1g2and[61:68]))
+g1g2namesall68 <- TPL(names(namesg1g2and))
 proj4string(l1G1G2and) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
 
 namesg1g2 <- table(l1G1G2$GNAME)
@@ -194,6 +156,8 @@ g1g2names <- TPL(names(namesg1g2[namesg1g2 > 0]))
 table(g1g2names$Taxonomic.status)
 # 2 not in there, "Gutierrezia elegans" "Oonopsis sp. 1", 10 synonyms, 3 unresolved
 # save(g1g2names, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
+
+names(namesg1g2and);table(g1g2namesall68$Taxon) # different order
 
 g1g2names[g1g2names$Taxonomic.status == "Unresolved",]
 #Gilia sedifolia
@@ -631,7 +595,9 @@ for(i in 61:68){
     names(coloradosps.g1g2_6168[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)])
 names(coloradosps.g1g2[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)])
 }
+```
 
+```{r}
 coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences.csv")
 
 rowstomatch6168 <- lapply(c("Taxon","AcceptedName"), function(x){
@@ -677,7 +643,6 @@ head(distXsp_noEORgrid68[[1]])
 names(distXsp_noEORgrid[[1]])
       namesfoo[[1]]
 
-## START HERE! can't figure out why rows are different in the old and new way!
 ```
 
 ```{r}
@@ -735,6 +700,20 @@ distXsp_noEORgrid68 <- lapply(61:68, function(i){
 save(distXsp_noEORgrid68, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid68.Rda") 
 
 distXsp_noEORgrid68[[1]]
+colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
+
+for(i in 61:68){
+  plot(colocounties.UTM)
+  plot(l1G1G2and[l1G1G2and$GNAME %in% c(g1g2names61_68$AcceptedName[i-60],
+                                        g1g2names61_68$Taxon[i-60]),] , add=TRUE, border="red")
+}
+
+for(i in 1:10){
+  
+  plot(colocounties.UTM)
+  plot(l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
+                                        g1g2names$Taxon[i]),] , add=TRUE, border="red")
+}
 ```
 
 Yeardiff is the herbarium colleciton year - the polygon mapped year (LastOBS) so positive values are herbarium later than mapped, negative numbers are the herbarium colleciton before the mapped time
@@ -1001,201 +980,9 @@ sort(unique(g1g2names$Taxon)) #60 names, why no Astragalus anisus??
 
 https://www.molecularecologist.com/2013/04/species-distribution-models-in-r/    
 
-1: which group to withhold, 2: maxent for EOR, 3: maxent for Herbarium, 4: evaluate EOR, 5: evaluate Herbarium, 6: thresholds for EOR, 7: thresholds for Herbarium, 8: species
-```{r}
-#Specificy=Sensitivity or Kappa??
-#Make names match raster files
-thres_all <- do.call(rbind,lapply(Maxent46species[lapply(Maxent46species, length)>0], function(x){
-  species <- sapply(x, '[[', 8)
-  EOR_th <- sapply(x, '[[', 6)
-  Herb_th <- sapply(x, '[[', 7)
-  EOR_ss <- unlist(EOR_th[5,]) #1:kappa, 2:spec_sens, 3:no_omission, 4:prevalence, 5:equal_sens_spec, 6:sensitivity
-  HERB_ss <- unlist(Herb_th[5,])
-  eorout <- data.frame(threshold=EOR_ss,Species=paste("EOR",gsub(" ","_",species),1:10,sep=""))
-  herbout <- data.frame(threshold=HERB_ss,Species=paste("Herb",gsub(" ","_",species),1:10,sep=""))
-  rbind(eorout,herbout)
-}))
-
-#20 species
-maxentspecies <- Maxent46species[lapply(Maxent46species, length)>0]
-spRasterEORvsHerb <- lapply(unlist(sapply(maxentspecies, '[[', 8)[8,]),
-                            function(sp){
-                              lapply(1:10, function(rep){
-                                lapply(c("EOR","Herb"), function(comp){
-        raster(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/",
-                     comp,sp,rep,".tif", sep=""))
-                                })
-                              })
-                            })
-
-  spRasterEORvsHerb[[1]][[1]][[1]]@file@name
-  #Need name to match up threshold with EOR or Herb and species and which map
-  spRasterEORvsHerb[[1]][[1]][[2]]@data@names   #!!! Yes!
-  
-  thres_all[[1]]$Species
-
-
-auc_all <- sapply(Maxent46species, function(x){
-  species <- sapply(x, '[[', 8)
-  EOR_eval <- sapply(x, '[[', 4)
-  Herb_eval <- sapply(x, '[[', 5)
-  EOR_auc <- sapply(EOR_eval, function(y) y@auc)
-  HERB_auc <- sapply(Herb_eval, function(y) y@auc)
-  data.frame(AUC_EOR=EOR_auc, AUC_Herb=HERB_auc, Species=species)
-})
-
-#make raster bricks of EOR and Herbs for each species; just species that got done 
-speciesused <- unique(gsub('[[:digit:]]+', '', thres_all$Species))
-unlistspRaster <- unlist(spRasterEORvsHerb)
-rasterbricks <- lapply(speciesused, function(sp){
-  sp1 <- unlistspRaster[grep(sp,
-                               sapply(unlistspRaster, function(x) x@data@names))]
-  stack(sp1)
-})
-
-#Need to pick a way to make a consensus model and do same for both. 
-#Should also compare niche models of both to actual distribution defined by CNHP
-sapply(1:length(rasterbricks), function(j){
-  #r <- raster() #to hold information
-  filename <- paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/MeanRasterstack",rasterbricks[[j]]@layers[[1]]@data@names,".tif", sep="")
-  x<-rasterbricks[[j]]
-  out <- raster(x)
-  bs <- blockSize(x)
-  out <- writeStart(out, filename, overwrite=TRUE)
-
-  # Loop over each block and do your calculation
-  for (i in 1:bs$n) {
-      v <- getValues(x, row=bs$row[i], nrows=bs$nrows[i] )
-     # mean
-        v <- rowMeans(v, na.rm=TRUE)
-        out <- writeValues(out, v, bs$row[i])
-     }
-  out <- writeStop(out)
-  return(out)
-  gc()
-})
-
-
-averageRaster <- lapply(rasterbricks, function(x){
-  gc()
-  writeRaster(calc(x, mean), paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/MeanRaster",x@layers[[1]]@data@names,".tif", sep=""),overwrite=TRUE)
-  gc()
-})
-
-rasterbricks[[1]]@layers[[1]]@data@names
-
-#Go for threshold of each and then overlap 
-thresholdrasters <- lapply(unlist(spRasterEORvsHerb), function(x){
-  gc()
-  writeRaster((x > thres_all$threshold[thres_all$Species==x@data@names]),
-              paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt/Threshold",x@data@names,".tif", sep=""),overwrite=TRUE)
-  })
-
-
-#need to add number and EOR or Herb to threshold extract from raster name
-plot(spRasterEORvsHerb[[1]][[1]][[1]] > 
-       thres_all$threshold[thres_all$Species == spRasterEORvsHerb[[1]][[1]][[1]]@data@names], 
-     1, cex=0.5, legend=T, mar=par("mar"), xaxt="n", yaxt="n", 
-     main=paste("Predicted presence of",spRasterEORvsHerb[[1]][[1]][[1]]@data@names,sep=" "))
-plot(sw, add=TRUE)
-
-```
-
-
-
-Testing the loop for all 46 species
-```{r}
-group_pa <- do.call(c,sapply(1:4, function(x) kfold(pca_data2[[1]][pca_data2[[1]]$pa==x,],10))) #nope, need seperate for presence and background
-
-#randomly select on of the test roups to sample as the training data
-test <- sample(1, 1:10)
-
-train_pEOR <- pca_data2[[1]][pca_data2[[1]]$pa == 1 & group_pa!=test,c("x1","x2")]
-train_pHerb <- pca_data2[[1]][pca_data2[[1]]$pa == 2 & group_pa!=test,c("x1","x2")]
-train_bEOR <- pca_data2[[1]][pca_data2[[1]]$pa == 3 & group_pa!=test,c("x1","x2")]
-train_bHerb <- pca_data2[[1]][pca_data2[[1]]$pa == 4 & group_pa!=test,c("x1","x2")]
-
-test_pEOR <- pca_data2[[1]][pca_data2[[1]]$pa == 1 & group_pa==test,c("x1","x2")]
-test_pHerb <- pca_data2[[1]][pca_data2[[1]]$pa == 2 & group_pa==test,c("x1","x2")]
-test_bEOR <- pca_data2[[1]][pca_data2[[1]]$pa == 3 & group_pa==test,c("x1","x2")]
-test_bHerb <- pca_data2[[1]][pca_data2[[1]]$pa == 4 & group_pa==test,c("x1","x2")]
-
-me <- maxent(stackmini, p=train_pEOR, a=train_bEOR) #put maxent.jar into the java folder of dismo and changed  regedit.exe, navigate to HKEY_LOCAL_MACHINE\SOFTWARE\JavaSoft, right click and change permissions to full operation.
-
-
-#validate teh model
-e <- dismo::evaluate(test_pEOR, test_bEOR, me, stackmini)
-
-#Visulatize predictions
-pred_me <- dismo::predict(me, stackmini)
-thres <- dismo::threshold(e)
-
-plot(pred_me > thres$spec_sens, 1, cex=0.5, legend=T, mar=par("mar"), xaxt="n", yaxt="n", 
-     main=paste("Predicted presence of",g1g2names[[1]][1],sep=" "))
-plot(sw, add=TRUE)
-```
-
 Steven J. Phillips, Miroslav Dudík, Robert E. Schapire. [Internet] Maxent software for modeling species niches and distributions (Version 3.4.1). Available from url: http://biodiversityinformatics.amnh.org/open_source/maxent/. Accessed on 2018-10-7.
 
 https://stackoverflow.com/questions/32915628/best-way-to-create-response-curves-for-a-glm-species-distribution-model-in-r 
-```{r}
-corout <- as.data.frame(as.table(cor(pca_data[[1]][,11:length(pca_data[[1]])])))
-corout[corout$Freq<0.60,]
-
-
-m1 <- glm()
-```
-
-
-
-#Random forest - classification and regression trees   
-Either a formula, or (1) data.frame with predictor variables, (2) vector with response. categorical will classification, interval will do regression. 
-```{r}
-
-library(randomForest)
-
-bioclim.colorado <- getData("worldclim", var="bio", res=0.5, lon=-106, lat = 39)
-
-
-plot(bioclim.colorado$bio1_12)
-plot(colocounties, add=TRUE)
-
-#When loop, use "i in want" or lapply(want, function(i)) which are non-NA in the list for distXsp[[i]][[1]]@coords
-
-#need back to lat long
-pointsXsp.latlon <- list()
-for(i in 1:length(want)){
-  pointsXsp.latlon[[i]] <- spTransform(distXsp[[want[1]]][[1]], CRS("+proj=longlat +datum=WGS84"))
-}
-
-##COME BACK TO THIS AND SEE WHAT NEEDS TO BE Done to do random forest
-presvals <- extract(bioclim.colorado, )
-
-
-library(dismo)
-
-kfoldnum <- 5
-
-#Make a training and testing set, will want to iterative over all sets, keeping one out each time
-#lapply(1:kfoldnum, function(x){})
-
-group <- kfold(distXsp[[1]][[1]]@coords, kfoldnum)
-pres_train <- distXsp[[1]][[1]]@coords[group != 1,]
-pres_test <- distXsp[[1]][[1]]@coords[group == 1,]
-
-ext <- extent(-109, -102, 36, 41)
-backg <- randomPoints(bioclim.colorado, n=300, ext=ext, extf=1.25)
-colnames(backg) <- dimnames(pres_test)[[2]]
-groupbk <- kfold(backg, kfoldnum)
-backg_train <- backg[groupbk != 1,]
-backg_test <- backg[groupbk == 1,]
-
-
-
-
-
-
-```
 
 While Chapter1_SDM is running making the strips of probability maps     
 Put together all the strips to make one probability map for each Herbarium species  
@@ -1306,4 +1093,81 @@ distXsp_noEORgrid <- lapply(1:60, function(i){
     }
   })
 save(distXsp_noEORgrid, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda") 
+```
+
+# Loaded at the beginning
+```{r}
+g1g2namesall68 <- rbind(g1g2names,g1g2names61_68)
+nrow(g1g2namesall68)
+table(as.character(coloradosps.g1g2_6168$scientificName))
+colospsall <- rbind(coloradosps.g1g2,coloradosps.g1g2_6168)
+
+whichnull <- lapply(1:68, function(i){
+  gc()
+  g1g2now <- colospsall[colospsall$scientificName %in%
+                                c(g1g2namesall68$Taxon[i],g1g2namesall68$AcceptedName[i])&
+                                !is.na(colospsall$decimalLatitude),]
+  if(nrow(g1g2now)>0){
+    g1g2namesall68$AcceptedName[i]
+  }
+})
+  
+notnulls68 <- which(!unlist(lapply(whichnull, is.null)))
+
+distXsp_noEORgrid68 <- lapply(notnulls68[notnulls68!=8], function(i){
+  gc()
+  g1g2now <- colospsall[colospsall$scientificName %in%
+                                c(g1g2namesall68$Taxon[i],g1g2namesall68$AcceptedName[i])&
+                                !is.na(colospsall$decimalLatitude),]
+  g1g2now$year <- as.numeric(as.character(g1g2now$year))
+  g1g2now <- g1g2now[g1g2now$year>1800,]
+  # remove points not in Colorado
+  g1g2now <- g1g2now[g1g2now$decimalLatitude>35,]
+  g1g2now <- g1g2now[g1g2now$decimalLongitude>(-113),]
+  g1g2now <- g1g2now[grepl("Specimen",g1g2now$basisOfRecord),]
+  g1g2now <- g1g2now[,c(1:2,14:20,30:38,41,43:44,53:62,68:70,83:86)]
+  gc()
+  
+  if(nrow(g1g2now)>0){
+  # put grid points across colorado, sample from it for each polygons
+    polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[i],
+                                        g1g2namesall68$Taxon[i]),] 
+    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+    
+        
+    years <- as.numeric(substring(polys$LASTOBS,1,4))
+    yearsnotNA <- c()
+    for(l in 1:length(years)){
+      yearsnotNA[l] <- if(years[l]<9999){ 
+                                      l } else {
+                                        NA
+                                      }
+    }
+    yearsnotNA <- yearsnotNA[!is.na(yearsnotNA)] 
+    polys <- polys[yearsnotNA,]
+    
+    totalarea <- sum(area(disaggregate(polys)))
+  # area of each polygon
+    areanow <- sapply(slot(polys,"polygons"), slot, "area")
+    
+  #turn into spatialpointsdataframe for individual species
+    coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
+    proj4string(g1g2now) <- CRS("+init=epsg:4326")  # CRS("+proj=longlat +datum=WGS84")
+    g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
+  # The minimum distance from each point to the nearest polygon
+    distnow <- apply(gDistance(g1g2now,polys, byid=TRUE),2,min)
+    gc()
+   
+  out <- data.frame(Species = g1g2namesall68$AcceptedName[i], g1g2now,Dist = distnow, Area = totalarea, 
+                    EORdate = polys$LASTOBS[apply(gDistance(g1g2now,polys, byid=TRUE),2,which.min)],
+                    Yeardiff = g1g2now$year- as.numeric(substring(as.character(polys$LASTOBS[apply(gDistance(g1g2now,polys, byid=TRUE),2,which.min)]),1,4)))
+    gc()
+    out
+    }
+  })
+save(distXsp_noEORgrid68, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid68.Rda") 
+
+distXsp_noEORgrid68[[1]]
+length(distXsp_noEORgrid68)
+
 ```
