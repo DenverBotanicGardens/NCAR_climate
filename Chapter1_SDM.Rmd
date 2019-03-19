@@ -803,15 +803,23 @@ accuracyhists <- function(pathstart, probmapnames, whichones, reps = 1:10){
   })
 }
 
-library(plotrix)
+
 accuracyhistsOneperSp <- function(pathstart, whichones =  atleast12[atleast12!=8], SDorAVG = "Avg", WithorNo = "WITH"){
   lapply(whichones, function(i){
-    resultpath <- list.files(path = pathstart, 
-                             pattern = paste(SDorAVG,"TiffSp",i,"Herb",WithorNo, sep=""), 
-                             full.names=TRUE)
+    if(i>60){
+      resultpath <- list.files(path = pathstart, 
+                               pattern = paste(SDorAVG,"TiffSp",i-1,"Herb",WithorNo, sep=""), 
+                               full.names=TRUE)
+    } else {
+      resultpath <- list.files(path = pathstart, 
+                         pattern = paste(SDorAVG,"TiffSp",i,"Herb",WithorNo, sep=""), 
+                         full.names=TRUE)
+    }
+    
     r <- raster(resultpath)
     polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[i],
-                                    g1g2namesall68$Taxon[i]),] 
+                                              g1g2namesall68$Taxon[i]),] 
+
     # Only want ones after 1980
     years <- as.numeric(substring(polys$LASTOBS,1,4))
     yearlater1980 <- c()
@@ -843,9 +851,13 @@ hist(noerrorhists[[1]][[2]])
 
 witherrorhists <- accuracyhists("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/", "HerbWITHerrorkfold", whichones1)
 
+reallistofTiffs <- atleast12[atleast12!=3]
+reallistofTiffs <- reallistofTiffs[reallistofTiffs!=29]
+reallistofTiffs <- reallistofTiffs[!reallistofTiffs %in% c(31,32,40)]
+
 #Averaged and SD of probability maps second function
-noerrorhistsofavg <- accuracyhistsOneperSp(whichones = c(atleast12[atleast12!=8],62,66), pathstart1, WithorNo = "no")
-witherrorhistsofavg <- accuracyhistsOneperSp(pathstart1)
+noerrorhistsofavg <- accuracyhistsOneperSp(whichones = c(reallistofTiffs,62,66), pathstart1, WithorNo = "no")
+witherrorhistsofavg <- accuracyhistsOneperSp(whichones = c(reallistofTiffs,62,66),pathstart1)
 
 # weighted.hist(noerrorhistsofavg[[1]][,1],noerrorhistsofavg[[1]][,2])
 # plot(density(noerrorhistsofavg[[1]][,1],
