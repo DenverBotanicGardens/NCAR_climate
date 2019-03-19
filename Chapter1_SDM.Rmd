@@ -145,7 +145,9 @@ library(snow)
 forhistofaverage <- function(whichones = atleast12, pathstart, patternmatch){
   stacktoaverage <- lapply(whichones, function(i){
     rasterstoavg <- list.files(path = pathstart, 
-                               pattern = paste("ProbTiffSp",i,patternmatch,sep=""), 
+                               pattern = paste("ProbTiffSp",
+                                               which(!is.na(match(notnulls68,i))),
+                                               patternmatch,sep=""), 
                                full.names=TRUE)
     ras <- stack(lapply(rasterstoavg, function(y){
       raster(y)
@@ -160,7 +162,7 @@ forhistofaverage <- function(whichones = atleast12, pathstart, patternmatch){
       writeRaster(ras.mean, paste(pathstart,
                                   "AvgTiffSp",which(!is.na(match(notnulls68,i))),
                                   patternmatch,
-                                  g1g2namesall68$AcceptedName[which(!is.na(match(notnulls68,i)))],
+                                  g1g2namesall68$AcceptedName[i],
                                   ".tif", sep=""),overwrite=TRUE)
       }
     
@@ -174,7 +176,9 @@ forhistofaverage <- function(whichones = atleast12, pathstart, patternmatch){
 forhistofsd <- function(whichones = atleast12, pathstart, patternmatch){
   stacktoaverage <- lapply(whichones, function(i){
     rasterstoavg <- list.files(path = pathstart, 
-                               pattern = paste("ProbTiffSp",i,patternmatch,sep=""), 
+                               pattern = paste("ProbTiffSp",
+                                               which(!is.na(match(notnulls68,i))),
+                                               patternmatch,sep=""), 
                                full.names=TRUE)
     ras <- stack(lapply(rasterstoavg, function(y){
       raster(y)
@@ -182,12 +186,12 @@ forhistofsd <- function(whichones = atleast12, pathstart, patternmatch){
     beginCluster(10)
     ras.mean <- clusterR(ras, calc, args=list(sd, na.rm=T))
     if(i<61){
-      writeRaster(ras.mean, paste(pathstart, "SDTiffSp",which(!is.na(match(notnulls68,i))),patternmatch,
+      writeRaster(ras.mean, paste(pathstart, "SDTiffSp",i,patternmatch,
                                 g1g2namesall68$AcceptedName[i],
                                 ".tif", sep=""),overwrite=TRUE)
     } else {
-        writeRaster(ras.mean, paste(pathstart, "SDTiffSp",i,patternmatch,
-                                g1g2namesall68$AcceptedName[which(!is.na(match(notnulls68,i)))],
+        writeRaster(ras.mean, paste(pathstart, "SDTiffSp",which(!is.na(match(notnulls68,i))),patternmatch,
+                                g1g2namesall68$AcceptedName[i],
                                 ".tif", sep=""),overwrite=TRUE)
       }
     
@@ -729,7 +733,13 @@ maxentrun(whichones = c(61,65), numberofReps = 10,
 stitchtogether(c(61,65), pathstart6266, "PredictHerbnoerrorSp", "Herbnoerrorkfold")
 stitchtogether(c(61,65), pathstart6266, "PredictHerbWITHerrorSp", "HerbWITHerrorkfold")
 
-forhistofaverage(pathstart6266, )
+# Accounted for the missing on in the function, can do the ones I really want
+forhistofaverage(whichones = c(62,66), pathstart = pathstart6266, patternmatch = "Herbnoerrorkfold")
+forhistofsd(whichones = c(62,66), pathstart = pathstart6266, patternmatch = "Herbnoerrorkfold")
+
+
+forhistofaverage(whichones = c(62,66), pathstart = pathstart6266, patternmatch = "HerbWITHerrorkfold")
+forhistofsd(whichones = c(62,66), pathstart = pathstart6266, patternmatch = "HerbWITHerrorkfold")
 ```
 
 
@@ -800,8 +810,8 @@ accuracyhistsOneperSp <- function(pathstart, whichones =  atleast12[atleast12!=8
                              pattern = paste(SDorAVG,"TiffSp",i,"Herb",WithorNo, sep=""), 
                              full.names=TRUE)
     r <- raster(resultpath)
-    polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-                                    g1g2names$Taxon[i]),] 
+    polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[i],
+                                    g1g2namesall68$Taxon[i]),] 
     # Only want ones after 1980
     years <- as.numeric(substring(polys$LASTOBS,1,4))
     yearlater1980 <- c()
@@ -834,7 +844,7 @@ hist(noerrorhists[[1]][[2]])
 witherrorhists <- accuracyhists("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/", "HerbWITHerrorkfold", whichones1)
 
 #Averaged and SD of probability maps second function
-noerrorhistsofavg <- accuracyhistsOneperSp(pathstart1, WithorNo = "no")
+noerrorhistsofavg <- accuracyhistsOneperSp(whichones = c(atleast12[atleast12!=8],62,66), pathstart1, WithorNo = "no")
 witherrorhistsofavg <- accuracyhistsOneperSp(pathstart1)
 
 # weighted.hist(noerrorhistsofavg[[1]][,1],noerrorhistsofavg[[1]][,2])
