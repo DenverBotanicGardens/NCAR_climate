@@ -859,26 +859,6 @@ reallistofTiffs <- reallistofTiffs[!reallistofTiffs %in% c(31,32,40)]
 noerrorhistsofavg <- accuracyhistsOneperSp(whichones = c(reallistofTiffs,62,66), pathstart1, WithorNo = "no")
 witherrorhistsofavg <- accuracyhistsOneperSp(whichones = c(reallistofTiffs,62,66),pathstart1)
 
-# weighted.hist(noerrorhistsofavg[[1]][,1],noerrorhistsofavg[[1]][,2])
-# plot(density(noerrorhistsofavg[[1]][,1],
-#              weights = noerrorhistsofavg[[1]][,2]/sum(noerrorhistsofavg[[1]][,2])),
-#      main=g1g2names$AcceptedName[1])
-# 
-# for(i in 1:length(noerrorhistsofavg)){
-#   dno <- density(noerrorhistsofavg[[i]][,1],
-#              weights = noerrorhistsofavg[[i]][,2]/sum(noerrorhistsofavg[[i]][,2]))
-#   dwith <- density(witherrorhistsofavg[[i]][,1],
-#              weights = witherrorhistsofavg[[i]][,2]/sum(witherrorhistsofavg[[i]][,2]))
-#   if(max(dno$y)>max(dwith$y)){
-#       plot(dno, main=paste("No=red, with=blue  ",g1g2names$AcceptedName[i]),xlim=c(0,1))
-#       polygon(dno, col=rgb(1,0,0,0.5), border="black")
-#       polygon(dwith, col=rgb(0,0,1,0.5), border="green")
-#   } else {
-#       plot(dwith, main=paste("No=red, with=blue  ",g1g2names$AcceptedName[i]),xlim=c(0,1))
-#       polygon(dno, col=rgb(1,0,0,0.5), border="black")
-#       polygon(dwith, col=rgb(0,0,1,0.5), border="green")
-#   }
-# }
 
 # kstest are they different or the same,
 # then 
@@ -889,6 +869,13 @@ witherrorhistsofavg <- accuracyhistsOneperSp(whichones = c(reallistofTiffs,62,66
 # plots same or different 
 # AICc has wrong parameters
 
+save(noerrorhistsofavg, file = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/noerrorhistsofavg.Rdata")
+
+save(witherrorhistsofavg, file = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/witherrorhistsofavg.Rdata")
+```
+
+
+```{r}
 ks.outs <- lapply(1:length(noerrorhistsofavg), function(i){
   ks.test(log(data.frame(noerrorhistsofavg[[i]])$value)+
              log(data.frame(noerrorhistsofavg[[i]])$weight),
@@ -911,7 +898,7 @@ whichsigndiff <- sapply(1:length(noerrorhistsofavg), function(s){
 
 whichsigndiff
 which(!unlist(lapply(whichsigndiff, is.na)))
-
+length(which(!unlist(lapply(whichsigndiff, is.na))))
 # There are 27 because did atleast12[atleast12!=8] since #8 didnt' work. 
 
 # install.packages("latticeExtra")
