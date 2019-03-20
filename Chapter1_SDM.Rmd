@@ -896,6 +896,7 @@ whichsigndiff <- sapply(1:length(noerrorhistsofavg), function(s){
 })
 
 
+
 whichsigndiff
 which(!unlist(lapply(whichsigndiff, is.na)))
 length(which(!unlist(lapply(whichsigndiff, is.na))))
@@ -933,49 +934,59 @@ dev.off()
 ?ecdf 
 ```
 
-
-
+Compare distributions that are not the same using performR from Silas Tittes
 ```{r}
-###COME BACK HERE DO THIS
-noerrorsd <- forhistofsd(pathstartwithnoerror, patternmatchno)
-witherrorsd <- forhistofsd(pathstartwithnoerror, patternmatchwith)
+#install
+devtools::install_github("silastittes/performr", local = FALSE)
+
+#load other libraries used below
+library(performr)
+library(tidyverse)
+library(ggridges)
+theme_set(theme_minimal())
+
+```
 
 
-noerrorhistsofsd <- accuracyhistsOneperSp(pathstart1, SDorAVG = "SD", WithorNo = "no")
-witherrorhistsofsd <- accuracyhistsOneperSp(pathstart1, SDorAVG = "SD")
 
-for(i in 1:length(noerrorhistsofsd)){
-  dno <- density(noerrorhistsofsd[[i]][,1],
-             weights = noerrorhistsofsd[[i]][,2]/sum(noerrorhistsofsd[[i]][,2]))
-  dwith <- density(witherrorhistsofsd[[i]][,1],
-             weights = witherrorhistsofsd[[i]][,2]/sum(witherrorhistsofsd[[i]][,2]))
-  if(max(dno$y)>max(dwith$y)){
-      plot(dno, main=paste("No=red, with=blue  ",g1g2names$AcceptedName[i]),xlim=c(0,0.3))
-      polygon(dno, col=rgb(1,0,0,0.5), border="black")
-      polygon(dwith, col=rgb(0,0,1,0.5), border="green")
-  } else {
-      plot(dwith, main=paste("No=red, with=blue  ",g1g2names$AcceptedName[i]),xlim=c(0,0.3))
-      polygon(dno, col=rgb(1,0,0,0.5), border="black")
-      polygon(dwith, col=rgb(0,0,1,0.5), border="green")
-  }
+# Precision
+```{r}
+# pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
+precisionplots <- lapply(c(reallistofTiffs,61,65), function(i){
+                        resultpath <- list.files(path = pathstart, 
+                                                 pattern = paste("AvgTiffSp",i,"Herbnoerror",sep=""), 
+                                                 full.names=TRUE)
+                        rastout <- raster(resultpath)
+                        values(rastout)
+                        })
+
+# takes a long time, what if I subsample the points, does it go faster without losing information?
+plot(ecdf(precisionplots[[1]]))
+
+# it is 43,740,000 long
+plot(ecdf(sample(precisionplots[[1]], 100000)))
+
+# data:  precisionplots[[1]] and sample(precisionplots[[1]], 1e+06)
+# D = 0.00072771, p-value = 0.6785
+# alternative hypothesis: two-sided
+ks.test(precisionplots[[1]],
+        sample(precisionplots[[1]], 1000000))
+
+# data:  precisionplots[[1]] and sample(precisionplots[[1]], 1e+05)
+# D = 0.0021953, p-value = 0.7221
+# alternative hypothesis: two-sided
+ks.test(precisionplots[[1]],
+        sample(precisionplots[[1]], 100000))
+
+for(i in 1:length(precisionplots)){
+  plot(ecdf(sample(precisionplots[[i]],1000000)), 
+       main = g1g2namesall68$AcceptedName[c(reallistofTiffs,61,65)[i]])
 }
 
 ```
 
 
 
-
-
-```{r}
-
-
-
-#Find mean/mode/or median of each and compare the histogram of each
-
-```
-
-
-# Precision
 
 #  Habitat specificity    
 Principal components analysis of predictor variables    
