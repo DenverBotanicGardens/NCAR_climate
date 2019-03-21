@@ -438,7 +438,7 @@ colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefil
 ```
 
 ```{r}
-distXsp_noEORgrid1_68 <- lapply(notnulls68, function(i){
+distXsp_noEORgrid1_68 <- lapply(1:68, function(i){
   gc()
   g1g2now <- coloradosps.g1g2_168[coloradosps.g1g2_168$scientificName %in%
                                 c(g1g2namesall68$Taxon[i],g1g2namesall68$AcceptedName[i])&
@@ -459,7 +459,6 @@ distXsp_noEORgrid1_68 <- lapply(notnulls68, function(i){
   # put grid points across colorado, sample from it for each polygons
     polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[i],
                                         g1g2namesall68$Taxon[i]),] 
-    # proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
 
     years <- as.numeric(substring(polys$LASTOBS,1,4))
     yearsnotNA <- c()
@@ -478,11 +477,8 @@ distXsp_noEORgrid1_68 <- lapply(notnulls68, function(i){
     
   #turn into spatialpointsdataframe for individual species
     coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
-    proj4string(g1g2now) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
-  # #turn into spatialpointsdataframe for individual species
-  #   coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
-  #   proj4string(g1g2now) <- CRS("+init=epsg:4326")  # CRS("+proj=longlat +datum=WGS84")
-  #   g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
+    proj4string(g1g2now) <- CRS("+init=epsg:4326")  # CRS("+proj=longlat +datum=WGS84")
+    g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
   # The minimum distance from each point to the nearest polygon
     distnow <- apply(gDistance(g1g2now,polys, byid=TRUE),2,min)
     gc()
