@@ -224,12 +224,6 @@ plot(projected, add=TRUE, pch=20, cex=0.5)
 
 polys_46 <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[notnull],
                                        g1g2names$Taxon[notnull]),] 
-    # l1G1G2[l1G1G2$GNAME %in% as.character(mapply(FUN=function(x) unique(x$GNAME)[1],g1g2names[notnull,])),]
-plot(polys, lwd=5)
-plot(polys_46, border="pink", add=TRUE)
-str(as.character(mapply(FUN=function(x) unique(x$GNAME)[1],g1g2names[notnull,])))
-unique(as.character(polys_46$GNAME))
-
 length(unique(as.character(l1G1G2and$GNAME)))
 
 # Was HerbPntsEORs_CO.jpg --> changing to Figure 1 in .eps format
@@ -375,6 +369,7 @@ coloradosps.g1g2_6168$lon3 <- round(coloradosps.g1g2_6168$decimalLongitude,3) # 
 coloradosps.g1g2_6168$lat3 <- round(coloradosps.g1g2_6168$decimalLatitude,3)
 
 save(g1g2namesall68, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2namesall68.Rda")
+save(coloradosps.g1g2_168, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/coloradosps.g1g2_168.Rda")
 
 ```
 
@@ -493,24 +488,20 @@ distXsp_noEORgrid1_68 <- lapply(1:68, function(i){
 save(distXsp_noEORgrid1_68, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid1_68.Rda") 
 
 distXsp_noEORgrid1_68[[66]]
-length(distXsp_noEORgrid68)
+length(distXsp_noEORgrid1_68) # 68
 
 ```
 
 
 Yeardiff is the herbarium colleciton year - the polygon mapped year (LastOBS) so positive values are herbarium later than mapped, negative numbers are the herbarium colleciton before the mapped time
 ```{r}
-distXspall[,which(is.na(match(names(distXspall),names(distXsp_noEORgrid68[[1]]))))]
-
-distXspall <- do.call(rbind, distXsp_noEORgrid)
-distXspall <- rbind(distXspall[,-c(doesntmatch)],
-                    do.call(rbind, distXsp_noEORgrid68)[,-c(doesntmatch)])
+distXspall <- do.call(rbind, distXsp_noEORgrid1_68)
 distXspall$New.Genus <- gsub("([A-Za-z]+).*", "\\1", distXspall$Species)
 table(distXspall$Yeardiff) # 9999 for unknown year of EOR mapping --> removed now
-distXspall[distXspall$Yeardiff< -100,c("EORdate","year")]
+distXspall[distXspall$Yeardiff< -100,c("EORdate","year")] # Collections made in the 1800s
 names(distXspall)
 ```
-But isn't the whole point that I want to vary over lots of genera?   
+
 Models included (1) species range, (2) collection year, (3) Genus, (4) years between collection and mapping, (5) collection year + species range, (6) collection year * species range, (7) Genus * Year, (8) Genus * collection year * species range, (9) Genus * years between collection and mapping * species range, and (10) intercept only (null model).
 ```{r}
 f1 <- lm(Dist ~ as.factor(New.Genus)*year + Area, data= distXspall)
@@ -547,7 +538,6 @@ When ignoring genus since those are so unevenly applied (lots of mustards)
 # Why is aictab adding an extra parameter
 # maybe AICc
 
-str(distXspall)
 # f1 <- lm(Dist ~ as.factor(New.Genus)*year + Area, data= distXspall)
 f2 <- lm(Dist ~ year + Area, data= distXspall)
 f3 <- lm(Dist ~ year, data= distXspall)
@@ -565,16 +555,13 @@ f12 <- lm(Dist ~ Yeardiff+Area, data= distXspall) # range shift by specificity
 
 aictab(list(f4))
 
-AICc(f4, return.K = TRUE)
-AIC
-str(foo)
+AICc(f4, second.ord=FALSE, return.K = TRUE)
 
 (lmresults <- aictab(list(f2,f3,f4,f5,f6,f8,f11,f12),
-       modnames=as.character(unlist(lapply(list(f2,f3,f4,f5,f6,f8,f11,f12),formula))),
-       second.ord=FALSE))
+       modnames=as.character(unlist(lapply(list(f2,f3,f4,f5,f6,f8,f11,f12),formula)))))
 
 evidence(aictab(cand.set = list(f2,f3,f4,f5,f6,f8,f11,f12),
-                modnames = as.character(unlist(lapply(list(f2,f3,f4,f5,f6,f8,f11,f12),formula))))) #, second.ord=FALSE
+                modnames = as.character(unlist(lapply(list(f2,f3,f4,f5,f6,f8,f11,f12),formula)))))
 
 sapply(1:length(lmresults$Delta_AICc), function(i){
   exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
@@ -588,37 +575,20 @@ sapply(1:length(lmresults$Delta_AICc), function(i){
 
 ```
 
-```{r}
-distXspall$areabin <- 100
-distXspall$areabin[distXspall$Area < max(distXspall$Area)] <- 95
-distXspall$areabin[distXspall$Area < quantile(distXspall$Area, .75)] <- 75
-distXspall$areabin[distXspall$Area < quantile(distXspall$Area, .5)] <- 50
-distXspall$areabin[distXspall$Area < quantile(distXspall$Area, .25)] <- 25
-distXspall$areabin[distXspall$Area == min(distXspall$Area)] <- 1
-table(distXspall$areabin)
 
-ggplot(distXspall, aes(Yeardiff, Dist/1000))+
-  geom_jitter(position=position_jitter(1), aes(colour=Area/(1000^2)), size=2, alpha=0.5, pch=16)+  # geom_point(aes(colour=year))+
-  stat_smooth(method="lm")+
-  theme_bw()+
-  # facet_wrap(~areabin, nrow=2)+
-  xlab("Year (Herb - CNHP)")+
-  ylab("Distance (km) to nearest EOR")+
-  scale_colour_gradientn(colours = rev(c("#FF0000", "#FFA500", "#FFFF00", "#008000", "#9999ff", "#000066"))) # (low="black",high="lightgreen")+
-theme(axis.text.x = element_text(angle = 90, hjust = 1))
-```
 
-```{r}
-ggplot(distXspall, aes(Area/1000000, Dist/1000))+
-  geom_jitter(position=position_jitter(1.5), aes(colour=Yeardiff), size=2, alpha=0.5, pch=21)+  # geom_point(aes(colour=year))+
-  stat_smooth(method="lm")+
-  theme_bw()+
-  xlab("Species Range")+
-  ylab("Distance (km) to nearest EOR")+
-  facet_wrap(~New.Genus)+
-  scale_colour_gradientn(colours = rev(c("#FF0000", "#FFA500", "#FFFF00", "#008000", "#9999ff", "#000066"))) # (low="black",high="lightgreen")
 
-```
+
+
+
+
+
+
+
+
+
+
+
 #Convext hull or tiny circles around eors vs herbarium vs. both together, how much change?    
 
 The Weber example of an out of state person mapping a collection to Gray's Peak from Chicago Lake that should be Mount Evans.     
