@@ -219,7 +219,7 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10,
                 out
                 }))
                 
-                df <- SpatialPointsDataFrame(coords = errorpointsout[,c("x","y")],
+                df <- SpatialPointsDataFrame(coords = errorpointsout,
                                              data = pointsspdf@data,
                                              proj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
                 circlesout <- circles(df, d = 5000) #Should be 5km around
@@ -280,8 +280,65 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10,
         }
 }
 
+```
 
 
+```{r}
+# x<-atleast12[3]
+for(x in atleast12168){
+            pointsspdf <- SpatialPointsDataFrame(coords = spatialpointsdataframe_herb[[x]][,c("decimalLongitude","decimalLatitude")],
+                                                 data = spatialpointsdataframe_herb[[x]],
+                                                 proj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
+          # if(error == TRUE){
+               # for each point I will draw a circle of size (drawn from the distribution of error seen distXspall$Dist) and then pick a random point along the circle.
+              errorpointsout <- do.call(rbind,lapply(1:nrow(pointsspdf), function(r){
+                errordist <- sample(distdistribution, 1)
+                if(errordist>0){
+                  erroraround <- gBuffer(pointsspdf[r,], width=errordist)
+                  newpoint <- erroraround@polygons[[1]]@Polygons[[1]]@coords
+                  out <- newpoint[sample(1:nrow(newpoint),1),]
+                } else {
+                  out <- pointsspdf@coords[r,]
+                  }
+                out
+                }
+                ))
+                
+                df <- SpatialPointsDataFrame(coords = errorpointsout,
+                                             data = pointsspdf@data,
+                                             proj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
+                circlesout <- circles(df, d = 5000) #Should be 5km around
+                polygns <- polygons(circlesout)
+                bgpnts <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
+                
+                convertxy <- spTransform(df, CRS("+proj=longlat +datum=WGS84"))
+                proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+                bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
+          # } else {
+          #       convertxy <- spTransform(pointsspdf, CRS("+proj=longlat +datum=WGS84"))
+          #       # bgpnts <- background_points[[match(x,notnull)]]
+          #       circlesout <- circles(pointsspdf, d = 5000)
+          #       polygns <- polygons(circlesout)
+          #       bgpnts <- spsample(polygns, 300, "stratified")
+          #       proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+          #       bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
+          #   
+          # }
+                
+          # for(rep in 1:4){
+                convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
+                # if(maxentarguments == TRUE){
+                #   xm <- maxent(x = predictorvariables,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords,
+                #            args=c("noautofeature","noproduct","nothreshold"))
+                # } else {
+                  # xm <- maxent(x = predictorvariables,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords)
+                # }                
+          plot(colocounties) # , xlim=c(139982.4, 773240.8), ylim=c(408691.88, 4761362.70))
+          points(bgpnts, pch=16, col="purple", cex=0.5)
+          points(spTransform(pointsspdf, CRS("+init=epsg:4326")), pch=21, col="orange")
+
+          # }
+}
 
 ```
 
@@ -552,36 +609,73 @@ argsformax <- make.args(RMvalues = 0, # regularization multiplier, seq(0.5, 4,0.
 
 Add the two additional ones, 62 and 66 but numbering is off - goes along notnull1_68 and then atleast1268
 ```{r}
+# from 1-60
+notnull
+atleast12
+
+# from testing 1-68
+atleast12168
 
 pathstart6266 <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/" 
 spatialpointsdataframe_herb <- distXsp_noEORgrid1_68
 hist(distdistribution) # ca line 300
 
-maxentrun(whichones = c(62,66), numberofReps = 10, 
+maxentrun(whichones = c(3,62,66), numberofReps = 10, 
           spatialpointsdataframe_herb = spatialpointsdataframe_herb,
           maxentarguments = FALSE,  filenames = "noerror", 
           pathstart = pathstart6266)
 
 
-maxentrun(whichones = c(62,66), numberofReps = 10, 
+maxentrun(whichones = c(3,62,66), numberofReps = 10, 
+          spatialpointsdataframe_herb = spatialpointsdataframe_herb,
+          maxentarguments = FALSE,  filenames = "WITHerror", error = TRUE,
+          pathstart = pathstart6266, distdistribution = distdistribution)
+
+# Errors for 66, maybe error put them too far away?? No, for some reason sometimes x,y sometimes lat,lon
+maxentrun(whichones = 66, numberofReps = 10, 
           spatialpointsdataframe_herb = spatialpointsdataframe_herb,
           maxentarguments = FALSE,  filenames = "WITHerror", error = TRUE,
           pathstart = pathstart6266, distdistribution = distdistribution)
 
 # (whichones, pathstart, patternmatch, rasternames) where rasternames is what the written raster will be called beyond the Sp # from whichones
 
+
+
+
 stitchtogether(c(62,66), pathstart6266, "PredictHerbnoerrorSp", "Herbnoerrorkfold")
-stitchtogether(c(62,66), pathstart6266, "PredictHerbWITHerrorSp", "HerbWITHerrorkfold")
+stitchtogether(3, pathstart6266, "PredictHerbnoerrorSp", "Herbnoerrorkfold")
+stitchtogether(c(3,62,66), pathstart6266, "PredictHerbWITHerrorSp", "HerbWITHerrorkfold")
+stitchtogether(66, pathstart6266, "PredictHerbWITHerrorSp", "HerbWITHerrorkfold")
 
-# Accounted for the missing on in the function, can do the ones I really want
-forhistofaverage(whichones = c(62,66), pathstart = pathstart6266, patternmatch = "Herbnoerrorkfold")
-forhistofsd(whichones = c(62,66), pathstart = pathstart6266, patternmatch = "Herbnoerrorkfold")
+# Accounted for the missing on in the function, can do the ones I really want 
+# 31? atleast12168[c(17:18,21:24,28)]  
+atleast12168[28]
+forhistofaverage(whichones = atleast12168[29:35], pathstart = pathstart6266, patternmatch = "Herbnoerrorkfold")
+forhistofsd(whichones = c(3,62,66), pathstart = pathstart6266, patternmatch = "Herbnoerrorkfold")
 
-
-forhistofaverage(whichones = c(62,66), pathstart = pathstart6266, patternmatch = "HerbWITHerrorkfold")
-forhistofsd(whichones = c(62,66), pathstart = pathstart6266, patternmatch = "HerbWITHerrorkfold")
 ```
 
+```{r}
+### come back here, run these!!! 
+maxentrun(whichones = atleast12168[c(17:18,21:24,28)] , numberofReps = 10, 
+          spatialpointsdataframe_herb = spatialpointsdataframe_herb,
+          maxentarguments = FALSE,  filenames = "noerror", 
+          pathstart = pathstart6266)
+
+
+maxentrun(whichones =  atleast12168[c(17:18,21:24,28)] , numberofReps = 10, 
+          spatialpointsdataframe_herb = spatialpointsdataframe_herb,
+          maxentarguments = FALSE,  filenames = "WITHerror", error = TRUE,
+          pathstart = pathstart6266, distdistribution = distdistribution)
+
+
+stitchtogether(atleast12168[c(17:18,21:24,28)], pathstart6266, "PredictHerbnoerrorSp", "Herbnoerrorkfold")
+stitchtogether(atleast12168[c(17:18,21:24,28)], pathstart6266, "PredictHerbWITHerrorSp", "HerbWITHerrorkfold")
+
+forhistofaverage(whichones = atleast12168[c(17:18,21:24,28)], pathstart = pathstart6266, patternmatch = "Herbnoerrorkfold")
+forhistofsd(whichones = atleast12168[c(17:18,21:24,28)], pathstart = pathstart6266, patternmatch = "Herbnoerrorkfold")
+###############
+```
 
 
 
@@ -912,7 +1006,21 @@ theme_set(theme_minimal())
 
 ```
 
+# run my own Bayesian analysis to look at the differeces in distirbutions by comparing moments (where \mu = (alpha/(alpha+beta))) and variance \sigma^2 = (alpha*beta)/((alpha+beta)^2(alpha+beta+1))     
+<https://www4.stat.ncsu.edu/~reich/st590/code/BetaBinomJAGS>   
+```{r}
+#install.packages("R2jags")
+library(R2jags)
+library(rjags)
+library(coda)
 
+dat <- data.frame(x = log(data.frame(noerrorhistsofavg[[1]])$value), 
+                  y = log(data.frame(noerrorhistsofavg[[1]])$value)+
+                    log(data.frame(noerrorhistsofavg[[1]])$weight) )
+
+
+
+```
 
 # Precision
 ```{r}
