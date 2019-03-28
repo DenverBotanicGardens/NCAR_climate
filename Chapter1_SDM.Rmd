@@ -149,7 +149,7 @@ forhistofaverage <- function(whichones = atleast12, pathstart, patternmatch){
   stacktoaverage <- lapply(whichones, function(i){
     rasterstoavg <- list.files(path = pathstart, 
                                pattern = paste("ProbTiffSp",
-                                               which(!is.na(match(notnulls68,i))),
+                                               i,
                                                patternmatch,sep=""), 
                                full.names=TRUE)
     ras <- stack(lapply(rasterstoavg, function(y){
@@ -171,7 +171,7 @@ forhistofsd <- function(whichones = atleast12, pathstart, patternmatch){
   stacktoaverage <- lapply(whichones, function(i){
     rasterstoavg <- list.files(path = pathstart, 
                                pattern = paste("ProbTiffSp",
-                                               which(!is.na(match(notnulls68,i))),
+                                               i,
                                                patternmatch,sep=""), 
                                full.names=TRUE)
     ras <- stack(lapply(rasterstoavg, function(y){
@@ -231,7 +231,6 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10,
                 bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
           } else {
                 convertxy <- spTransform(pointsspdf, CRS("+proj=longlat +datum=WGS84"))
-                # bgpnts <- background_points[[match(x,notnull)]]
                 circlesout <- circles(pointsspdf, d = 5000)
                 polygns <- polygons(circlesout)
                 bgpnts <- spsample(polygns, 300, "stratified")
@@ -285,7 +284,7 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10,
 
 ```{r}
 # x<-atleast12[3]
-for(x in atleast12168){
+for(x in atleast12168[21]){
             pointsspdf <- SpatialPointsDataFrame(coords = spatialpointsdataframe_herb[[x]][,c("decimalLongitude","decimalLatitude")],
                                                  data = spatialpointsdataframe_herb[[x]],
                                                  proj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
@@ -428,13 +427,15 @@ length(distXsp_noEORgrid1_68) # 68
 length(notnulls68) # 67
 length(notnulls68[notnull1_68]) # 52
 
-distXspall52 <- do.call(rbind, Map(cbind, SpNum = notnulls68[notnull1_68], 
-                                   distXsp_noEORgrid1_68[notnull1_68]))
-unique(distXspall52[,c("SpNum","Species")])
+which(!unlist(lapply(distXsp_noEORgrid1_68, is.null)))
+
+distXspall <- do.call(rbind, Map(cbind, SpNum = which(!unlist(lapply(distXsp_noEORgrid1_68, is.null))), 
+                                   distXsp_noEORgrid1_68[which(!unlist(lapply(distXsp_noEORgrid1_68, is.null)))]))
+unique(distXspall[,c("SpNum","Species")])
 
 distdistribution <- distXspall52$Dist[distXspall52$Dist<300000]
 
-df_dist <- distXspall52
+df_dist <- distXspall
 
 df_dist$EORYear <- as.numeric(substring(df_dist$EORdate,1,4))
 hist(df_dist$EORYear)
@@ -480,6 +481,9 @@ TPLtbl1 <- TPL(tab1$Species)
 write.csv(TPLtbl1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/TPLtbl1.csv")
 
 ```
+
+# Still need 29, 40; delete 65 and 61 once the correct ones go 62 and 66!!
+c(29,40,62,66)
 
 
 ```{r}
@@ -607,7 +611,7 @@ argsformax <- make.args(RMvalues = 0, # regularization multiplier, seq(0.5, 4,0.
 
 ```
 
-Add the two additional ones, 62 and 66 but numbering is off - goes along notnull1_68 and then atleast1268
+Still missing 29 with error, 40 no error
 ```{r}
 # from 1-60
 notnull
@@ -620,13 +624,15 @@ pathstart6266 <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche mod
 spatialpointsdataframe_herb <- distXsp_noEORgrid1_68
 hist(distdistribution) # ca line 300
 
-maxentrun(whichones = c(3,62,66), numberofReps = 10, 
+#29 worked 40 can't get all the way through!
+maxentrun(whichones = c(62,66), numberofReps = 10, 
           spatialpointsdataframe_herb = spatialpointsdataframe_herb,
           maxentarguments = FALSE,  filenames = "noerror", 
           pathstart = pathstart6266)
 
-
-maxentrun(whichones = c(3,62,66), numberofReps = 10, 
+# c(3,62,66)
+# c(29,40,62,66)
+maxentrun(whichones = 29, numberofReps = 10, 
           spatialpointsdataframe_herb = spatialpointsdataframe_herb,
           maxentarguments = FALSE,  filenames = "WITHerror", error = TRUE,
           pathstart = pathstart6266, distdistribution = distdistribution)
@@ -642,38 +648,68 @@ maxentrun(whichones = 66, numberofReps = 10,
 
 
 
-stitchtogether(c(62,66), pathstart6266, "PredictHerbnoerrorSp", "Herbnoerrorkfold")
+stitchtogether(c(29,40,62,66), pathstart6266, "PredictHerbnoerrorSp", "Herbnoerrorkfold")
 stitchtogether(3, pathstart6266, "PredictHerbnoerrorSp", "Herbnoerrorkfold")
 stitchtogether(c(3,62,66), pathstart6266, "PredictHerbWITHerrorSp", "HerbWITHerrorkfold")
 stitchtogether(66, pathstart6266, "PredictHerbWITHerrorSp", "HerbWITHerrorkfold")
+stitchtogether(3, pathstart6266, "PredictHerbWITHerrorSp", "HerbWITHerrorkfold")
 
 # Accounted for the missing on in the function, can do the ones I really want 
 # 31? atleast12168[c(17:18,21:24,28)]  
 atleast12168[28]
-forhistofaverage(whichones = atleast12168[29:35], pathstart = pathstart6266, patternmatch = "Herbnoerrorkfold")
-forhistofsd(whichones = c(3,62,66), pathstart = pathstart6266, patternmatch = "Herbnoerrorkfold")
+# 40 won't work
+forhistofaverage(whichones = c(62,66), pathstart = pathstart6266, patternmatch = "Herbnoerrorkfold")
+forhistofsd(whichones = c(29,40,62,66), pathstart = pathstart6266, patternmatch = "Herbnoerrorkfold")
+
+
+forhistofaverage(whichones = c(40,62,66), pathstart = pathstart6266, patternmatch = "HerbWITHerrorkfold")
+forhistofsd(whichones = c(29,40,62,66), pathstart = pathstart6266, patternmatch = "HerbWITHerrorkfold")
+
+maxentrun(whichones = atleast12168[c(17:18,21:24,28)], numberofReps = 10, 
+          spatialpointsdataframe_herb = spatialpointsdataframe_herb,
+          maxentarguments = FALSE,  filenames = "noerror", 
+          pathstart = pathstart6266)
+
+# atleast12168[c(17:18,21:24,28)]
+maxentrun(whichones = c(29,40,62,66), numberofReps = 10, 
+          spatialpointsdataframe_herb = spatialpointsdataframe_herb,
+          maxentarguments = FALSE,  filenames = "WITHerror", error = TRUE,
+          pathstart = pathstart6266, distdistribution = distdistribution)
 
 ```
 
 ```{r}
 ### come back here, run these!!! 
-maxentrun(whichones = atleast12168[c(17:18,21:24,28)] , numberofReps = 10, 
+maxentrun(whichones = atleast12168[c(22:24,28)] , numberofReps = 10, 
+          # atleast12168[c(17:18,21:24,28)]; 40
           spatialpointsdataframe_herb = spatialpointsdataframe_herb,
           maxentarguments = FALSE,  filenames = "noerror", 
           pathstart = pathstart6266)
 
-
-maxentrun(whichones =  atleast12168[c(17:18,21:24,28)] , numberofReps = 10, 
+# 43 had errors
+# atleast12168[c(17:18,21:24,28)]
+maxentrun(whichones =  atleast12168[c(24,28)] , numberofReps = 10, 
           spatialpointsdataframe_herb = spatialpointsdataframe_herb,
           maxentarguments = FALSE,  filenames = "WITHerror", error = TRUE,
-          pathstart = pathstart6266, distdistribution = distdistribution)
+          pathstart = pathstart6266, distdistribution = distdistribution[distdistribution<150000])
 
+maxentrun(whichones =  40, numberofReps = 10, 
+          spatialpointsdataframe_herb = spatialpointsdataframe_herb,
+          maxentarguments = FALSE,  filenames = "WITHerror", error = TRUE,
+          pathstart = pathstart6266, distdistribution = distdistribution[distdistribution<150000])
+
+
+hist(distdistribution[distdistribution<200000])
 
 stitchtogether(atleast12168[c(17:18,21:24,28)], pathstart6266, "PredictHerbnoerrorSp", "Herbnoerrorkfold")
 stitchtogether(atleast12168[c(17:18,21:24,28)], pathstart6266, "PredictHerbWITHerrorSp", "HerbWITHerrorkfold")
 
 forhistofaverage(whichones = atleast12168[c(17:18,21:24,28)], pathstart = pathstart6266, patternmatch = "Herbnoerrorkfold")
 forhistofsd(whichones = atleast12168[c(17:18,21:24,28)], pathstart = pathstart6266, patternmatch = "Herbnoerrorkfold")
+
+# atleast12168[c(17:18,21:24,28)]
+forhistofaverage(whichones = 3, pathstart = pathstart6266, patternmatch = "HerbWITHerrorkfold")
+forhistofsd(whichones = 3, pathstart = pathstart6266, patternmatch = "HerbWITHerrorkfold")
 ###############
 ```
 
@@ -902,21 +938,21 @@ accuracyhistsOneperSp <- function(pathstart, whichones =  atleast12[atleast12!=8
 }
 
 pathstart1 <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
-probmapnames1 <- "Herbnoerrorkfold"
-whichones1 <- atleast12[atleast12!=8]
+# probmapnames1 <- "Herbnoerrorkfold"
+# whichones1 <- atleast12[atleast12!=8]
 
 noerrorhists <- accuracyhists(pathstart1, probmapnames1, whichones1)
 hist(noerrorhists[[1]][[2]])
 
 witherrorhists <- accuracyhists("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/", "HerbWITHerrorkfold", whichones1)
 
-reallistofTiffs <- atleast12[atleast12!=3]
-reallistofTiffs <- reallistofTiffs[reallistofTiffs!=29]
-reallistofTiffs <- reallistofTiffs[!reallistofTiffs %in% c(31,32,40)]
+# reallistofTiffs <- atleast12[atleast12!=3]
+reallistofTiffs <- atleast12168[!atleast12168 %in% c(29,40)]
+# reallistofTiffs <- reallistofTiffs[!reallistofTiffs %in% c(31,32,40)]
 
 #Averaged and SD of probability maps second function
-noerrorhistsofavg <- accuracyhistsOneperSp(whichones = c(reallistofTiffs,62,66), pathstart1, WithorNo = "no")
-witherrorhistsofavg <- accuracyhistsOneperSp(whichones = c(reallistofTiffs,62,66),pathstart1)
+noerrorhistsofavg <- accuracyhistsOneperSp(whichones = reallistofTiffs, pathstart1, WithorNo = "no")
+witherrorhistsofavg <- accuracyhistsOneperSp(whichones = reallistofTiffs,pathstart1)
 
 
 # kstest are they different or the same,
@@ -942,7 +978,7 @@ ks.outs <- lapply(1:length(noerrorhistsofavg), function(i){
              log(data.frame(witherrorhistsofavg[[i]])$weight))
 })
 
-
+length(notnulls68) # 67
 
 sapply(ks.outs, '[',2)
 
@@ -958,21 +994,23 @@ whichsigndiff <- sapply(1:length(noerrorhistsofavg), function(s){
 
 whichsigndiff
 which(!unlist(lapply(whichsigndiff, is.na)))
-length(which(!unlist(lapply(whichsigndiff, is.na))))
-# There are 27 because did atleast12[atleast12!=8] since #8 didnt' work. 
+length(which(!unlist(lapply(whichsigndiff, is.na)))) # 19
+length(ks.outs) # 33
 
 # install.packages("latticeExtra")
 # library(latticeExtra)
-length(which(!unlist(lapply(whichsigndiff, is.na)))) # 14
 # Default margins
 par(mar=c(5.1, 4.1, 4.1, 2.1))
 
 # https://chemicalstatistician.wordpress.com/2013/06/24/exploratory-data-analysis-conceptual-foundations-of-empirical-cumulative-distribution-functions/  
+```
+
+```{r}
 
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure4_accuracy.jpg",
-     width=200, height=700,units='mm', res=300)
+     width=500, height=600,units='mm', res=300)
 
-layout(matrix(c(1:14), 7,2))
+layout(matrix(c(1:20),nrow=5, byrow = TRUE))
 
 par(mar=c(5.1,4.1,4.1,0.1))
 for(i in which(!unlist(lapply(whichsigndiff, is.na)))){
@@ -980,18 +1018,47 @@ for(i in which(!unlist(lapply(whichsigndiff, is.na)))){
              log(data.frame(noerrorhistsofavg[[i]])$weight))
   additional  <- ecdf(log(data.frame(witherrorhistsofavg[[i]])$value)+
              log(data.frame(witherrorhistsofavg[[i]])$weight))
-  plot(as_is, col = "blue", main=paste(g1g2names$AcceptedName[atleast12[atleast12!=8][[i]]]))  
+  plot(as_is, col = "blue", main=paste(g1g2namesall68$AcceptedName[reallistofTiffs[i]]))  
   lines(additional, col = rgb(0,1,0,0.5))
 }
 
 
 dev.off()
-
+```
 
 # try ks plot kernel smoothing, smothing optimized for display
 # plot ecdf, the sum of logs 
-?ecdf 
+?ecdf
+
+Compare those with and not with different accuracy curves for distances and sample size and area  
+```{r}
+
+# The SpNum that were compared, that had SDM for both as-is and with error
+reallistofTiffs
+
+# of reallistofTiffs the ones that are significantly different 
+whichsigndiff
+
+
+df_dist
+df_dist$AccuracyDifferent <- "No"
+df_dist$AccuracyDifferent[df_dist$SpNum %in% reallistofTiffs[which(!unlist(lapply(whichsigndiff, is.na)))]] <- "Yes"
+
+N_after1980<-sapply(split(df_dist, df_dist$SpNum), function(x){
+  nrow(x[x$year>1980,])
+})
+
+SampleSize <- data.frame(SpNum = as.numeric(names(N_after1980)), N_SDM = N_after1980)
+
+df_dist[df_dist$SpNum >60,] # What da, I have ErBr as 63 and Lygodesmia grandiflora as 67 not 62 and 66. Ugg, but otherwise correct
+
+df_dist2 <- merge(df_dist)
+summary(lm(AccuracyDifferent ~ Area, data=df_dist$))
+
+
 ```
+
+
 
 Compare distributions that are not the same using performR from Silas Tittes
 ```{r}
