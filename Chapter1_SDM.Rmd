@@ -138,7 +138,38 @@ stitchtogether <- function(whichones, pathstart, patternmatch, rasternames){
 })
 }
 
-
+thin.max <- function(x, cols, npoints){
+  #Create empty vector for output
+  inds <- vector(mode="numeric")
+  
+  #Create distance matrix
+  this.dist <- as.matrix(dist(x[,cols], upper=TRUE))
+  
+  #Draw first index at random
+  inds <- c(inds, as.integer(runif(1, 1, length(this.dist[,1]))))
+  
+  #Get second index from maximally distant point from first one
+  #Necessary because apply needs at least two columns or it'll barf
+  #in the next bit
+  inds <- c(inds, which.max(this.dist[,inds]))
+  
+  while(length(inds) < npoints){
+    #For each point, find its distance to the closest point that's already been selected
+    min.dists <- apply(this.dist[,inds], 1, min)
+    
+    #Select the point that is furthest from everything we've already selected
+    this.ind <- which.max(min.dists)
+    
+    #Get rid of ties, if they exist
+    if(length(this.ind) > 1){
+      print("Breaking tie...")
+      this.ind <- this.ind[1]
+    }
+    inds <- c(inds, this.ind)
+  }
+  
+  return(x[inds,])
+}
 
 #Need to averge and SD each of the 10
 
@@ -568,46 +599,6 @@ atleast12168
 argsformax <- make.args(RMvalues = 0, # regularization multiplier, seq(0.5, 4,0.5) to test multiple values?
                   fc = "LQH")  # features class combinations; fc = c("L", "LQ", "H", "LQH", "LQHP", "LQHPT"),)
 
-# for(x in atleast12){
-#         convertxy <- spTransform(distXsp_v3[[x]][[1]], CRS("+proj=longlat +datum=WGS84"))
-#         bgpnts <- bgHerb[[match(x,notnull)]]
-#         proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
-#         bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
-#         
-#   for(rep in 1:10){
-#         convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
-#         xm <- maxent(x = rasterstack,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords) # , 
-#                     # args=c("noautofeature","noproduct","nothreshold"))
-#         write.csv(data.frame(convertxy@coords,convertxy@data),
-#                   paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/presenceHerbnoerrorSp",x,"kfold",rep,".csv", sep=""))
-#         save(xm, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/maxentHerbnoerrorSp",x,"kfold",rep,".Rda", sep=""))        
-# 
-#         gc()
-#         #register parallel computing backend
-#         cl = parallel::makeCluster(ncores)
-#         doParallel::registerDoParallel(cl,ncores)
-#         #compute indices for data splitting
-#         rows = 1:nrow(rasterstack)
-#         split = sort(rows%%ncores)+1
-#         outname = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/PredictHerbnoerrorSp", x,"kfold",rep, sep="")
-#         #perform the prediction on subsets of the predictor dataset
-#         foreach(i=unique(split), .combine=c)%dopar%{
-#           rows_sub = rows[split==i]
-#           sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub), max(rows_sub), 
-#                                                         1, ncol(rasterstack)))
-#           raster::predict(sub, xm, filename=paste(outname, i, sep="_"), overwrite=TRUE)
-#         }
-# 
-#         e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, rasterstack)
-#         save(e, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/evaluateHerbnoerrorSp",x,"kfold",rep,".Rda", sep=""))
-# 
-#         rm(xm)
-#         gc()
-#         stopCluster(cl)
-#   }
-#         e
-# }
-# 
 
 ```
 
@@ -715,50 +706,6 @@ forhistofsd(whichones = 3, pathstart = pathstart6266, patternmatch = "HerbWITHer
 
 
 
-```{r}
-
-
-###Testing maxent parameters
-i<-1
-k<-3
-convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
-xm <- maxent(x = rasterstack,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords,args=c("noautofeature","noproduct","nothreshold"))
-        save(xm, file= paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/maxentHerbnoerrorSp",x,"kfold",rep,".Rda", sep=""))        
-
-        gc()
-        #register parallel computing backend
-        cl = parallel::makeCluster(ncores)
-        doParallel::registerDoParallel(cl,ncores)
-        #compute indices for data splitting
-        rows = 1:nrow(rasterstack)
-        split = sort(rows%%ncores)+1
-        outname = paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/PredictHerbnoerrorSp", x,"kfold",rep, sep="")
-        #perform the prediction on subsets of the predictor dataset
-        foreach(i=unique(split), .combine=c)%dopar%{
-          rows_sub = rows[split==i]
-          sub = raster::crop(rasterstack,raster::extent(rasterstack, min(rows_sub), max(rows_sub), 
-                                                        1, ncol(rasterstack)))
-          raster::predict(sub, xm, filename=paste(outname, i, sep="_"), overwrite=TRUE)
-        }
-  gc()
-
-    resultpath <- list.files(path = pathstart, 
-                             pattern = paste("PredictHerbnoerrorSp",i,"kfold",k,"_",sep=""), 
-                             full.names=TRUE)
-    rastout <- lapply(resultpath, function(x){
-      raster(x)
-      })
-    rastout$filename <- paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/ProbTiffSp",i,"Herbnoerrorkfold",k,".tif", sep="")
-    rastout$overwrite <- TRUE
-    m <- do.call(merge, rastout)
-plot(m)
-plot(mbackgroundnoargs)
-# mbackgroundnoargs <- m
-        rm(xm)
-        gc()
-        stopCluster(cl)
-```
-
 
 Stitch together the maps 
 ```{r}
@@ -851,7 +798,7 @@ Take the overlap of all EOR polygons and the rasters to get the histograms of pr
     
 Accuracy
 ```{r}
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 library(maptools)
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
 l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
@@ -905,7 +852,7 @@ accuracyhists <- function(pathstart, probmapnames, whichones, reps = 1:10){
 }
 
 
-accuracyhistsOneperSp <- function(pathstart, whichones =  atleast12[atleast12!=8], SDorAVG = "Avg", WithorNo = "WITH"){
+accuracyhistsOneperSp <- function(pathstart, whichones = reallistofTiffs, SDorAVG = "Avg", WithorNo = "WITH"){
   lapply(whichones, function(i){
     resultpath <- list.files(path = pathstart, 
                          pattern = paste(SDorAVG,"TiffSp",i,"Herb",WithorNo, sep=""), 
@@ -1133,9 +1080,9 @@ Principal components analysis of predictor variables
 PCA for how different - 
 calculate the size of the ellipse <https://stackoverflow.com/questions/38782051/how-to-calculate-the-area-of-ellipse-drawn-by-ggplot2>
 ```{r}
-habsp_EOR <- do.call(rbind, lapply(atleast12, function(i){
-  polys <- l1G1G2[l1G1G2$GNAME %in% c(g1g2names$AcceptedName[i],
-                                        g1g2names$Taxon[i]),]
+habsp_EOR <- do.call(rbind, lapply(reallistofTiffs, function(i){
+  polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[i],
+                                        g1g2namesall68$Taxon[i]),]
   proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
   EORpnts <- do.call(rbind, lapply(1:length(polys), function(f){
     # area <- sapply(slot(polys,"polygons"), slot, "area")[f]
@@ -1264,14 +1211,125 @@ table(habsp_andEOR$ErrorType)
 prPCA <- princomp(habsp_andEOR[,-c(1:3)])
 allsphabsp <- data.frame(habsp_andEOR[,1:3],prPCA$scores)
 
-for(i in atleast12){
-  print(paste(i,": ", nrow(allsphabsp[allsphabsp$SpeciesNum==i&allsphabsp$ErrorType=="EOR",])))
-}
 
-###BACK HERE TO FIX
+EORpnts_8 <- do.call(rbind, lapply(1:length(polys), function(f){
+      outline <- polys@polygons[[f]]@Polygons[[1]]@coords
+      grid <- makegrid(polys, cellsize = 5) # cellsize in map units!
+      names(grid) <- c("x","y")
+      gridout <- grid[inout(grid,outline), ]
+      if(nrow(gridout)>1){
+        gridthin <- thin.max(gridout,c("x","y"),nrow(distXsp_v3[[8]][[1]]@coords))
+        gc()
+        } else {
+          if(nrow(gridout)>0) {
+            gridthin <- gridout 
+          } else {
+            gridthin <- NULL
+          }}
+      gridthin
+}))
+```
+
+```{r}
+pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/")
+
+habitatSpecificity <- function(whichones, pathstart, replicates){
+  habspno <- do.call(rbind,lapply(whichones, function(x){
+  outno <- do.call(rbind,lapply(1:replicates, function(rep){
+    load(paste(pathstart,"maxentHerbnoerror","Sp", x,"kfold",rep, ".Rda",sep=""))
+    outinner <- data.frame(SpeciesNum = x, kfold = rep, HerbType = "NoError", xm@presence)
+    outinner
+    }))
+  outno
+  }))
+  habspwith <- do.call(rbind,lapply(whichones, function(x){
+  outWITH <- do.call(rbind,lapply(1:replicates, function(rep){
+    load(paste(pathstart,"maxentHerbWITHerror","Sp", x,"kfold",rep, ".Rda",sep=""))
+    outinner <- data.frame(SpeciesNum = x, kfold = rep, HerbType = "WithError",xm@presence)
+    outinner
+    }))
+  outWITH
+  }))
+  
+  polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[x],
+                                        g1g2namesall68$Taxon[x]),]
+  proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") 
+  EORpnts <- do.call(rbind, lapply(1:length(polys), function(f){
+       outline <- polys@polygons[[f]]@Polygons[[1]]@coords
+       outlineout <- data.frame(x=outline[,1],y=outline[,2])
+       grid <- makegrid(polys, cellsize = 100) # cellsize in map units!
+          names(grid) <- c("x","y")
+          gridout <- grid[inout(grid,outline), ]
+          pntsout <- rbind(gridout,outlineout)
+   }))
+  
+  gridthin <- thin.max(EORpnts, c("x","y"), nrow(habspno))
+  convertgridthin <- SpatialPoints(gridthin[,c("x","y")], proj4string = CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+  gridthin <- spTransform(convertgridthin, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+  gridextract <- extract(rasterstack,gridthin)
+  habspEOR <- data.frame(SpeciesNum = x, kfold = 1, HerbType = "EOR",gridextract)    
+
+  habsp <- rbind(habspno,habspwith, habspEOR)
+  
+  prPCA <- princomp(habsp[,-c(1:3)])
+  allsphabsp <- data.frame(habsp[,1:3],prPCA$scores)
+  
+  # for all species and both error and no and EOR
+  habspecificity <- do.call(rbind,lapply(unique(allsphabsp$HerbType), function(HT){
+    ellipseoutwhichones <- do.call(rbind, lapply(whichones, function(x){
+      ellipseoutfold <- do.call(rbind,lapply(unique(allsphabsp$kfold[allsphabsp$HerbType == HT]), function(k){
+   p <- ggplot(allsphabsp[allsphabsp$SpeciesNum==x & allsphabsp$kfold==k & allsphabsp$HerbType==HT,], 
+                aes(Comp.1,Comp.2))+
+      geom_point()+
+      stat_ellipse(segments=201) #default is to draw 51 line segments to make the ellipse
+    # get ellipse coordinates
+    pb <- ggplot_build(p)
+    table(pb$data[[2]]$group)
+    el <- pb$data[[2]][c("x","y")]
+    
+    # Center of ellipse
+    ctr <- MASS::cov.trob(el)$center
+    
+    # Distance to center from each point on ellipse
+    dist2center <- sqrt(rowSums((t(t(el)-ctr))^2))
+    
+    # Area of ellipse from semi-major and semi-minor axes which are largest and smallest of dist to center
+    habitatspecificity <- pi*min(dist2center)*max(dist2center)
+    ellipseoutfold <- data.frame(SpeciesNum = x, kfold = rep, HerbType = HT, habspec = habitatspecificity)
+    ellipseoutfold
+        }))
+      ellipseoutfold
+      }))
+    ellipseoutwhichones
+    }))
+  habspecificity
+}
+```
+
+
+```{r}  
+
+pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/")
+
+habspEORandNoandWith <- habitatSpecificity(reallistofTiffs, pathstart, replicates = 10)
+
+
+###BACK HERE TO FIX  Get the points for with and  no error
 # for all species and EOR
-habspecificity <- do.call(rbind,lapply(atleast12[atleast12!=8], function(x){
-  if(nrow(allsphabsp[allsphabsp$SpeciesNum==i&allsphabsp$ErrorType=="EOR",])>2){
+habspecificity <- do.call(rbind,lapply(reallistofTiffs, function(x){
+  polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[x],
+                                        g1g2namesall68$Taxon[x]),]
+  EORpnts <- do.call(rbind, lapply(1:length(polys), function(f){
+       outline <- polys@polygons[[f]]@Polygons[[1]]@coords
+       outlineout <- data.frame(x=outline[,1],y=outline[,2])
+       grid <- makegrid(polys, cellsize = 100) # cellsize in map units!
+          names(grid) <- c("x","y")
+          gridout <- grid[inout(grid,outline), ]
+          pntsout <- rbind(gridout,outlineout)
+   }))
+  
+  gridthin <- thin.max(EORpnts, c("x","y"), nrow())
+      
         peor <- ggplot(allsphabsp[allsphabsp$SpeciesNum==x&allsphabsp$ErrorType=="EOR",], 
                       aes(Comp.1,Comp.2))+
             geom_point()+
