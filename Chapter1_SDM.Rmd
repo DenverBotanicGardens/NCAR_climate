@@ -1233,6 +1233,8 @@ EORpnts_8 <- do.call(rbind, lapply(1:length(polys), function(f){
 ```{r}
 pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/")
 
+whichones <- reallistofTiffs[2]
+
 habitatSpecificity <- function(whichones, pathstart, replicates){
   habspno <- do.call(rbind,lapply(whichones, function(x){
   outno <- do.call(rbind,lapply(1:replicates, function(rep){
@@ -1275,8 +1277,8 @@ habitatSpecificity <- function(whichones, pathstart, replicates){
   allsphabsp <- data.frame(habsp[,1:3],prPCA$scores)
   
   # for all species and both error and no and EOR
-  habspecificity <- do.call(rbind,lapply(unique(allsphabsp$HerbType), function(HT){
-    ellipseoutwhichones <- do.call(rbind, lapply(whichones, function(x){
+  habspecificity <- do.call(rbind,lapply(whichones, function(x){
+    ellipseoutwhichones <- do.call(rbind, lapply(unique(allsphabsp$HerbType), function(HT){
       ellipseoutfold <- do.call(rbind,lapply(unique(allsphabsp$kfold[allsphabsp$HerbType == HT]), function(k){
    p <- ggplot(allsphabsp[allsphabsp$SpeciesNum==x & allsphabsp$kfold==k & allsphabsp$HerbType==HT,], 
                 aes(Comp.1,Comp.2))+
@@ -1314,45 +1316,7 @@ pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeli
 habspEORandNoandWith <- habitatSpecificity(reallistofTiffs, pathstart, replicates = 10)
 
 
-###BACK HERE TO FIX  Get the points for with and  no error
-# for all species and EOR
-habspecificity <- do.call(rbind,lapply(reallistofTiffs, function(x){
-  polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[x],
-                                        g1g2namesall68$Taxon[x]),]
-  EORpnts <- do.call(rbind, lapply(1:length(polys), function(f){
-       outline <- polys@polygons[[f]]@Polygons[[1]]@coords
-       outlineout <- data.frame(x=outline[,1],y=outline[,2])
-       grid <- makegrid(polys, cellsize = 100) # cellsize in map units!
-          names(grid) <- c("x","y")
-          gridout <- grid[inout(grid,outline), ]
-          pntsout <- rbind(gridout,outlineout)
-   }))
-  
-  gridthin <- thin.max(EORpnts, c("x","y"), nrow())
-      
-        peor <- ggplot(allsphabsp[allsphabsp$SpeciesNum==x&allsphabsp$ErrorType=="EOR",], 
-                      aes(Comp.1,Comp.2))+
-            geom_point()+
-            stat_ellipse(segments=201) #default is to draw 51 line segments to make the ellipse
-          # get ellipse coordinates
-          pbeor <- ggplot_build(peor)
-          table(pbeor$data[[2]]$group)
-          
-          eleor <- pbeor$data[[2]][c("x","y")]
-          
-          # Center of ellipse
-          ctreor <- MASS::cov.trob(eleor)$center
-          
-          # Distance to center from each point on ellipse
-          dist2centereor <- sqrt(rowSums((t(t(eleor)-ctreor))^2))
-          
-          # Area of ellipse from semi-major and semi-minor axes which are largest and smallest of dist to center
-          habitatspecificityeor <- pi*min(dist2centereor)*max(dist2centereor)
-          hsout_eor <- data.frame(ErrorType = "EOR", SpeciesNum = x, 
-                              kfold = 1, habspec = habitatspecificityeor)
-  }
-    
-    
+
   ellipseouterror <- do.call(rbind, lapply(c("no","yes"), function(errortype){
     # get and average across the replicates
     ellipseout <- do.call(rbind,lapply(1:10, function(rep){
