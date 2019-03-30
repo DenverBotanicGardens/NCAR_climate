@@ -24,6 +24,7 @@ library(rgdal)
 library(ENMeval)
 library(Taxonstand)
 
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/habspEORandNoandWith.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/coloradosps.g1g2_168.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2namesall68.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
@@ -1253,23 +1254,26 @@ habitatSpecificity <- function(whichones, pathstart, replicates){
   outWITH
   }))
   
-  polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[x],
-                                        g1g2namesall68$Taxon[x]),]
-  proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") 
-  EORpnts <- do.call(rbind, lapply(1:length(polys), function(f){
-       outline <- polys@polygons[[f]]@Polygons[[1]]@coords
-       outlineout <- data.frame(x=outline[,1],y=outline[,2])
-       grid <- makegrid(polys, cellsize = 100) # cellsize in map units!
-          names(grid) <- c("x","y")
-          gridout <- grid[inout(grid,outline), ]
-          pntsout <- rbind(gridout,outlineout)
-   }))
-  
-  gridthin <- thin.max(EORpnts, c("x","y"), nrow(habspno))
+  habspEOR <- do.call(rbind,lapply(whichones, function(x){
+    polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[x],
+                                          g1g2namesall68$Taxon[x]),]
+    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") 
+    EORpnts <- do.call(rbind, lapply(1:length(polys), function(f){
+         outline <- polys@polygons[[f]]@Polygons[[1]]@coords
+         outlineout <- data.frame(x=outline[,1],y=outline[,2])
+         grid <- makegrid(polys, cellsize = 100) # cellsize in map units!
+            names(grid) <- c("x","y")
+            gridout <- grid[inout(grid,outline), ]
+            pntsout <- rbind(gridout,outlineout)
+            pntsout
+            gridthin <- thin.max(EORpnts, c("x","y"), nrow(habspno))
   convertgridthin <- SpatialPoints(gridthin[,c("x","y")], proj4string = CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
   gridthin <- spTransform(convertgridthin, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
   gridextract <- extract(rasterstack,gridthin)
   habspEOR <- data.frame(SpeciesNum = x, kfold = 1, HerbType = "EOR",gridextract)    
+}))
+    habspEOR
+  }))
 
   habsp <- rbind(habspno,habspwith, habspEOR)
   
@@ -1278,8 +1282,12 @@ habitatSpecificity <- function(whichones, pathstart, replicates){
   
   # for all species and both error and no and EOR
   habspecificity <- do.call(rbind,lapply(whichones, function(x){
-    ellipseoutwhichones <- do.call(rbind, lapply(unique(allsphabsp$HerbType), function(HT){
-      ellipseoutfold <- do.call(rbind,lapply(unique(allsphabsp$kfold[allsphabsp$HerbType == HT]), function(k){
+    ellipseoutwhichones <- do.call(rbind, lapply(unique(allsphabsp$HerbType[allsphabsp$SpeciesNum==x]),
+                                                 function(HT){
+      ellipseoutfold <- do.call(rbind,
+                                lapply(unique(allsphabsp$kfold[allsphabsp$HerbType == HT &
+                                                                 allsphabsp$SpeciesNum==x]), 
+                                       function(k){
    p <- ggplot(allsphabsp[allsphabsp$SpeciesNum==x & allsphabsp$kfold==k & allsphabsp$HerbType==HT,], 
                 aes(Comp.1,Comp.2))+
       geom_point()+
@@ -1314,87 +1322,18 @@ habitatSpecificity <- function(whichones, pathstart, replicates){
 pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/")
 
 habspEORandNoandWith <- habitatSpecificity(reallistofTiffs, pathstart, replicates = 10)
-
-
-
-  ellipseouterror <- do.call(rbind, lapply(c("no","yes"), function(errortype){
-    # get and average across the replicates
-    ellipseout <- do.call(rbind,lapply(1:10, function(rep){
-      if(nrow(allsphabsp[allsphabsp$SpeciesNum==x&allsphabsp$kfold==rep&allsphabsp$ErrorType==errortype,]>2)){
-        p <- ggplot(allsphabsp[allsphabsp$SpeciesNum==x&allsphabsp$kfold==rep&allsphabsp$ErrorType==errortype,],
-                    aes(Comp.1,Comp.2))+
-          geom_point()+
-          stat_ellipse(segments=201) #default is to draw 51 line segments to make the ellipse
-        # get ellipse coordinates
-        pb <- ggplot_build(p)
-        table(pb$data[[2]]$group)
-        
-        el <- pb$data[[2]][c("x","y")]
-        
-        # Center of ellipse
-        ctr <- MASS::cov.trob(el)$center
-        
-        # Distance to center from each point on ellipse
-        dist2center <- sqrt(rowSums((t(t(el)-ctr))^2))
-        
-        # Area of ellipse from semi-major and semi-minor axes which are largest and smallest of dist to center
-        habitatspecificity <- pi*min(dist2center)*max(dist2center)
-        hsout <- data.frame(ErrorType = errortype, SpeciesNum = x, kfold = rep, habspec = habitatspecificity)
-        hsout
-      }
-        }))
-      ellipseout
-      }))
-    allout <- rbind(ellipseouterror,hsout_eor)
-    allout
-}))
-
-  
+save(habspEORandNoandWith, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/habspEORandNoandWith.Rda")
 
 ```
 
 Plot habitat specificity
 ```{r}
-habsp <- do.call(rbind,lapply(atleast12, function(x){
-  out <- do.call(rbind,lapply(1:10, function(rep){
-    load(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/maxentHerbnoerrorSp", x,"kfold",rep, ".Rda",sep=""))
-    outinner <- data.frame(SpeciesNum = x, kfold = rep, xm@presence)
-    outinner
-    }))
-  out
-  }))
-# Would need to add a column for species and another for replicate and then ignore those columns for the princomp of all species and replicates at a time
-prPCA <- princomp(habsp[,-c(1:2)])
-summary(prPCA)
-loadings(prPCA)
+habspEORandNoandWith[habspEORandNoandWith$HerbType=="EOR",]
 
-allsphabsp <- data.frame(habsp[,1:2],prPCA$scores)
+habspe <- merge(habspEORandNoandWith, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
+table(habspe$HerbType)
 
-# for one run of one species
-ggplot(allsphabsp, aes(Comp.1,Comp.2, colour=as.factor(SpeciesNum)))+
-  geom_point()+
-  stat_ellipse(segments=201)+ #default is to draw 51 line segments to make the ellipse
-  theme_bw()+
-  xlab(expression(atop("PC1 (97% variance explained)", "Elevation = 0.974; Bio12 = 0.227")))+
-  ylab(expression(atop("PC2 (2% variance explained)","Aspect = -0.999")))
-  
-
-summaryhabspec <- summarySE(habspecificity, measurevar = "habspec", groupvars = c("SpeciesNum"))
-
-
-sumhabspec <- merge(summaryhabspec, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
-habspnoerror <- merge(habspsame, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
-habspWITHerror <- merge(habspwitherror, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
-
-plot(summaryhabspec$SpeciesNum,summaryhabspec$habspec, pch=16, cex=2)
-points(habspsame$SpeciesNum, habspsame$habspec, col="red")
-
-boxplot(habspnoerror$habspec ~ round(habspnoerror$Area/(1000^2),0), 
-        col=rgb(0,0,0,.15), las=2, outline=F, 
-        at = (1:length(unique(habspnoerror$Area)))-0.5) #c(,rgb(1,1,1,.15)),
-
-
-ggplot(habspnoerror, aes(as.factor(round(Area/(1000^2),0)), habspec, colour=as.factor(SpeciesNum)))+
+ggplot(habspe, aes(as.factor(round(Area/(1000^2),0)), habspec, colour=HerbType))+
   geom_jitter()+
   geom_boxplot(position=position_dodge(width=-0.5))+
   theme_bw()+
