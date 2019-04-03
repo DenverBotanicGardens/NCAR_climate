@@ -953,20 +953,62 @@ par(mar=c(5.1, 4.1, 4.1, 2.1))
 # https://chemicalstatistician.wordpress.com/2013/06/24/exploratory-data-analysis-conceptual-foundations-of-empirical-cumulative-distribution-functions/  
 ```
 
+
+<https://stats.stackexchange.com/questions/324841/fitting-regression-spline> 
+Using Stan to fit regression splines  
+<https://mc-stan.org/users/documentation/case-studies/splines_in_stan.html> 
+```{r}
+library(splines)
+functions {
+  vector f(vector t, real gamma_1, real gamma_3); // implement this spline
+}
+data {
+  int<lower=1> subjects;
+  int<lower=1> periods;
+  vector[periods] y[subjects];
+  vector[periods] t[subjects];
+}
+parameters {
+  vector[3] gamma_raw[subjects]; // using non-centered parameterization
+  cholesky_factor_corr[3] C:
+  vector<lower=0>[3] lambda; // standard deviations for gamma
+  real<lower=0> sigma;
+}
+model {
+  matrix[3,3] L = diag_pre_multiply(C, lambda);
+  for (s in 1:subjects) {
+    vector[3] gamma = L * gamma_raw[s];
+    target += normal_lpdf(gamma_raw[s] | 0, 1); // implies gamma is MVN
+    target += normal_lpdf(y[s] | gamma[2] + f(t[s], gamma[1], gamma[3]),
+                                 sigma);
+  }
+  target += lkj_corr_cholesky(C | 1); // C * C' is uniform a priori
+  // priors on lambda and sigma
+}
+```
+
+
+
 ```{r}
 
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure4_accuracy.jpg",
-     width=500, height=600,units='mm', res=300)
+     width=500, height=300,units='mm', res=300)
 
-layout(matrix(c(1:20),nrow=5, byrow = TRUE))
+layout(matrix(c(1:20),nrow=4, byrow = TRUE))
 
 par(mar=c(5.1,4.1,4.1,0.1))
 for(i in which(!unlist(lapply(whichsigndiff, is.na)))){
-  as_is <- ecdf(log(data.frame(noerrorhistsofavg[[i]])$value)+
-             log(data.frame(noerrorhistsofavg[[i]])$weight))
-  additional  <- ecdf(log(data.frame(witherrorhistsofavg[[i]])$value)+
-             log(data.frame(witherrorhistsofavg[[i]])$weight))
-  plot(as_is, col = "blue", main=paste(g1g2namesall68$AcceptedName[reallistofTiffs[i]]))  
+  noerr <- data.frame(noerrorhistsofavg[[i]])
+  # noerr <- noerr[sample(1:nrow(noerr),1000),]
+  witherr <- data.frame(witherrorhistsofavg[[i]])
+  # witherr <- witherr[sample(1:nrow(witherr),1000)]
+  as_is <- ecdf(log(noerr$value)+log(noerr$weight))
+  additional <- ecdf(log(witherr$value)+log(witherr$weight))
+  # as_is <- ecdf(log(data.frame(noerrorhistsofavg[[i]])$value)+
+  #            log(data.frame(noerrorhistsofavg[[i]])$weight))
+  # additional  <- ecdf(log(data.frame(witherrorhistsofavg[[i]])$value)+
+  #            log(data.frame(witherrorhistsofavg[[i]])$weight))
+  plot(as_is, col = "blue", main=paste(g1g2namesall68$AcceptedName[reallistofTiffs[i]]), cex.main=2)  
   lines(additional, col = rgb(0,1,0,0.5))
 }
 
@@ -991,19 +1033,138 @@ whichsigndiff
 df_dist
 df_dist$AccuracyDifferent <- "No"
 df_dist$AccuracyDifferent[df_dist$SpNum %in% reallistofTiffs[which(!unlist(lapply(whichsigndiff, is.na)))]] <- "Yes"
+# 
+# N_after1980<-sapply(split(df_dist, df_dist$SpNum), function(x){
+#   nrow(x[x$year>1980,])
+# })
+# 
+# SampleSize <- data.frame(SpNum = as.numeric(names(N_after1980)), N_SDM = N_after1980)
+# 
+# df_dist[df_dist$SpNum >60,] # What da, I have ErBr as 63 and Lygodesmia grandiflora as 67 not 62 and 66. Ugg, but otherwise correct
+# 
+# df_dist2 <- merge(df_dist)
 
-N_after1980<-sapply(split(df_dist, df_dist$SpNum), function(x){
-  nrow(x[x$year>1980,])
+summary(glm(as.factor(AccuracyDifferent) ~ (Area+Dist+year)^2, data=df_dist[df_dist$year>1980,], family="binomial"))
+```
+
+
+# But wait! Distance isn't calculated as the distance for the error points, only for the initial points, take out all the distance errors. 
+```{r}
+  f1 <- glm(as.factor(AccuracyDifferent) ~ year + Area, data= df_dist[df_dist$year>1980,], family="binomial")
+  f8 <- glm(as.factor(AccuracyDifferent) ~ Yeardiff + Area, data= df_dist[df_dist$year>1980,], family="binomial")
+  # f2 <- glm(as.factor(AccuracyDifferent) ~ (Area*Dist*year), data= df_dist[df_dist$year>1980,], family="binomial")
+  # f9 <- glm(as.factor(AccuracyDifferent) ~ (Area*Dist*Yeardiff), data= df_dist[df_dist$year>1980,], family="binomial")
+  f3 <- glm(as.factor(AccuracyDifferent) ~ year, data= df_dist[df_dist$year>1980,], family="binomial")
+  f4 <- glm(as.factor(AccuracyDifferent) ~ Area, data= df_dist[df_dist$year>1980,], family="binomial")
+  f5 <- glm(as.factor(AccuracyDifferent) ~ 1, data= df_dist[df_dist$year>1980,], family="binomial")
+  f6 <- glm(as.factor(AccuracyDifferent) ~ year*Area, data= df_dist[df_dist$year>1980,], family="binomial")
+# f7 <- glm(as.factor(AccuracyDifferent) ~ Area*Dist, data= df_dist[df_dist$year>1980,], family="binomial")
+  f10 <- glm(as.factor(AccuracyDifferent) ~ Yeardiff*Area, data= df_dist[df_dist$year>1980,], family="binomial")
+  f11 <- glm(as.factor(AccuracyDifferent) ~ Yeardiff, data= df_dist[df_dist$year>1980,], family="binomial")
+
+
+(lmresults <- aictab(list(f1,f3,f4,f5,f6,f8,f10,f11),# list(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11),
+       modnames=as.character(unlist(lapply(list(f1,f3,f4,f5,f6,f8,f10,f11),formula)))))
+evidence(aictab(cand.set = list(f1,f3,f4,f5,f6,f8,f10,f11),
+                modnames = as.character(unlist(lapply(list(f1,f3,f4,f5,f6,f8,f10,f11),formula)))))
+sapply(1:length(lmresults$Delta_AICc), function(i){
+  exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
+})
+(er1 <- exp(0.5*lmresults$Delta_AICc[2]))
+(er2 <- exp(0.5*lmresults$Delta_AICc[3]))
+(er3 <- exp(0.5*lmresults$Delta_AICc[4]))
+(er4 <- exp(0.5*lmresults$Delta_AICc[5]))
+
+summary(f6)
+hist(df_dist$year[df_dist$year>1980])  
+length(unique(distXspall52$SpNum)) # 52 species with herbarium
+min(distXspall52$year) # 1871
+max(distXspall52$year)
+hist(distXspall52$year)
+
+hist(df_dist$Area[df_dist$year>1980])  
+min(distXspall52$Area)/10000 # 1871
+max(distXspall52$Area)/(10000)
+hist(distXspall52$Area/10000)
+mean(unique(distXspall52$Area))/10000
+sd(unique(distXspall52$Area))/10000
+
+median(unique(distXspall52$Area))/10000
+
+distXspall52[distXspall52$Area == max(distXspall52$Area),]
+distXspall52[distXspall52$Area == min(distXspall52$Area),]
+
+
+
+ggplot(df_dist[df_dist$year>1980,], aes(y = Area, x = AccuracyDifferent))+
+  geom_boxplot()
+
+
+ggplot(df_dist[df_dist$year>1980,], aes(y = year, x = AccuracyDifferent))+
+  geom_boxplot()
+
+ggplot(df_dist[df_dist$year>1980,], aes(year, Area, colour=AccuracyDifferent))+
+  stat_smooth(method="lm")
+
+
+ggplot(df_dist[df_dist$year>1980,], aes(year, Area, colour=AccuracyDifferent))+
+  stat_smooth(method="lm")+
+  geom_point()
+
+
+ggplot(df_dist[df_dist$year>1980,], aes(Area, year, colour=AccuracyDifferent))+
+  stat_smooth(method="lm")+
+  geom_point()
+
+ggplot(df_dist[df_dist$year>1980 & df_dist$Area<60000000,], aes(year, Area, colour=AccuracyDifferent))+
+  stat_smooth(method="lm")+
+  geom_point()
+
+
+ggplot(df_dist[df_dist$year>1980& df_dist$Area<60000000,], aes(Area, year, colour=AccuracyDifferent))+
+  stat_smooth(method="lm")+
+  geom_point()
+
+
+# How many different collectors? Split words, select most common repeats. 
+collectors <- as.character(df_dist$recordedBy)
+colcommalastname <- sapply(collectors, function(x) strsplit(gsub('[[:digit:]]+', '', x), 
+                                                           split = "\\s+"))
+
+collectorssplit <- sapply(collectors, function(x){
+  first <- gsub(";",",",x)
+  first <- gsub("-","",first)
+  first <- gsub(" and ",",",first)
+  first <- gsub("\\|",",",first)
+  first <- gsub("&",",",first)
+  first <- gsub("Adn",",",first)
+  strsplit(gsub('[[:digit:]]+', '', first),split = ",")
 })
 
-SampleSize <- data.frame(SpNum = as.numeric(names(N_after1980)), N_SDM = N_after1980)
+firstcollector <- sapply(1:length(collectorssplit),function(i) head(collectorssplit[[i]],1))
+lastname <- sapply(1:length(firstcollector), function(n) tail(strsplit(firstcollector[n],split=" ")[[1]],1))
 
-df_dist[df_dist$SpNum >60,] # What da, I have ErBr as 63 and Lygodesmia grandiflora as 67 not 62 and 66. Ugg, but otherwise correct
+allofem <- do.call(c, collectorssplit)
+# allofem <- gsub('[[:digit:]]+', '', allofem)
+sort(table(allofem))
+sort(table(firstcollector))
+sort(table(lastname))
+length(sort(table(lastname)))
 
-df_dist2 <- merge(df_dist)
-summary(lm(AccuracyDifferent ~ Area, data=df_dist$))
+unique(df_dist$recordedBy)
+
+writeClipboard(allofem)
+
+length(table(as.character(df_dist$institutionCode))) # 28 but USU and USUUB are the same so 27
+table(as.character(df_dist$institutionCode))
+```
 
 
+```{r}
+
+ggplot(f3, aes(Year, log_odds, colour = Sex)) + 
+        geom_line() + 
+        geom_smooth(se = TRUE)
 ```
 
 
@@ -1040,13 +1201,26 @@ dat <- data.frame(x = log(data.frame(noerrorhistsofavg[[1]])$value),
 # Precision
 ```{r}
 # pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
-precisionplots <- lapply(c(reallistofTiffs,61,65), function(i){
+precisionplotsno <- lapply(reallistofTiffs, function(i){
+                        gc()
                         resultpath <- list.files(path = pathstart, 
                                                  pattern = paste("AvgTiffSp",i,"Herbnoerror",sep=""), 
                                                  full.names=TRUE)
                         rastout <- raster(resultpath)
-                        values(rastout)
+                        out <- sample(values(rastout),1000000)
+                        out
                         })
+
+precisionplotswith <- lapply(reallistofTiffs, function(i){
+                        gc()
+                        resultpath <- list.files(path = pathstart, 
+                                                 pattern = paste("AvgTiffSp",i,"HerbWITHerror",sep=""), 
+                                                 full.names=TRUE)
+                        rastout <- raster(resultpath)
+                        out <- sample(values(rastout),1000000)
+                        out
+                        })
+
 
 # takes a long time, what if I subsample the points, does it go faster without losing information?
 plot(ecdf(precisionplots[[1]]))
@@ -1066,13 +1240,91 @@ ks.test(precisionplots[[1]],
 ks.test(precisionplots[[1]],
         sample(precisionplots[[1]], 100000))
 
-for(i in 1:length(precisionplots)){
-  plot(ecdf(sample(precisionplots[[i]],1000000)), 
-       main = g1g2namesall68$AcceptedName[c(reallistofTiffs,61,65)[i]])
+for(i in 1:length(precisionplotsno)){
+  plot(ecdf(sample(precisionplotsno[[i]],10000)),
+       main = g1g2namesall68$AcceptedName[reallistofTiffs[i]], xlim = c(0,1), col="red")
+  plot(ecdf(sample(precisionplotswith[[i]],10000)), add = TRUE, col="blue")
 }
 
+ks.precision <- lapply(1:length(precisionplotsno), function(i){
+  ks.test(precisionplotsno[[i]],
+          precisionplotswith[[i]])
+})
+
+whichsigndiffprec <- sapply(1:length(ks.precision), function(s){
+  if(ks.precision[[s]]$p.value < 0.05){
+    1
+  } else {
+    NA
+  }
+})
+whichsigndiffprec
+length(which(!unlist(lapply(whichsigndiffprec, is.na))))
+
+# evaluate when the percent of values is greater than 0 and what the suitability values are once it approaches 100% of the cells
+Fn <- ecdf(precisionplotsno[[1]])
+
+# How about t-tests for the percentiles? 
+ttestpercentiles <- lapply(1:length(ks.precision), function(p){
+  Fn.no <- ecdf(precisionplotsno[[p]])
+  Fn.with <- ecdf(precisionplotswith[[p]])
+  out <- t.test(Fn.no(seq(0,1,by=0.01)),
+                Fn.with(seq(0,1,by=0.01)))
+  out
+})
+ttestpercentiles[[1]]
+ttestpercentiles[[12]]
+
+# No, want to know at what suitability score does it start to climb and what score does it asymptote
+smoothedcurves <- do.call(rbind,lapply(1:length(ks.precision), function(p){
+  Fn.no <- ecdf(precisionplotsno[[p]])
+  Fn.with <- ecdf(precisionplotswith[[p]])
+  # Find where change in Y changes
+  inflno <- c(FALSE, diff(diff(Fn.no(seq(0,1,by=0.001)))>0)!=0)
+  inflwith <- c(FALSE, diff(diff(Fn.with(seq(0,1,by=0.001)))>0)!=0)
+  inno <-seq(0,1,by=0.001)[which(TRUE == inflno)]
+  inwith <- seq(0,1,by=0.001)[which(TRUE == inflwith)]
+  data.frame(noerrorrange = max(inno)-min(inno), witherrorrange = max(inwith)-min(inwith))
+}))
+smoothedcurves
+
+t.test(smoothedcurves$noerrorrange,smoothedcurves$witherrorrange)
+
+Fn(seq(0,1,by=0.1)) # Gives the percentiles for x: Fn(x); Once you hit 0.6, have 99% of raster cells covered
+
+# When 
+which(Fn(seq(0,1,by=0.01))[Fn(seq(0,1,by=0.01))>0.01] == min(Fn(seq(0,1,by=0.01))[Fn(seq(0,1,by=0.01))>0.1]))
+
+for(i in 1:length(precisionplotsno)){
+  plot(density(precisionplotsno[[i]], col="green"),xlim=c(0,1),main = g1g2namesall68$AcceptedName[reallistofTiffs[i]])
+  lines(density(precisionplotswith[[i]], col="red"))
+}
+plot(density(precisionplotsno[[1]]))
+
+PDF <- hist(precisionplotsno[[1]], freq=FALSE)
+PDF$counts
+PDF$breaks
 ```
 
+```{r}
+
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure5_precision.jpg",
+     width=300, height=900,units='mm', res=300)
+
+layout(matrix(c(1:33),nrow=11, byrow = TRUE))
+
+par(mar=c(5.1,4.1,4.1,0.1))
+for(i in which(!unlist(lapply(whichsigndiffprec, is.na)))){
+  plot(ecdf(sample(precisionplotsno[[i]],10000)),
+       main = g1g2namesall68$AcceptedName[reallistofTiffs[i]], xlim = c(0,1), col="red",
+       cex.main=2)
+  lines(ecdf(sample(precisionplotswith[[i]],10000)), col="blue")
+}
+
+
+dev.off()
+
+```
 
 
 
@@ -1231,6 +1483,7 @@ EORpnts_8 <- do.call(rbind, lapply(1:length(polys), function(f){
 }))
 ```
 
+# This one is the final one!
 ```{r}
 pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/")
 
@@ -1324,6 +1577,58 @@ save(habspEORandNoandWith, file= "Q:/Research/Projects/alpine-phenology/Uncertai
 
 ```
 
+# oops, need the loadings of the PCA    
+```{r}
+whichones <- reallistofTiffs
+  habspno <- do.call(rbind,lapply(whichones, function(x){
+  outno <- do.call(rbind,lapply(1:10, function(rep){
+    load(paste(pathstart,"maxentHerbnoerror","Sp", x,"kfold",rep, ".Rda",sep=""))
+    outinner <- data.frame(SpeciesNum = x, kfold = rep, HerbType = "NoError", xm@presence)
+    outinner
+    }))
+  outno
+  }))
+  
+  habspwith <- do.call(rbind,lapply(whichones, function(x){
+  outWITH <- do.call(rbind,lapply(1:10, function(rep){
+    load(paste(pathstart,"maxentHerbWITHerror","Sp", x,"kfold",rep, ".Rda",sep=""))
+    outinner <- data.frame(SpeciesNum = x, kfold = rep, HerbType = "WithError",xm@presence)
+    outinner
+    }))
+  outWITH
+  }))
+  
+  habspEOR <- do.call(rbind,lapply(whichones, function(x){
+    polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[x],
+                                          g1g2namesall68$Taxon[x]),]
+    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") 
+    EORpnts <- do.call(rbind, lapply(1:length(polys), function(f){
+         outline <- polys@polygons[[f]]@Polygons[[1]]@coords
+         outlineout <- data.frame(x=outline[,1],y=outline[,2])
+         grid <- makegrid(polys, cellsize = 100) # cellsize in map units!
+         names(grid) <- c("x","y")
+         gridout <- grid[inout(grid,outline), ]
+         pntsout <- rbind(gridout,outlineout)
+         pntsout
+         }))
+    # Get the sample size of one replicate of each species (x)
+    habspeor <- habspno[habspno$SpeciesNum==x & habspno$kfold == 1,]
+    if(nrow(EORpnts)>nrow(habspeor)) EORpnts <- thin.max(EORpnts, c("x","y"), nrow(habspeor))
+    convertgridthin <- SpatialPoints(EORpnts[,c("x","y")], proj4string = CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+    gridthin <- spTransform(convertgridthin, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+    gridextract <- extract(rasterstack,gridthin)
+    out <- data.frame(SpeciesNum = x, kfold = 1, HerbType = "EOR",gridextract)
+    out
+  }))
+
+  habsp <- rbind(habspno,habspwith, habspEOR)
+  
+  prPCA <- princomp(habsp[,-c(1:3)])
+
+  loadings(prPCA)
+summary(prPCA)
+```
+
 Plot habitat specificity
 ```{r}
 habspEORandNoandWith[habspEORandNoandWith$HerbType=="EOR",] # 33 rows, yay!
@@ -1369,6 +1674,181 @@ gc()
 
 
 
+# What are the AUC scores for all of these?   
+```{r}
+
+aucs_all <- do.call(rbind,lapply(c("no","WITH"), function(w){
+      aucs_no <- do.call(rbind,lapply(reallistofTiffs, function(x){
+        aucs.out <- do.call(rbind,lapply(1:10, function(rep){
+          load(paste(pathstart,"evaluateHerb",w,"error","Sp",x,"kfold",rep,".Rda", sep=""))
+          data.frame(SpNum = x, kfold = rep, AUC = e@auc, DataType = w)
+        }))
+        aucs.out
+      }))
+      aucs_no
+      }))
+ggplot(aucs_all, aes(DataType, AUC))+
+  geom_boxplot()+
+  geom_jitter(position=position_jitter(0.1), alpha=0.5, pch=16)+
+  theme_bw()
+
+t.test(aucs_all$AUC~aucs_all$DataType) # CI of  0.047 of the difference
+levels(aucs_all$DataType) # no = x, WITH = y
+
+aggregate(AUC~DataType, data = aucs_all, mean)
+aggregate(AUC~DataType, data = aucs_all, sd)
+
+```
 
 
 
+
+# Niche overlap   
+<https://www.rdocumentation.org/packages/phyloclim/versions/0.9.5/topics/niche.overlap>   
+<https://rdrr.io/rforge/fuzzySim/man/modOverlap.html>   
+<https://github.com/danlwarren/ENMTools>  
+
+```{r}
+
+library(devtools)
+# install_github("danlwarren/ENMTools")
+install_local("C:/Users/deprengm/Downloads/ENMTools-master.zip")
+library(ENMTools)
+
+library(ENMeval)
+?nicheOverlap
+
+
+nicheoverlaps <- lapply(c(reallistofTiffs), function(i){
+      gc()
+      resultpathno <- list.files(path = pathstart, 
+                               pattern = paste("AvgTiffSp",i,"Herbnoerror",sep=""), 
+                               full.names=TRUE)
+      rastoutno <- raster(resultpathno)
+      resultpathWITH <- list.files(path = pathstart, 
+                         pattern = paste("AvgTiffSp",i,"HerbWITHerror",sep=""), 
+                         full.names=TRUE)
+      rastoutWITH <- raster(resultpathWITH)
+      nicheOverlap(rastoutno,rastoutWITH)
+      })
+```
+
+```{r}
+# Where in rasterstack are the values of highest, next chunck and so on in the SDM for no and with?
+nichevaluesbySDM <- do.call(rbind,lapply(c(reallistofTiffs), function(i){
+      gc()
+      resultpathno <- list.files(path = pathstart, 
+                               pattern = paste("AvgTiffSp",i,"Herbnoerror",sep=""), 
+                               full.names=TRUE)
+      rastoutno <- raster(resultpathno)
+      
+      resultpathWITH <- list.files(path = pathstart, 
+                         pattern = paste("AvgTiffSp",i,"HerbWITHerror",sep=""), 
+                         full.names=TRUE)
+      rastoutWITH <- raster(resultpathWITH)
+      
+      valuesno <- sample(values(rastoutno), 100000)
+      quantilesno <- summary(valuesno)
+      tenthsno <- (quantilesno[5]-quantilesno[1])/10
+      valuesWITH <- sample(values(rastoutWITH), 100000)
+      quantilesWITH <- summary(valuesWITH)
+      tenthsWITH <- (quantilesWITH[5]-quantilesWITH[1])/10
+      
+      # Very slow
+      notenths <- do.call(rbind,lapply(2:10, function(t){
+        D <- overlay(rasterstack, rastoutno, fun=function(x,y){ 
+          x[y<((t-1)*tenthsno) | y>(t*tenthsno)] <- NA; x})
+        out <- na.omit(values(D))
+        if(nrow(data.frame(out))>0){
+          out <- data.frame(out,Tenth = t-1, SpNum = i, DataType = "no")
+          out
+        } else {
+          out <- data.frame(layer.1 = NA, layer.2 = NA, layer.3 = NA, layer.4 = NA,
+                            layer.5 = NA, Tenth = t-1, SpNum = i, DataType = "no")
+          out          
+        }
+        }))
+      
+      # notenths <- lapply(2:3, function(t){
+      #   tosubset <- rasterstack
+      #   tosubset[rastoutno>((t-1)*tenthsno) & rastoutno<=(t*tenthsno)] <- NA
+      #   out <- rasterToPoints(tosubset)[,3]
+      #   # xy <- rasterToPoints(rastoutno, function(x) x>((t-1)*tenthsno) & x<=(t*tenthsno))
+      #   # out <- extract(rasterstack, xy[,1:2])
+      #   rasterstack[rastoutno>((t-1)*tenthsno) & rastoutno<=(t*tenthsno)]
+      #   
+      #   out <- data.frame(out)
+      #   out
+      # })
+      
+      withtenths <- do.call(rbind,lapply(2:10, function(t){
+        D <- overlay(rasterstack, rastoutWITH, fun=function(x,y){ 
+          x[y<((t-1)*tenthsno) | y>(t*tenthsWITH)] <- NA; x})
+        out <- na.omit(values(D))
+        if(nrow(data.frame(out))>0){
+          out <- data.frame(out,Tenth = t-1, SpNum = i, DataType = "no")
+          out
+        } else {
+          out <- data.frame(layer.1 = NA, layer.2 = NA, layer.3 = NA, layer.4 = NA,
+                            layer.5 = NA, Tenth = t-1, SpNum = i, DataType = "no")
+          out          
+        }
+        }))
+```
+
+
+```{r}
+nichevaluesbySDM[[1]]
+
+calcnicheoverlaps <- lapply(c(reallistofTiffs), function(i){
+      gc()
+      resultpathno <- list.files(path = pathstart, 
+                               pattern = paste("AvgTiffSp",i,"Herbnoerror",sep=""), 
+                               full.names=TRUE)
+      rastoutno <- raster(resultpathno)
+      resultpathWITH <- list.files(path = pathstart, 
+                         pattern = paste("AvgTiffSp",i,"HerbWITHerror",sep=""), 
+                         full.names=TRUE)
+      rastoutWITH <- raster(resultpathWITH)
+      calc.niche.overlap(stack(rastoutno,rastoutWITH), stat="I")
+      })
+
+nicheoverlaps[[1]]
+nicheoverlaps
+
+nicheoverlapstobind <- data.frame(SpNum = reallistofTiffs, NicheOverlap = do.call(c,nicheoverlaps))
+df_dist2 <- merge(df_dist, nicheoverlapstobind, by = "SpNum")
+
+ggplot(df_dist2, aes(Area, NicheOverlap, colour = AccuracyDifferent))+
+  geom_point()
+
+ggplot(df_dist2, aes(AccuracyDifferent, NicheOverlap))+
+  geom_boxplot()
+
+df_dist3 <- merge(df_dist2, aucs_all, by = "SpNum")
+
+
+ggplot(df_dist3, aes(NicheOverlap,AUC,colour = DataType))+
+  geom_point()+
+  stat_smooth(method="lm")+
+  theme_bw()
+
+ggplot(df_dist2, aes(Area, NicheOverlap, colour = AccuracyDifferent))+
+  geom_point()+
+  stat_smooth(method="lm")+
+  theme_bw()
+
+df_dist3 # DataType no, WITH
+habspEORandNoandWith # HerbType: EOR, NoError, WithError
+habsptomerge <- habspEORandNoandWith
+habsptomerge$HerbType <- as.character(habsptomerge$HerbType)
+habsptomerge$HerbType[habsptomerge$HerbType == "NoError"] <- "no"
+habsptomerge$HerbType[habsptomerge$HerbType == "WithError"] <- "WITH"
+
+df_dist4 <- merge(df_dist3,habsptomerge, by.x =c("SpNum","DataType"), 
+                  by.y = c("SpeciesNum","HerbType"))
+
+ggplot(df_dist4, aes(Dist, NicheOverlap))+
+  geom_point()+
+  stat_smooth(method="lm")
+```
