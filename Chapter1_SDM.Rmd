@@ -1734,6 +1734,10 @@ nicheoverlaps <- lapply(c(reallistofTiffs), function(i){
 ```
 
 ```{r}
+rasterOptions(maxmemory = 1e+09)
+# default:
+# rasterOptions(maxmemory = 1e+08)
+
 # Where in rasterstack are the values of highest, next chunck and so on in the SDM for no and with?
 nichevaluesbySDM <- do.call(rbind,lapply(c(reallistofTiffs), function(i){
       gc()
@@ -1747,17 +1751,21 @@ nichevaluesbySDM <- do.call(rbind,lapply(c(reallistofTiffs), function(i){
                          full.names=TRUE)
       rastoutWITH <- raster(resultpathWITH)
       
-      valuesno <- sample(values(rastoutno), 100000)
-      quantilesno <- summary(valuesno)
-      tenthsno <- (quantilesno[5]-quantilesno[1])/10
-      valuesWITH <- sample(values(rastoutWITH), 100000)
-      quantilesWITH <- summary(valuesWITH)
-      tenthsWITH <- (quantilesWITH[5]-quantilesWITH[1])/10
-      
+      # valuesno <- values(rastoutno)
+      # quantilesno <- summary(valuesno)
+      # tenthsno <- (max(valuesno)-min(valuesno))/4
+      # valuesWITH <- values(rastoutWITH)
+      # quantilesWITH <- summary(valuesWITH)
+      # tenthsWITH <- (max(valuesWITH)-min(valuesWITH))/4
+
       # Very slow
-      notenths <- do.call(rbind,lapply(2:10, function(t){
-        D <- overlay(rasterstack, rastoutno, fun=function(x,y){ 
-          x[y<((t-1)*tenthsno) | y>(t*tenthsno)] <- NA; x})
+      # notenths <- do.call(rbind,lapply(2:4, function(t){
+      #   gc()
+        D <- overlay(stack(rasterstack,rastoutno), rastoutno, fun=function(x,y){
+          x[sample(y, 10000)]
+          # x[y>(t*tenthsno)] <- NA
+          # x
+          })
         out <- na.omit(values(D))
         if(nrow(data.frame(out))>0){
           out <- data.frame(out,Tenth = t-1, SpNum = i, DataType = "no")
@@ -1765,25 +1773,16 @@ nichevaluesbySDM <- do.call(rbind,lapply(c(reallistofTiffs), function(i){
         } else {
           out <- data.frame(layer.1 = NA, layer.2 = NA, layer.3 = NA, layer.4 = NA,
                             layer.5 = NA, Tenth = t-1, SpNum = i, DataType = "no")
-          out          
+          out
         }
         }))
-      
-      # notenths <- lapply(2:3, function(t){
-      #   tosubset <- rasterstack
-      #   tosubset[rastoutno>((t-1)*tenthsno) & rastoutno<=(t*tenthsno)] <- NA
-      #   out <- rasterToPoints(tosubset)[,3]
-      #   # xy <- rasterToPoints(rastoutno, function(x) x>((t-1)*tenthsno) & x<=(t*tenthsno))
-      #   # out <- extract(rasterstack, xy[,1:2])
-      #   rasterstack[rastoutno>((t-1)*tenthsno) & rastoutno<=(t*tenthsno)]
-      #   
-      #   out <- data.frame(out)
-      #   out
-      # })
-      
+
       withtenths <- do.call(rbind,lapply(2:10, function(t){
-        D <- overlay(rasterstack, rastoutWITH, fun=function(x,y){ 
-          x[y<((t-1)*tenthsno) | y>(t*tenthsWITH)] <- NA; x})
+        D <- overlay(rasterstack, rastoutWITH, fun=function(x,y){
+          x[y<((t-1)*tenthsWITH)] <- NA
+          x[y>(t*tenthsWITH)] <- NA
+          x
+          })
         out <- na.omit(values(D))
         if(nrow(data.frame(out))>0){
           out <- data.frame(out,Tenth = t-1, SpNum = i, DataType = "no")
@@ -1791,9 +1790,11 @@ nichevaluesbySDM <- do.call(rbind,lapply(c(reallistofTiffs), function(i){
         } else {
           out <- data.frame(layer.1 = NA, layer.2 = NA, layer.3 = NA, layer.4 = NA,
                             layer.5 = NA, Tenth = t-1, SpNum = i, DataType = "no")
-          out          
+          out
         }
         }))
+      data.frame(no = valuesno, WITH = valuesWITH, SpNum = i)
+}))
 ```
 
 
