@@ -30,6 +30,7 @@ load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid68.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid1_68.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/nichevaluesbySDM.Rda")
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
 #Each polygon might be made of multiple disconnected polygons. Need to separate and label
 l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
@@ -1751,50 +1752,38 @@ nichevaluesbySDM <- do.call(rbind,lapply(c(reallistofTiffs), function(i){
                          full.names=TRUE)
       rastoutWITH <- raster(resultpathWITH)
       
-      # valuesno <- values(rastoutno)
-      # quantilesno <- summary(valuesno)
-      # tenthsno <- (max(valuesno)-min(valuesno))/4
-      # valuesWITH <- values(rastoutWITH)
-      # quantilesWITH <- summary(valuesWITH)
-      # tenthsWITH <- (max(valuesWITH)-min(valuesWITH))/4
-
-      # Very slow
-      # notenths <- do.call(rbind,lapply(2:4, function(t){
-      #   gc()
-        D <- overlay(stack(rasterstack,rastoutno), rastoutno, fun=function(x,y){
-          x[sample(y, 10000)]
-          # x[y>(t*tenthsno)] <- NA
-          # x
-          })
-        out <- na.omit(values(D))
-        if(nrow(data.frame(out))>0){
-          out <- data.frame(out,Tenth = t-1, SpNum = i, DataType = "no")
-          out
-        } else {
-          out <- data.frame(layer.1 = NA, layer.2 = NA, layer.3 = NA, layer.4 = NA,
-                            layer.5 = NA, Tenth = t-1, SpNum = i, DataType = "no")
-          out
-        }
-        }))
-
-      withtenths <- do.call(rbind,lapply(2:10, function(t){
-        D <- overlay(rasterstack, rastoutWITH, fun=function(x,y){
-          x[y<((t-1)*tenthsWITH)] <- NA
-          x[y>(t*tenthsWITH)] <- NA
-          x
-          })
-        out <- na.omit(values(D))
-        if(nrow(data.frame(out))>0){
-          out <- data.frame(out,Tenth = t-1, SpNum = i, DataType = "no")
-          out
-        } else {
-          out <- data.frame(layer.1 = NA, layer.2 = NA, layer.3 = NA, layer.4 = NA,
-                            layer.5 = NA, Tenth = t-1, SpNum = i, DataType = "no")
-          out
-        }
-        }))
-      data.frame(no = valuesno, WITH = valuesWITH, SpNum = i)
+      valuesout <- values(stack(rasterstack,rastoutno,rastoutWITH))
+      df <- data.frame(matrix(valuesout,ncol=7))
+      out <- data.frame(df[sample(1:nrow(df),1000000),], SpNum = i)
+      gc()
+      names(out) <- c("Elevation","Aspect","Rugged","Bio1","Bio12","no","WITH","SpNum")
+      out
 }))
+
+ save(nichevaluesbySDM, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/nichevaluesbySDM.Rda")        
+
+head(nichevaluesbySDM)
+```
+
+```{r}
+# allsummaries <- lapply(split(nichevaluesbySDM, nichevaluesbySDM$SpNum), function(x){ 
+#   quantilesno <- 
+#   data.frame(summary(x$no),summary(x$WITH))
+#   })
+# (summary(nichevaluesbySDM$no[nichevaluesbySDM$SpNum == 1]))
+# allsummaries[[1]]
+
+# plot(1:20, ylim = c(min(nichevaluesbySDM$Elevation), (max(nichevaluesbySDM$Elevation)),
+#                     pch= "n"))
+
+toplot <- lapply(names(nichevaluesbySDM)[1:5], function(column){
+  tenths <- lapply(seq(0.1,1,by = 0.1), function(t){
+    nichevaluesbySDM[nichevaluesbySDM$,column]
+  })
+}))
+
+boxplot(nichevaluesbySDM$Elevation[nichevaluesbySDM$no > 0 & nichevaluesbySDM$no <= .1 ])
+
 ```
 
 
