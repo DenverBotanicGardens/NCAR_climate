@@ -30,7 +30,9 @@ load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid68.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid1_68.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/nichevaluesbySDM.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/nichevaluesbySDM.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/toplot.Rda")
+
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
 #Each polygon might be made of multiple disconnected polygons. Need to separate and label
 l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
@@ -222,10 +224,13 @@ forhistofsd <- function(whichones = atleast12, pathstart, patternmatch){
   stacktoaverage
 }
 
-
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
-distXspall <- do.call(rbind, distXsp_noEORgrid)
+# 
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
+# distXspall <- do.call(rbind, distXsp_noEORgrid)
 #The over 400 km is clearly wrong; so are any above 300km is out of the state (if point is in the middle) so need to cutoff below 300,000
+
+distXspall52 <- do.call(rbind, Map(cbind, SpNum = notnulls68[notnull1_68], 
+                                   distXsp_noEORgrid1_68[notnull1_68]))
 ```
 
 ```{r}
@@ -427,7 +432,8 @@ habitatSpecificity <- function(whichones, pathstart, whichmaxentpoints, replicat
 
 
 # Maxent    
-Get the years of the herbarium specimens and the years of the EORs mapped from distXsp_noEORgrid from "Herb to EORs_v4"
+Get the years of the herbarium specimens and the years of the EORs mapped from distXsp_noEORgrid from "Herb to EORs_v4"   
+Run this for some lists
 ```{r}
 # All are fine, should work. 
 EORpolys <- lapply(1:68, function(i){
@@ -466,6 +472,7 @@ distXspall <- do.call(rbind, Map(cbind, SpNum = which(!unlist(lapply(distXsp_noE
                                    distXsp_noEORgrid1_68[which(!unlist(lapply(distXsp_noEORgrid1_68, is.null)))]))
 unique(distXspall[,c("SpNum","Species")])
 
+# Oops, seem to have lost this somewhere some git push...
 distdistribution <- distXspall52$Dist[distXspall52$Dist<300000]
 
 df_dist <- distXspall
@@ -515,8 +522,6 @@ write.csv(TPLtbl1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche m
 
 ```
 
-# Still need 29, 40; delete 65 and 61 once the correct ones go 62 and 66!!
-c(29,40,62,66)
 
 
 ```{r}
@@ -895,9 +900,7 @@ hist(noerrorhists[[1]][[2]])
 
 witherrorhists <- accuracyhists("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/", "HerbWITHerrorkfold", whichones1)
 
-# reallistofTiffs <- atleast12[atleast12!=3]
 reallistofTiffs <- atleast12168[!atleast12168 %in% c(29,40)]
-# reallistofTiffs <- reallistofTiffs[!reallistofTiffs %in% c(31,32,40)]
 
 #Averaged and SD of probability maps second function
 noerrorhistsofavg <- accuracyhistsOneperSp(whichones = reallistofTiffs, pathstart1, WithorNo = "no")
@@ -919,7 +922,11 @@ save(witherrorhistsofavg, file = "Q:/Research/Projects/alpine-phenology/Uncertai
 ```
 
 
+# RUN THIS to get which are significantly different for accuracy
 ```{r}
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/noerrorhistsofavg.Rdata")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/witherrorhistsofavg.Rdata")
+
 ks.outs <- lapply(1:length(noerrorhistsofavg), function(i){
   ks.test(log(data.frame(noerrorhistsofavg[[i]])$value)+
              log(data.frame(noerrorhistsofavg[[i]])$weight),
@@ -1023,6 +1030,7 @@ dev.off()
 
 Compare those with and not with different accuracy curves for distances and sample size and area  
 ```{r}
+reallistofTiffs <- atleast12168[!atleast12168 %in% c(29,40)]
 
 # The SpNum that were compared, that had SDM for both as-is and with error
 reallistofTiffs
@@ -1154,18 +1162,10 @@ length(sort(table(lastname)))
 
 unique(df_dist$recordedBy)
 
-writeClipboard(allofem)
+# writeClipboard(allofem)
 
 length(table(as.character(df_dist$institutionCode))) # 28 but USU and USUUB are the same so 27
 table(as.character(df_dist$institutionCode))
-```
-
-
-```{r}
-
-ggplot(f3, aes(Year, log_odds, colour = Sex)) + 
-        geom_line() + 
-        geom_smooth(se = TRUE)
 ```
 
 
@@ -1484,6 +1484,7 @@ EORpnts_8 <- do.call(rbind, lapply(1:length(polys), function(f){
 }))
 ```
 
+# Habitat Specificity with EORs, no error and additional error in one PCA
 # This one is the final one!
 ```{r}
 pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/")
@@ -1630,7 +1631,7 @@ whichones <- reallistofTiffs
 summary(prPCA)
 ```
 
-Plot habitat specificity
+Plot habitat specificity    
 ```{r}
 habspEORandNoandWith[habspEORandNoandWith$HerbType=="EOR",] # 33 rows, yay!
 
@@ -1644,6 +1645,14 @@ ggplot(habspe, aes(as.factor(round(Area/(1000^2),0)), habspec, colour=HerbType))
   theme(legend.position = "none")+
   xlab(expression("Area km"^2))+
   geom_boxplot()
+
+ggplot(habspe, aes(round(Area/(1000^2),0), habspec, colour=HerbType))+
+  geom_violin()+
+  stat_smooth(method="lm")+
+  geom_point()+
+  theme_bw()+
+  theme(legend.position = "none")+
+  xlab(expression("Area km"^2))
 
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure3.jpg",
      width=150, height=100,units='mm', res=300)
@@ -1766,25 +1775,65 @@ head(nichevaluesbySDM)
 ```
 
 ```{r}
-# allsummaries <- lapply(split(nichevaluesbySDM, nichevaluesbySDM$SpNum), function(x){ 
-#   quantilesno <- 
-#   data.frame(summary(x$no),summary(x$WITH))
-#   })
-# (summary(nichevaluesbySDM$no[nichevaluesbySDM$SpNum == 1]))
-# allsummaries[[1]]
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/nichevaluesbySDM.Rda") 
 
-# plot(1:20, ylim = c(min(nichevaluesbySDM$Elevation), (max(nichevaluesbySDM$Elevation)),
-#                     pch= "n"))
-
-toplot <- lapply(names(nichevaluesbySDM)[1:5], function(column){
-  tenths <- lapply(seq(0.1,1,by = 0.1), function(t){
-    nichevaluesbySDM[nichevaluesbySDM$,column]
-  })
+toplot <- do.call(rbind,lapply(names(nichevaluesbySDM)[1:5], function(column){
+  print(column)
+  tenths <- do.call(rbind,lapply(seq(0.1,1,by = 0.1), function(t){
+    print(t)
+    noerrorvalues <- data.frame(nichevaluesbySDM[nichevaluesbySDM$no>(t-0.0999) & nichevaluesbySDM$no<=t,
+                     c(column,"SpNum","no")],DataType = "no", 
+                     SuitableRange = paste(t-0.1,t,sep="-"), Predictor = column)
+    names(noerrorvalues) <- c("Value",names(noerrorvalues)[2], "SDM",names(noerrorvalues)[4:6])
+    WITHerrorvalues <- data.frame(nichevaluesbySDM[nichevaluesbySDM$WITH>(t-0.0999) & nichevaluesbySDM$WITH<t,
+                     c(column,"SpNum","WITH")], DataType = "WITH", 
+                     SuitableRange = paste(t-0.1,t,sep="-"), Predictor = column)
+    names(WITHerrorvalues) <- c("Value",names(noerrorvalues)[2], "SDM",names(WITHerrorvalues)[4:6])
+    out <- rbind(noerrorvalues, WITHerrorvalues)
+    # out <- out[sample(1:nrow(out), 100000),]
+    gc()
+    out
+  }))
+  tenths
 }))
+
+
+ save(toplot, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/toplot.Rda")   
+
+ggplot(toplot, aes(DataType,Value))+
+  geom_boxplot()+
+  theme_bw()+
+  facet_wrap(~Predictor, scales="free")
+
+boxplot(Value~DataType:SuitableRange, data=toplot)
+
+ggplot(toplot[toplot$DataType=="no",], aes(SuitabileRange,Value))+
+  geom_boxplot()+
+  theme_bw()+
+  facet_wrap(~Predictor)
 
 boxplot(nichevaluesbySDM$Elevation[nichevaluesbySDM$no > 0 & nichevaluesbySDM$no <= .1 ])
 
 ```
+
+```{r}
+boxplot(Value~DataType:SuitableRange, data=toplot[toplot$Predictor == "Elevation",],
+        col=rep(c("green","blue"),10), par(las=2))
+boxplot(Value~DataType:SuitableRange, data=toplot[toplot$Predictor == "Aspect",],
+        col=rep(c("green","blue"),10), par(las=2))
+
+boxplot(Value~DataType:SuitableRange, data=toplot[toplot$Predictor == "Rugged",],
+        col=rep(c("green","blue"),10), par(las=2))
+
+boxplot(Value~DataType:SuitableRange, data=toplot[toplot$Predictor == "Bio1",],
+        col=rep(c("green","blue"),10), par(las=2))
+
+boxplot(Value~DataType:SuitableRange, data=toplot[toplot$Predictor == "Bio12",],
+        col=rep(c("green","blue"),10), par(las=2))
+
+```
+
+
 
 
 ```{r}
