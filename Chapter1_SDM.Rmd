@@ -32,6 +32,7 @@ load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/d
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid1_68.Rda")
 # load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/nichevaluesbySDM.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/toplot.Rda")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/nicheoverlaps.Rdata")
 
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
 #Each polygon might be made of multiple disconnected polygons. Need to separate and label
@@ -1687,6 +1688,7 @@ gc()
 # What are the AUC scores for all of these?   
 ```{r}
 
+pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/")
 aucs_all <- do.call(rbind,lapply(c("no","WITH"), function(w){
       aucs_no <- do.call(rbind,lapply(reallistofTiffs, function(x){
         aucs.out <- do.call(rbind,lapply(1:10, function(rep){
@@ -1721,12 +1723,14 @@ aggregate(AUC~DataType, data = aucs_all, sd)
 ```{r}
 
 library(devtools)
-# install_github("danlwarren/ENMTools")
+# install.packages("ecospat")
+library(ecospat)
+install_github("danlwarren/ENMTools")
 install_local("C:/Users/deprengm/Downloads/ENMTools-master.zip")
 library(ENMTools)
 
 library(ENMeval)
-?nicheOverlap
+# ?nicheOverlap
 
 
 nicheoverlaps <- lapply(c(reallistofTiffs), function(i){
@@ -1741,6 +1745,15 @@ nicheoverlaps <- lapply(c(reallistofTiffs), function(i){
       rastoutWITH <- raster(resultpathWITH)
       nicheOverlap(rastoutno,rastoutWITH)
       })
+save(nicheoverlaps, file = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/nicheoverlaps.Rdata")
+
+
+differentones <- do.call(rbind,nicheoverlaps)[which(!is.na(whichsigndiff))]
+sameones <- do.call(rbind,nicheoverlaps)[which(is.na(whichsigndiff))]
+
+hist(differentones, breaks=20, col=rgb(0,1,0,0.5))
+hist(sameones, breaks=20, col="blue", add=TRUE)
+
 ```
 
 ```{r}
@@ -1774,6 +1787,51 @@ nichevaluesbySDM <- do.call(rbind,lapply(c(reallistofTiffs), function(i){
 head(nichevaluesbySDM)
 ```
 
+
+# Want the niche values of as-is and additional error for within the EOR polygons 
+
+```{r}
+
+i <- reallistofTiffs[1]
+
+# make zones?
+nichevaluesinCNHP <- do.call(rbind,lapply(c(reallistofTiffs), function(i){
+      gc()
+  polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[i],
+                                        g1g2namesall68$Taxon[i]),]
+  polys
+  
+      resultpathno <- list.files(path = pathstart, 
+                               pattern = paste("AvgTiffSp",i,"Herbnoerror",sep=""), 
+                               full.names=TRUE)
+      rastoutno <- raster(resultpathno)
+      
+      maskr <- mask(rastoutno, )
+      rastoutno[rastoutno]
+      
+      resultpathWITH <- list.files(path = pathstart, 
+                         pattern = paste("AvgTiffSp",i,"HerbWITHerror",sep=""), 
+                         full.names=TRUE)
+      rastoutWITH <- raster(resultpathWITH)
+      
+      valuesout <- values(stack(rasterstack,rastoutno,rastoutWITH))
+      df <- data.frame(matrix(valuesout,ncol=7))
+      out <- data.frame(df[sample(1:nrow(df),1000000),], SpNum = i)
+      gc()
+      names(out) <- c("Elevation","Aspect","Rugged","Bio1","Bio12","no","WITH","SpNum")
+      out
+}))
+
+ save(nichevaluesinCNHP, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/nichevaluesinCNHP.Rda")        
+
+
+
+```
+
+
+
+
+# Very big! slow your roll, don't load unless you need it
 ```{r}
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/nichevaluesbySDM.Rda") 
 
@@ -1800,6 +1858,13 @@ toplot <- do.call(rbind,lapply(names(nichevaluesbySDM)[1:5], function(column){
 
  save(toplot, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/toplot.Rda")   
 
+```
+
+# Across the entire raster 
+ 
+```{r} 
+ load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/toplot.Rda")
+
 ggplot(toplot, aes(DataType,Value))+
   geom_boxplot()+
   theme_bw()+
@@ -1807,10 +1872,16 @@ ggplot(toplot, aes(DataType,Value))+
 
 boxplot(Value~DataType:SuitableRange, data=toplot)
 
-ggplot(toplot[toplot$DataType=="no",], aes(SuitabileRange,Value))+
+ggplot(toplot[toplot$DataType=="no",], aes(SuitableRange,Value))+
   geom_boxplot()+
   theme_bw()+
-  facet_wrap(~Predictor)
+  facet_wrap(~Predictor, scales="free")
+
+ggplot(toplot, aes(SuitableRange, Value, colour= DataType))+
+  geom_boxplot()+
+  theme_bw()+
+  scale_colour_grey()+
+  facet_wrap(~Predictor, scales="free")
 
 boxplot(nichevaluesbySDM$Elevation[nichevaluesbySDM$no > 0 & nichevaluesbySDM$no <= .1 ])
 
@@ -1818,17 +1889,22 @@ boxplot(nichevaluesbySDM$Elevation[nichevaluesbySDM$no > 0 & nichevaluesbySDM$no
 
 ```{r}
 boxplot(Value~DataType:SuitableRange, data=toplot[toplot$Predictor == "Elevation",],
+        main="Elevation",
         col=rep(c("green","blue"),10), par(las=2))
 boxplot(Value~DataType:SuitableRange, data=toplot[toplot$Predictor == "Aspect",],
+        main="Aspect",
         col=rep(c("green","blue"),10), par(las=2))
 
 boxplot(Value~DataType:SuitableRange, data=toplot[toplot$Predictor == "Rugged",],
+        main="Rugged",
         col=rep(c("green","blue"),10), par(las=2))
 
 boxplot(Value~DataType:SuitableRange, data=toplot[toplot$Predictor == "Bio1",],
+        main="Bio1",
         col=rep(c("green","blue"),10), par(las=2))
 
 boxplot(Value~DataType:SuitableRange, data=toplot[toplot$Predictor == "Bio12",],
+        main="Bio12",
         col=rep(c("green","blue"),10), par(las=2))
 
 ```
