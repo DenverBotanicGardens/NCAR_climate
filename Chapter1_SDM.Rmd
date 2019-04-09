@@ -23,6 +23,7 @@ library(Rmisc)
 library(rgdal)
 library(ENMeval)
 library(Taxonstand)
+library(grid) # for rectGrob
 
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/habspEORandNoandWith.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/coloradosps.g1g2_168.Rda")
@@ -230,7 +231,20 @@ forhistofsd <- function(whichones = atleast12, pathstart, patternmatch){
 # distXspall <- do.call(rbind, distXsp_noEORgrid)
 #The over 400 km is clearly wrong; so are any above 300km is out of the state (if point is in the middle) so need to cutoff below 300,000
 
-distXspall52 <- do.call(rbind, Map(cbind, SpNum = notnulls68[notnull1_68], 
+whichnull <- lapply(1:68, function(i){
+  gc()
+  g1g2now <- coloradosps.g1g2_168[coloradosps.g1g2_168$scientificName %in%
+                                c(g1g2namesall68$Taxon[i],g1g2namesall68$AcceptedName[i])&
+                                !is.na(coloradosps.g1g2_168$decimalLatitude),]
+  if(nrow(g1g2now)>0){
+    g1g2namesall68$AcceptedName[i]
+  }
+})
+  
+notnulls68 <- which(!unlist(lapply(whichnull, is.null)))
+which(unlist(lapply(whichnull, is.null))) # 39
+
+distXspall52 <- do.call(rbind, Map(cbind, SpNum = notnulls68[notnull1_68],
                                    distXsp_noEORgrid1_68[notnull1_68]))
 ```
 
@@ -496,8 +510,12 @@ for(l in notnull1_68){  # notnull1_68
     }
 }
 atleast12168 <- atleast12168[!is.na(atleast12168)] 
+
+
+reallistofTiffs <- atleast12168[!atleast12168 %in% c(29,40)]
 ```
 
+# NEED TO RUN THIS
 Table 1 - species in niche models, put a column indiciating which are SDM
 ```{r}
 
@@ -1031,7 +1049,6 @@ dev.off()
 
 Compare those with and not with different accuracy curves for distances and sample size and area  
 ```{r}
-reallistofTiffs <- atleast12168[!atleast12168 %in% c(29,40)]
 
 # The SpNum that were compared, that had SDM for both as-is and with error
 reallistofTiffs
@@ -1200,10 +1217,12 @@ dat <- data.frame(x = log(data.frame(noerrorhistsofavg[[1]])$value),
 
 ```
 
+
+RUN THIS for whichsigndiffprec <-     
 # Precision
 ```{r}
 # pathstart <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
-precisionplotsno <- lapply(reallistofTiffs, function(i){
+precisionplotsno1 <- lapply(reallistofTiffs, function(i){
                         gc()
                         resultpath <- list.files(path = pathstart, 
                                                  pattern = paste("AvgTiffSp",i,"Herbnoerror",sep=""), 
@@ -1213,7 +1232,7 @@ precisionplotsno <- lapply(reallistofTiffs, function(i){
                         out
                         })
 
-precisionplotswith <- lapply(reallistofTiffs, function(i){
+precisionplotswith1 <- lapply(reallistofTiffs, function(i){
                         gc()
                         resultpath <- list.files(path = pathstart, 
                                                  pattern = paste("AvgTiffSp",i,"HerbWITHerror",sep=""), 
@@ -1223,6 +1242,8 @@ precisionplotswith <- lapply(reallistofTiffs, function(i){
                         out
                         })
 
+precisionplotsno <- precisionplotsno1
+precisionplotswith <- precisionplotswith1
 
 # takes a long time, what if I subsample the points, does it go faster without losing information?
 plot(ecdf(precisionplots[[1]]))
@@ -1309,6 +1330,13 @@ PDF$breaks
 ```
 
 ```{r}
+# sort by smallest to largest area
+sort(unique(df_dist$Area[df_dist$SpNum %in% reallistofTiffs[which(!is.na(whichsigndiffprec))]]))/(1000^2)
+areasort <- unique(df_dist[df_dist$SpNum %in% reallistofTiffs[which(!is.na(whichsigndiffprec))], 
+                                                              c("SpNum","Area")])
+areasort <- areasort[order(areasort$Area),"SpNum"]
+areasort <- c(1:33)[match(reallistofTiffs ,areasort)]
+
 
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure5_precision.jpg",
      width=300, height=900,units='mm', res=300)
@@ -1316,9 +1344,9 @@ jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images
 layout(matrix(c(1:33),nrow=11, byrow = TRUE))
 
 par(mar=c(5.1,4.1,4.1,0.1))
-for(i in which(!unlist(lapply(whichsigndiffprec, is.na)))){
+for(i in areasort){
   plot(ecdf(sample(precisionplotsno[[i]],10000)),
-       main = g1g2namesall68$AcceptedName[reallistofTiffs[i]], xlim = c(0,1), col="red",
+       main = g1g2namesall68$AcceptedName[reallistofTiffs[which(!is.na(whichsigndiffprec))][i]], xlim = c(0,1), col="red",
        cex.main=2)
   lines(ecdf(sample(precisionplotswith[[i]],10000)), col="blue")
 }
@@ -1335,79 +1363,79 @@ Principal components analysis of predictor variables
 PCA for how different - 
 calculate the size of the ellipse <https://stackoverflow.com/questions/38782051/how-to-calculate-the-area-of-ellipse-drawn-by-ggplot2>
 ```{r}
-habsp_EOR <- do.call(rbind, lapply(reallistofTiffs, function(i){
-  polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[i],
-                                        g1g2namesall68$Taxon[i]),]
-  proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
-  EORpnts <- do.call(rbind, lapply(1:length(polys), function(f){
-    # area <- sapply(slot(polys,"polygons"), slot, "area")[f]
-    # round(sqrt(area)/165,0) # meters along a 'side'; bioclim is at about 165 meters
-      outline <- polys@polygons[[f]]@Polygons[[1]]@coords # Use these and grid within
-      grid <- makegrid(polys, cellsize = 165) # cellsize in map units!
-      names(grid) <- c("x","y")
-      gridout <- grid[splancs::inout(grid,outline), ]
-      if(nrow(gridout)==0){
-        gridout <- data.frame(x=outline[,1],y=outline[,2])
-      }
-      gridout
-      }))
-  coordinates(EORpnts) <- ~x+y
-  proj4string(EORpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
-  EORpnts <- spTransform(EORpnts, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
-  gridextract <- extract(rasterstack,EORpnts)
-    out <- data.frame(SpeciesNum=i, Species=g1g2names$AcceptedName[i], EORpnts@coords, gridextract)
-    out
-    }))
-
-
-prPCAEOR <- princomp(habsp_EOR[,-c(1:4)])
-summary(prPCAEOR)
-loadings(prPCAEOR)
-
-allsphabsp_EOR <- data.frame(habsp_EOR[,1:2],prPCAEOR$scores)
-
-# for one run of one species
-ggplot(allsphabsp_EOR, aes(Comp.1,Comp.2, colour=as.factor(SpeciesNum)))+
-  geom_point(alpha=0.1)+
-  stat_ellipse(segments=201)+ #default is to draw 51 line segments to make the ellipse
-  theme_bw()+
-  xlab(expression(atop("PC1 (97% variance explained)", "Elevation = 0.981; Bio12 = 0.193")))+
-  ylab(expression(atop("PC2 (2% variance explained)","Aspect = -0.990; Bio12 = -0.139")))
-  
-
-# link to all the data about from table 1
-habsp
-specificitytotab1 <- merge(allsphabsp_EOR, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
-
-
-ggplot()
-
-
-table(allsphabsp_EOR$SpeciesNum) # 8 has one point, 51 has 2
-
-# for all species
-habspecificity_EOR <- do.call(rbind,lapply(atleast12[!atleast12 %in% c(8, 51)], function(x){
-  # get and average across the replicates
-  p <- ggplot(allsphabsp_EOR[allsphabsp_EOR$SpeciesNum==x,],
-              aes(Comp.1,Comp.2))+
-          geom_point()+
-          stat_ellipse(segments=201) #default is to draw 51 line segments to make the ellipse
-  # get ellipse coordinates
-  pb <- ggplot_build(p)
-  table(pb$data[[2]]$group)
-  el <- pb$data[[2]][c("x","y")]
-  
-  # Center of ellipse
-  ctr <- MASS::cov.trob(el)$center
-  
-  # Distance to center from each point on ellipse
-  dist2center <- sqrt(rowSums((t(t(el)-ctr))^2))
-  
-  # Area of ellipse from semi-major and semi-minor axes which are largest and smallest of dist to center
-  habitatspecificity <- pi*min(dist2center)*max(dist2center)
-  hsout <- data.frame(SpeciesNum = x, habspec = habitatspecificity)
-  hsout
-  }))
+# habsp_EOR <- do.call(rbind, lapply(reallistofTiffs, function(i){
+#   polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[i],
+#                                         g1g2namesall68$Taxon[i]),]
+#   proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+#   EORpnts <- do.call(rbind, lapply(1:length(polys), function(f){
+#     # area <- sapply(slot(polys,"polygons"), slot, "area")[f]
+#     # round(sqrt(area)/165,0) # meters along a 'side'; bioclim is at about 165 meters
+#       outline <- polys@polygons[[f]]@Polygons[[1]]@coords # Use these and grid within
+#       grid <- makegrid(polys, cellsize = 165) # cellsize in map units!
+#       names(grid) <- c("x","y")
+#       gridout <- grid[splancs::inout(grid,outline), ]
+#       if(nrow(gridout)==0){
+#         gridout <- data.frame(x=outline[,1],y=outline[,2])
+#       }
+#       gridout
+#       }))
+#   coordinates(EORpnts) <- ~x+y
+#   proj4string(EORpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+#   EORpnts <- spTransform(EORpnts, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+#   gridextract <- extract(rasterstack,EORpnts)
+#     out <- data.frame(SpeciesNum=i, Species=g1g2names$AcceptedName[i], EORpnts@coords, gridextract)
+#     out
+#     }))
+# 
+# 
+# prPCAEOR <- princomp(habsp_EOR[,-c(1:4)])
+# summary(prPCAEOR)
+# loadings(prPCAEOR)
+# 
+# allsphabsp_EOR <- data.frame(habsp_EOR[,1:2],prPCAEOR$scores)
+# 
+# # for one run of one species
+# ggplot(allsphabsp_EOR, aes(Comp.1,Comp.2, colour=as.factor(SpeciesNum)))+
+#   geom_point(alpha=0.1)+
+#   stat_ellipse(segments=201)+ #default is to draw 51 line segments to make the ellipse
+#   theme_bw()+
+#   xlab(expression(atop("PC1 (97% variance explained)", "Elevation = 0.981; Bio12 = 0.193")))+
+#   ylab(expression(atop("PC2 (2% variance explained)","Aspect = -0.990; Bio12 = -0.139")))
+#   
+# 
+# # link to all the data about from table 1
+# habsp
+# specificitytotab1 <- merge(allsphabsp_EOR, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
+# 
+# 
+# ggplot()
+# 
+# 
+# table(allsphabsp_EOR$SpeciesNum) # 8 has one point, 51 has 2
+# 
+# # for all species
+# habspecificity_EOR <- do.call(rbind,lapply(atleast12[!atleast12 %in% c(8, 51)], function(x){
+#   # get and average across the replicates
+#   p <- ggplot(allsphabsp_EOR[allsphabsp_EOR$SpeciesNum==x,],
+#               aes(Comp.1,Comp.2))+
+#           geom_point()+
+#           stat_ellipse(segments=201) #default is to draw 51 line segments to make the ellipse
+#   # get ellipse coordinates
+#   pb <- ggplot_build(p)
+#   table(pb$data[[2]]$group)
+#   el <- pb$data[[2]][c("x","y")]
+#   
+#   # Center of ellipse
+#   ctr <- MASS::cov.trob(el)$center
+#   
+#   # Distance to center from each point on ellipse
+#   dist2center <- sqrt(rowSums((t(t(el)-ctr))^2))
+#   
+#   # Area of ellipse from semi-major and semi-minor axes which are largest and smallest of dist to center
+#   habitatspecificity <- pi*min(dist2center)*max(dist2center)
+#   hsout <- data.frame(SpeciesNum = x, habspec = habitatspecificity)
+#   hsout
+#   }))
 
 ```
 
@@ -1416,77 +1444,78 @@ habspecificity_EOR <- do.call(rbind,lapply(atleast12[!atleast12 %in% c(8, 51)], 
 
 # Need to have both in same PCA!!! 
 ```{r}
-pathstarterror <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
-maxones <- "maxentHerbnoerror"
-
-# But these treat each separetly and I need them together in one getting the ellipse model!
-habspsame <- habitatSpecificity(whichones = atleast12, pathstart = pathstarterror,
-                                whichmaxentpoints = maxones, replicates = 10)
-
-habspwitherror <- habitatSpecificity(whichones = atleast12, pathstart = pathstarterror,
-                                whichmaxentpoints = "maxentHerbWITHerror", replicates = 10)
-#####
-
-pathstarterrornoerror <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
-
-### both at once in one PCA
-# HABitat SPecificity with NO error
- habspno <- do.call(rbind,lapply(atleast12, function(x){
-   outno <- do.call(rbind,lapply(1:10, function(rep){
-      load(paste(pathstarterrornoerror,"maxentHerbnoerror","Sp", x,"kfold",rep, ".Rda",sep=""))
-      outinner <- data.frame(ErrorType = "no", SpeciesNum = x, kfold = rep, xm@presence)
-      outinner
-      }))
-   outno
-   }))
- 
- habspwith <- do.call(rbind,lapply(atleast12, function(x){
-  outno <- do.call(rbind,lapply(1:10, function(rep){
-    load(paste(pathstarterrornoerror,"maxentHerbWITHerror","Sp", x,"kfold",rep, ".Rda",sep=""))
-    outinner <- data.frame(ErrorType = "yes", SpeciesNum = x, kfold = rep, xm@presence)
-    outinner
-    }))
-  outno
-  }))
- 
- names(habsp_EOR)
- names(habsp)
-  
-habsp <- rbind(habspno,habspwith)
-table(habsp$ErrorType)
-habsp_andEOR <- rbind(habsp, 
-                      data.frame(ErrorType = "EOR", SpeciesNum = habsp_EOR[,1], 
-                                 kfold = 1, habsp_EOR[,c(5:9)]))
-
-table(habsp_andEOR$ErrorType)
-
-# prPCA <- princomp(habsp[,-c(1:3)])
-# allsphabsp <- data.frame(habsp[,1:3],prPCA$scores)
-
-prPCA <- princomp(habsp_andEOR[,-c(1:3)])
-allsphabsp <- data.frame(habsp_andEOR[,1:3],prPCA$scores)
-
-
-EORpnts_8 <- do.call(rbind, lapply(1:length(polys), function(f){
-      outline <- polys@polygons[[f]]@Polygons[[1]]@coords
-      grid <- makegrid(polys, cellsize = 5) # cellsize in map units!
-      names(grid) <- c("x","y")
-      gridout <- grid[inout(grid,outline), ]
-      if(nrow(gridout)>1){
-        gridthin <- thin.max(gridout,c("x","y"),nrow(distXsp_v3[[8]][[1]]@coords))
-        gc()
-        } else {
-          if(nrow(gridout)>0) {
-            gridthin <- gridout 
-          } else {
-            gridthin <- NULL
-          }}
-      gridthin
-}))
+# pathstarterror <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
+# maxones <- "maxentHerbnoerror"
+# 
+# # But these treat each separetly and I need them together in one getting the ellipse model!
+# habspsame <- habitatSpecificity(whichones = atleast12, pathstart = pathstarterror,
+#                                 whichmaxentpoints = maxones, replicates = 10)
+# 
+# habspwitherror <- habitatSpecificity(whichones = atleast12, pathstart = pathstarterror,
+#                                 whichmaxentpoints = "maxentHerbWITHerror", replicates = 10)
+# #####
+# 
+# pathstarterrornoerror <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
+# 
+# ### both at once in one PCA
+# # HABitat SPecificity with NO error
+#  habspno <- do.call(rbind,lapply(atleast12, function(x){
+#    outno <- do.call(rbind,lapply(1:10, function(rep){
+#       load(paste(pathstarterrornoerror,"maxentHerbnoerror","Sp", x,"kfold",rep, ".Rda",sep=""))
+#       outinner <- data.frame(ErrorType = "no", SpeciesNum = x, kfold = rep, xm@presence)
+#       outinner
+#       }))
+#    outno
+#    }))
+#  
+#  habspwith <- do.call(rbind,lapply(atleast12, function(x){
+#   outno <- do.call(rbind,lapply(1:10, function(rep){
+#     load(paste(pathstarterrornoerror,"maxentHerbWITHerror","Sp", x,"kfold",rep, ".Rda",sep=""))
+#     outinner <- data.frame(ErrorType = "yes", SpeciesNum = x, kfold = rep, xm@presence)
+#     outinner
+#     }))
+#   outno
+#   }))
+#  
+#  names(habsp_EOR)
+#  names(habsp)
+#   
+# habsp <- rbind(habspno,habspwith)
+# table(habsp$ErrorType)
+# habsp_andEOR <- rbind(habsp, 
+#                       data.frame(ErrorType = "EOR", SpeciesNum = habsp_EOR[,1], 
+#                                  kfold = 1, habsp_EOR[,c(5:9)]))
+# 
+# table(habsp_andEOR$ErrorType)
+# 
+# # prPCA <- princomp(habsp[,-c(1:3)])
+# # allsphabsp <- data.frame(habsp[,1:3],prPCA$scores)
+# 
+# prPCA <- princomp(habsp_andEOR[,-c(1:3)])
+# allsphabsp <- data.frame(habsp_andEOR[,1:3],prPCA$scores)
+# 
+# 
+# EORpnts_8 <- do.call(rbind, lapply(1:length(polys), function(f){
+#       outline <- polys@polygons[[f]]@Polygons[[1]]@coords
+#       grid <- makegrid(polys, cellsize = 5) # cellsize in map units!
+#       names(grid) <- c("x","y")
+#       gridout <- grid[inout(grid,outline), ]
+#       if(nrow(gridout)>1){
+#         gridthin <- thin.max(gridout,c("x","y"),nrow(distXsp_v3[[8]][[1]]@coords))
+#         gc()
+#         } else {
+#           if(nrow(gridout)>0) {
+#             gridthin <- gridout 
+#           } else {
+#             gridthin <- NULL
+#           }}
+#       gridthin
+# }))
 ```
 
 # Habitat Specificity with EORs, no error and additional error in one PCA
-# This one is the final one!
+# This one is the final one!     
+Another function to have all the habitat specificities in one place
 ```{r}
 pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/")
 
@@ -1570,7 +1599,7 @@ habitatSpecificity <- function(whichones, pathstart, replicates){
 }
 ```
 
-
+# load the saved habspEORandNoandWith
 ```{r}  
 
 pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/")
@@ -1634,6 +1663,7 @@ summary(prPCA)
 
 Plot habitat specificity    
 ```{r}
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/habspEORandNoandWith.Rda")
 habspEORandNoandWith[habspEORandNoandWith$HerbType=="EOR",] # 33 rows, yay!
 
 habspe <- merge(habspEORandNoandWith, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
@@ -1654,18 +1684,51 @@ ggplot(habspe, aes(round(Area/(1000^2),0), habspec, colour=HerbType))+
   theme_bw()+
   theme(legend.position = "none")+
   xlab(expression("Area km"^2))
+```
+
+
+
+```{r}
+
 
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure3.jpg",
      width=150, height=100,units='mm', res=300)
 
+g <- ggplotGrob(ggplot(habspe[habspe$Area<max(habspe$Area),], 
+          aes(Area/(1000^2), habspec/1000, shape=HerbType, colour=HerbType))+
+      geom_point(position = position_dodge(width=.25), size = 0.25)+
+      stat_smooth(method="lm", se=FALSE, lwd = 0.5)+
+      theme_bw()+
+      scale_colour_manual(values = c("black","grey50","goldenrod"))+ #  "EOR"  "NoError"   "WithError"==grey80
+      theme(legend.position = "none")+
+        xlab("")+
+        ylab(""))
+      # xlab(expression("Area km"^2))+
+      # ylab("Habitat specificity (size of 95% CI)"))
+  
 ggplot(habspe, aes(Area/(1000^2), habspec/1000, shape=HerbType, colour=HerbType))+
-  geom_point(position = position_dodge(width=2))+
-  stat_smooth(method="lm", se=FALSE)+
-  theme_bw()+
-  scale_colour_manual(values = c("black","green","grey70"))+ #  "EOR"       "NoError"   "WithError"
-  theme(legend.position = "none")+
-  xlab(expression("Area km"^2))+
-  ylab("Habitat specificity (size of 95% CI)")
+            geom_point(position = position_dodge(width=2))+
+            stat_smooth(method="lm", se=FALSE)+
+            theme_bw()+
+            scale_colour_manual(values = c("black","grey50","goldenrod"))+ #  "EOR"   "NoError"   "WithError"
+            theme(legend.position = "none")+
+            xlab(expression("Area km"^2))+
+            ylab("Habitat specificity (size of 95% CI)")+
+  annotation_custom(
+    grob = g,
+    xmin = 42,
+    xmax = 80,
+    ymin = 820,
+    ymax = 1410
+  # ) +
+  # annotation_custom(
+  #   grob = rectGrob(gp = gpar(col = rgb(0,0,0,0.25), fill = rgb(0,0,0,0))),
+  #   xmin = -2,
+  #   xmax = max(habspe$Area[habspe$Area<max(habspe$Area)])/(1000^2)+5,
+  #   ymin = 0,
+  #   ymax = max(habspe$habspec[habspe$Area<max(habspe$Area)])/1000+15
+  )
+
 
 dev.off()
 
@@ -1793,6 +1856,7 @@ head(nichevaluesbySDM)
 ```{r}
 
 i <- reallistofTiffs[1]
+pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/")
 
 # make zones?
 nichevaluesinCNHP <- do.call(rbind,lapply(c(reallistofTiffs), function(i){
@@ -1806,8 +1870,17 @@ nichevaluesinCNHP <- do.call(rbind,lapply(c(reallistofTiffs), function(i){
                                full.names=TRUE)
       rastoutno <- raster(resultpathno)
       
-      maskr <- mask(rastoutno, )
+      proj4string(polys) <-  CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+      polylatlon <- spTransform(polys, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+      maskr <- crop(rastoutno, extent(polylatlon))
+      maskr <- mask(maskr, polylatlon)
+      maskr <- trim(maskr, values=NA)
       rastoutno[rastoutno]
+      
+  plot(rastoutno)
+  lines(polylatlon)
+  
+  plot(maskr)
       
       resultpathWITH <- list.files(path = pathstart, 
                          pattern = paste("AvgTiffSp",i,"HerbWITHerror",sep=""), 
@@ -1861,7 +1934,8 @@ toplot <- do.call(rbind,lapply(names(nichevaluesbySDM)[1:5], function(column){
 ```
 
 # Across the entire raster 
- 
+# ### RUN AGAIN AND SEE IF DIFFERENT since nothing is a strong predictor.  
+# find one 
 ```{r} 
  load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/toplot.Rda")
 
@@ -1884,7 +1958,9 @@ ggplot(toplot, aes(SuitableRange, Value, colour= DataType))+
   facet_wrap(~Predictor, scales="free")
 
 boxplot(nichevaluesbySDM$Elevation[nichevaluesbySDM$no > 0 & nichevaluesbySDM$no <= .1 ])
-
+### Optional analysis 1
+ # what are the probabilities with in the mapped CNHP - likely are the same but could still look 
+# Could compare variables within to without the polygons - might still not really show much pattern 
 ```
 
 ```{r}
@@ -1967,3 +2043,15 @@ ggplot(df_dist4, aes(Dist, NicheOverlap))+
   geom_point()+
   stat_smooth(method="lm")
 ```
+
+
+# Sample from random simulated data to say, given the same amount of random error seen above, can I get the patters of strange distribution?
+```{r}
+
+
+
+```
+
+
+
+
