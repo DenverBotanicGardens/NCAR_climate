@@ -255,6 +255,7 @@ spExtentobject <- spTransform(spExtentobject,CRS("+proj=utm +zone=13 +datum=NAD8
 # spExtentobject is the area within which to simulate points
 polygonSquares <- function(p.area, N, spExtentobject){
       # Circle radius for same area
+  Area_range <- lapply()
   r <- sqrt((p.area/pi))
   radiuses <- sample(30:(r-31), 100) # sample from radiuses less than whole to make subset of polygons across landscape
   points <- spsample(spExtentobject, N, type = "random") # Pick random points for center of circles to define the range of species
