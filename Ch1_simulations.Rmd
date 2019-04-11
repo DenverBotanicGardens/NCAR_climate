@@ -242,7 +242,8 @@ areas <- seq(6740,93980440, length.out = 10)
 colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
 
 # try different scales, can I get it at an appropriate scale or at what scale do the models species have to be before it works? 
-
+specificitySD <- c(4,8,100,1,2) # Must be length of raster stack
+numinStack <- 5
 p.area <- areas[4] 
 N <- 12
 e <- extent(colocounties)
@@ -252,8 +253,34 @@ spExtentobject <- spTransform(spExtentobject,CRS("+proj=utm +zone=13 +datum=NAD8
 
 # N is sample size
 # p.area is the overall area of the species
-# spExtentobject is the area within which to simulate points
-polygonSquares <- function(p.area, N, spExtentobject){
+# spExtentobject is the area within which to simulate points   
+# Can I simulate the fundamental niche (make there be points only within a certain environmental space, then put it in geographic space) pick some random points within that would show the realized niche within and see at what scale of environemtnal specificity and with what scale of points do I ever get a good model. 
+
+tolerancefunction <- function(rasterstack, specificitySD, numinStack){
+  min.1 <- min(values(rasterstack[[numinStack]]))
+  max.1 <- max(values(rasterstack[[numinStack]]))
+  centroid <- rnorm(N, runif(1, min.1, max.1), specificitySD*(max.1/100))
+  centroid
+}
+
+simulateFundamentalNiche <- function(rasterstack, numinStack, N, specificitySD){
+   # SD is some multiple of a hundreth of the maximum value of the layer
+  tolerance_variable <- mapply(function(x,y) tolerancefunction(rasterstack, x, y), specificitySD, c(1:numinStack))
+  setClass("centroids", representation(SD = "numeric", SampleSize_N = "numeric", Tolerance = "matrix"))
+  out <- new("centroids", SD = specificitySD, SampleSize_N = N, Tolerance = tolerance_variable)
+  out
+}
+
+
+
+prPCA <- princomp(tolerance_variable)
+specificitySD
+loadings(prPCA)
+ggplot(data.frame(prPCA$scores), aes(Comp.1, Comp.2))+
+  geom_point()
+
+
+simulateniche <- function(p.area, N, spExtentobject){
       # Circle radius for same area
   Area_range <- lapply()
   r <- sqrt((p.area/pi))
@@ -286,6 +313,18 @@ polygonSquares <- function(p.area, N, spExtentobject){
 
 
 ```
+
+# glm or randomforest with presence absence extracted from herbarium data with variable certainty   
+```{r}
+
+
+
+```
+
+
+
+
+
 
 Link performance to niche   
 RStan causing problems
