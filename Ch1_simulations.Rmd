@@ -250,13 +250,15 @@ e <- extent(colocounties)
 spExtentobject <- as(e, 'SpatialPolygons')
 proj4string(spExtentobject) <-  CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
 spExtentobject <- spTransform(spExtentobject,CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+```
 
+```{r}
 # N is sample size
 # p.area is the overall area of the species
 # spExtentobject is the area within which to simulate points   
 # Can I simulate the fundamental niche (make there be points only within a certain environmental space, then put it in geographic space) pick some random points within that would show the realized niche within and see at what scale of environemtnal specificity and with what scale of points do I ever get a good model. 
 
-tolerancefunction <- function(rasterstack, specificitySD, numinStack){
+tolerancefunction <- function(rasterstack, specificitySD, numinStack, N){
   min.1 <- min(values(rasterstack[[numinStack]]))
   max.1 <- max(values(rasterstack[[numinStack]]))
   centroid <- rnorm(N, runif(1, min.1, max.1), specificitySD*(max.1/100))
@@ -264,22 +266,58 @@ tolerancefunction <- function(rasterstack, specificitySD, numinStack){
 }
 
 simulateFundamentalNiche <- function(rasterstack, numinStack, N, specificitySD){
-   # SD is some multiple of a hundreth of the maximum value of the layer
-  tolerance_variable <- mapply(function(x,y) tolerancefunction(rasterstack, x, y), specificitySD, c(1:numinStack))
+   # SD is some multiple of a hundreth of the maximum value of the layer, should be a vector of sample length as rasters in stack
+  tolerance_variable <- mapply(function(x,y) tolerancefunction(rasterstack, x, y, N), specificitySD, c(1:numinStack))
   setClass("centroids", representation(SD = "numeric", SampleSize_N = "numeric", Tolerance = "matrix"))
   out <- new("centroids", SD = specificitySD, SampleSize_N = N, Tolerance = tolerance_variable)
   out
 }
 
+simulatedspecies <- lapply(seq(20,100,by=20), function(x) simulateFundamentalNiche(rasterstack, 5, N = x, runif(5, 1, 100)))
+simulatedspecies[[2]]@SD
+
+tolerancebysamplesize<- do.call(rbind,lapply(1:length(simulatedspecies), function(x){
+  df <- as.data.frame(simulatedspecies[[x]]@Tolerance)
+  data.frame(SampleSize = seq(20,100,by=20)[x],df)
+}))
 
 
-prPCA <- princomp(tolerance_variable)
-specificitySD
+prPCA <- princomp(tolerancebysamplesize[,-1])
+SDs <- do.call(rbind, lapply(1:length(simulatedspecies), function(x){
+  simulatedspecies[[x]]@SD
+}))
 loadings(prPCA)
-ggplot(data.frame(prPCA$scores), aes(Comp.1, Comp.2))+
-  geom_point()
+ggplot(data.frame(N=tolerancebysamplesize[,1],prPCA$scores), aes(Comp.1, Comp.2, colour=as.factor(N)))+
+  geom_point()+
+  stat_ellipse()
+```
+
+All low to high specificity
+```{r}
+# simulateFundamentalNiche <- function(rasterstack, numinStack, N, specificitySD)
+
+simulatedspecies <- lapply(matrix(rep(seq(1,100,length.out = 5), each=5), , function(x) simulateFundamentalNiche(rasterstack, 5, N = x, runif(5, 1, 100)))
+simulatedspecies[[2]]@SD
+
+tolerancebysamplesize<- do.call(rbind,lapply(1:length(simulatedspecies), function(x){
+  df <- as.data.frame(simulatedspecies[[x]]@Tolerance)
+  data.frame(SampleSize = seq(20,100,by=20)[x],df)
+}))
 
 
+prPCA <- princomp(tolerancebysamplesize[,-1])
+SDs <- do.call(rbind, lapply(1:length(simulatedspecies), function(x){
+  simulatedspecies[[x]]@SD
+}))
+loadings(prPCA)
+ggplot(data.frame(N=tolerancebysamplesize[,1],prPCA$scores), aes(Comp.1, Comp.2, colour=as.factor(N)))+
+  geom_point()+
+  stat_ellipse()
+
+```
+
+
+```{r}
 simulateniche <- function(p.area, N, spExtentobject){
       # Circle radius for same area
   Area_range <- lapply()
