@@ -1,0 +1,410 @@
+---
+title: "SimulationSDM"
+author: "Michelle DePrenger-Levin"
+date: "April 9, 2019"
+output: html_document
+---
+
+# Sample from random simulated data to say, given the same amount of random error seen above, can I get the patters of strange distribution?
+
+```{r}
+rm(list=ls())
+
+library(ggplot2)
+library(rgeos)
+library(raster)
+library(foreach)
+library(parallel)
+library(doParallel)
+
+library(maptools)
+library(dismo)
+library(Rmisc)
+library(rgdal)
+library(ENMeval)
+library(Taxonstand)
+library(grid) # for rectGrob
+
+
+# February 26, 2019 added _bioclim where I've resampled to the bioclim raster cell size (less than 1km)
+# coplus50int.tif
+coElev_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled_bioclim.tif")
+# aspect50int.tif
+coAspect_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/AspectResampled_bioclim.tif")
+
+# COplus_ruggedInt50.tif
+coRugged_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/RuggedResampled_bioclim.tif")
+
+bio1_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio1Resampled_bioclim.tif")
+bio12_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled_bioclim.tif")
+gc()
+
+
+rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
+rm(bio1_res,bio12_res,coAspect_res,coElev_res,coRugged_res)
+gc()
+
+stitchtogether <- function(whichones, pathstart, patternmatch, rasternames){
+  lapply(whichones, function(i){
+  gc()
+  lapply(1:10, function(k){
+    resultpath <- list.files(path = pathstart, 
+                             pattern = paste(patternmatch,i,"kfold",k,"_",sep=""), 
+                             full.names=TRUE)
+    rastout <- lapply(resultpath, function(x){
+      raster(x)
+      })
+    rastout$filename <- paste(pathstart,"ProbTiffSp",i,rasternames,k,".tif", sep="")
+    rastout$overwrite <- TRUE
+    m <- do.call(merge, rastout)
+  })
+})
+}
+
+thin.max <- function(x, cols, npoints){
+  #Create empty vector for output
+  inds <- vector(mode="numeric")
+  
+  #Create distance matrix
+  this.dist <- as.matrix(dist(x[,cols], upper=TRUE))
+  
+  #Draw first index at random
+  inds <- c(inds, as.integer(runif(1, 1, length(this.dist[,1]))))
+  
+  #Get second index from maximally distant point from first one
+  #Necessary because apply needs at least two columns or it'll barf
+  #in the next bit
+  inds <- c(inds, which.max(this.dist[,inds]))
+  
+  while(length(inds) < npoints){
+    #For each point, find its distance to the closest point that's already been selected
+    min.dists <- apply(this.dist[,inds], 1, min)
+    
+    #Select the point that is furthest from everything we've already selected
+    this.ind <- which.max(min.dists)
+    
+    #Get rid of ties, if they exist
+    if(length(this.ind) > 1){
+      print("Breaking tie...")
+      this.ind <- this.ind[1]
+    }
+    inds <- c(inds, this.ind)
+  }
+  
+  return(x[inds,])
+}
+
+#Need to averge and SD each of the 10
+
+library(cluster)
+library(snow)
+
+forhistofaverage <- function(whichones = atleast12, pathstart, patternmatch){
+  stacktoaverage <- lapply(whichones, function(i){
+    rasterstoavg <- list.files(path = pathstart, 
+                               pattern = paste("ProbTiffSp",
+                                               i,
+                                               patternmatch,sep=""), 
+                               full.names=TRUE)
+    ras <- stack(lapply(rasterstoavg, function(y){
+      raster(y)
+    }))
+    beginCluster(10)
+    ras.mean <- clusterR(ras, calc, args=list(mean, na.rm=T))
+    writeRaster(ras.mean, paste(pathstart,
+                                "AvgTiffSp",i,patternmatch,g1g2namesall68$AcceptedName[i],
+                                ".tif", sep=""),overwrite=TRUE)
+    gc()
+    endCluster()
+    ras.mean
+  })
+  stacktoaverage
+}
+
+forhistofsd <- function(whichones = atleast12, pathstart, patternmatch){
+  stacktoaverage <- lapply(whichones, function(i){
+    rasterstoavg <- list.files(path = pathstart, 
+                               pattern = paste("ProbTiffSp",
+                                               i,
+                                               patternmatch,sep=""), 
+                               full.names=TRUE)
+    ras <- stack(lapply(rasterstoavg, function(y){
+      raster(y)
+    }))
+    beginCluster(10)
+    ras.mean <- clusterR(ras, calc, args=list(sd, na.rm=T))
+    writeRaster(ras.mean, paste(pathstart, "SDTiffSp",i,patternmatch,
+                              g1g2namesall68$AcceptedName[i],
+                              ".tif", sep=""),overwrite=TRUE)
+    gc()
+    endCluster()
+    ras.mean
+  })
+  stacktoaverage
+}
+
+
+
+# Now just putting in a data.frame that needs to be made into a spatialpointsdataframe, from herbarium so x y are longitude and latitude
+maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10, 
+                      maxentarguments = FALSE, predictorvariables = rasterstack, 
+                      pathstart, filenames, kfoldnum = 4, 
+                      error = FALSE, distdistribution = NULL){
+        for(x in whichones){
+            pointsspdf <- SpatialPointsDataFrame(coords = spatialpointsdataframe_herb[[x]][,c("decimalLongitude","decimalLatitude")],
+                                                 data = spatialpointsdataframe_herb[[x]],
+                                                 proj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
+          if(error == TRUE){
+               # for each point I will draw a circle of size (drawn from the distribution of error seen distXspall$Dist) and then pick a random point along the circle.
+              errorpointsout <- do.call(rbind,lapply(1:nrow(pointsspdf), function(r){
+                errordist <- sample(distdistribution, 1)
+                if(errordist>0){
+                  erroraround <- gBuffer(pointsspdf[r,], width=errordist)
+                  newpoint <- erroraround@polygons[[1]]@Polygons[[1]]@coords
+                  out <- newpoint[sample(1:nrow(newpoint),1),]
+                } else {
+                  out <- pointsspdf@coords[r,]
+                  }
+                out
+                }))
+                
+                df <- SpatialPointsDataFrame(coords = errorpointsout,
+                                             data = pointsspdf@data,
+                                             proj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
+                circlesout <- circles(df, d = 5000) #Should be 5km around
+                polygns <- polygons(circlesout)
+                bgpnts <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
+                
+                convertxy <- spTransform(df, CRS("+proj=longlat +datum=WGS84"))
+                proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+                bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
+          } else {
+                convertxy <- spTransform(pointsspdf, CRS("+proj=longlat +datum=WGS84"))
+                circlesout <- circles(pointsspdf, d = 5000)
+                polygns <- polygons(circlesout)
+                bgpnts <- spsample(polygns, 300, "stratified")
+                proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+                bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
+            
+          }
+                
+          for(rep in 1:numberofReps){
+                convertxy$kfold <- kfold(convertxy, k=kfoldnum) # to have 75:25%
+                if(maxentarguments == TRUE){
+                  xm <- maxent(x = predictorvariables,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords,
+                           args=c("noautofeature","noproduct","nothreshold"))
+                } else {
+                  xm <- maxent(x = predictorvariables,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords)
+                }
+                
+                write.csv(data.frame(convertxy@coords,convertxy@data),
+                          paste(pathstart,"presenceHerb",filenames,"Sp",x,"kfold",rep,".csv", sep=""))
+                save(xm, file= paste(pathstart,"maxentHerb",filenames,"Sp",x,"kfold",rep,".Rda", sep=""))        
+        
+                gc()
+                #register parallel computing backend
+                cl = parallel::makeCluster(ncores)
+                doParallel::registerDoParallel(cl,ncores)
+                #compute indices for data splitting
+                rows = 1:nrow(predictorvariables)
+                split = sort(rows%%ncores)+1
+                outname = paste(pathstart,"PredictHerb",filenames,"Sp", x,"kfold",rep, sep="")
+                #perform the prediction on subsets of the predictor dataset
+                foreach(i=unique(split), .combine=c)%dopar%{
+                  rows_sub = rows[split==i]
+                  sub = raster::crop(predictorvariables,raster::extent(predictorvariables, min(rows_sub), max(rows_sub), 
+                                                                1, ncol(predictorvariables)))
+                  raster::predict(sub, xm, filename=paste(outname, i, sep="_"), overwrite=TRUE)
+                }
+        
+                e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, predictorvariables)
+                save(e, file= paste(pathstart,"evaluateHerb",filenames,"Sp",x,"kfold",rep,".Rda", sep=""))
+        
+                rm(xm)
+                gc()
+                stopCluster(cl)
+          }
+                e
+        }
+}
+
+colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
+
+```
+
+
+Simulate some data
+
+```{r}
+# Draw polygons that match the area range of Colorado rare plants
+
+areas <- seq(6740,93980440, length.out = 10)
+colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
+
+# try different scales, can I get it at an appropriate scale or at what scale do the models species have to be before it works? 
+
+p.area <- areas[4] 
+N <- 12
+e <- extent(colocounties)
+spExtentobject <- as(e, 'SpatialPolygons')
+proj4string(spExtentobject) <-  CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
+spExtentobject <- spTransform(spExtentobject,CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+
+# N is sample size
+# p.area is the overall area of the species
+# spExtentobject is the area within which to simulate points
+polygonSquares <- function(p.area, N, spExtentobject){
+      # Circle radius for same area
+  r <- sqrt((p.area/pi))
+  radiuses <- sample(30:(r-31), 100) # sample from radiuses less than whole to make subset of polygons across landscape
+  points <- spsample(spExtentobject, N, type = "random") # Pick random points for center of circles to define the range of species
+  # ix <- length(which(cumsum(sort(radiuses)) <= r))
+  
+  # Keep adding circles until the total range is reached
+  circles <- list()
+  # Initialize for loops
+  areasum <- 0
+  ix <- 0 
+  while(areasum <= p.area){
+    ix <- ix+1
+    points <- spsample(spExtentobject, 1, type = "random") 
+    rad <- sample(30:round((r/2),0), 1) # get at least two having the radius half the size of the whole range
+    circles[[ix]] <- gBuffer(points[1,], width=rad)
+    slot(slot(circles[[ix]], "polygons")[[1]], "ID") <- paste("ID",ix,sep="")
+    areasum <- sum(sapply(circles, function(x) area(x)))
+  }
+  
+  joined <- do.call(rbind, circles)
+
+  
+  
+}
+
+  plot(spTransform(colocounties,CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")))
+  plot(joined, border="red",lwd=2, add=TRUE)
+
+
+```
+
+Link performance to niche   
+RStan causing problems
+```{r}
+library(devtools)
+
+# Install RStan
+install.packages("rstan", repos = "https://cloud.r-project.org/", dependencies = TRUE)
+
+# Checking the C++ Toolchain, TRUE means all is well
+pkgbuild::has_build_tools(debug = TRUE)
+
+# Now that the dot before cygwin is gone it doesn't try to put "<" and works
+tools::makevars_user()
+
+# Configure C++ to run fasters
+dotR <- file.path(Sys.getenv("HOME"), ".R")
+if (!file.exists(dotR)) dir.create(dotR)
+M <- file.path(dotR, ifelse(.Platform$OS.type == "windows", "Makevars.win", "Makevars"))
+if (!file.exists(M)) file.create(M)
+# Errors in cannot open the connection, guess I'll skip that. Says -march=native -mtune=native can cause problems
+cat("\nCXX14FLAGS=-O3 -march=native -mtune=native",
+    if( grepl("^darwin", R.version$os)) "CXX14FLAGS += -arch x86_64 -ftemplate-depth-256" else
+    if (.Platform$OS.type == "windows") "CXX11FLAGS=-O3 -march=native -mtune=native" else
+    "CXX14FLAGS += -fPIC",
+    file = M, sep = "\n", append = TRUE)
+
+# If run and problems happen, use following to edit and fix (how? I don't know!)
+M <- file.path(Sys.getenv("HOME"), ".R", ifelse(.Platform$OS.type == "windows", "Makevars.win", "Makevars"))
+file.edit(M)
+
+devtools::install_github("silastittes/performr", local = FALSE)
+
+#load other libraries used below
+library(performr)
+library(tidyverse)
+library(ggridges)
+
+
+```
+
+
+# Ignore RStan for now    
+# <https://github.com/syanco/checkyourself> 
+```{r}
+# install_github("syanco/checkyourself")
+library(checkyourself)
+
+#Create starting matrix of specified size, all cell values = '1'
+mat.side <- 100 #set starting matrix size
+x <- matrix(1, mat.side, mat.side) #create the matrix
+
+#Declarations
+size.clusters <- 100 #define target size of each cluster to be grown (in # of cells)
+n.clusters <- 50 #define approximate number of clusters of Habitat A to "grow"
+count.max <- 200 #set maximum number of iterations throught he while-loop
+
+#Required Initial Objects
+n <- mat.side * mat.side #total number of cells in matrix
+cells.left <- 1:n #create 'cells.left' object
+cells.left[x!=1] <- -1 # Indicates occupancy of cells
+i <- 0 #i counts clusters created and should start at 0 always
+indices <- c() #create empty vector for indices
+ids <- c() #create empty vector for ids
+
+
+while(i < n.clusters && length(cells.left) >= size.clusters && count.max > 0) {
+  count.max <- count.max-1 #countdown against max number of loops
+  xy <- sample(cells.left[cells.left > 0], 1) #randomly draw an unoccupied cell
+  cluster <- expand(x, size.clusters, xy) #run expand function to grow that cluster
+  if (!is.na(cluster[1]) && length(cluster)==size.clusters) {
+    i <- i+1 #add to cluster count
+    ids <- c(ids, rep(i, size.clusters)) #add cluster to id list
+    indices <- c(indices, cluster) #add cluster to indices list
+    cells.left[indices] <- -1 #remove all cells in the cluster grown from the available list
+  }
+}
+
+y <- matrix(NA, mat.side, mat.side) #create blank matrix of the same size as `x`.
+
+#Add the cluster ids to the matrix at locations in indices - this adds each cluster id to the cells indicated by the
+#vector 'indices' and leaves the rest of the cells as 'NA'
+y[indices] <- ids
+
+
+#Set the relative strength of selection for Habitat A relative to Habitat B -set as a vector of values through which
+#the model iterates
+A.coef <- c(seq(1,3,by=0.5))
+hab.mat <- sapply(A.coef, pref.strength, mat = y)
+p.mat <- apply(hab.mat, 2, convert.cell)
+
+# Run simulations
+reps <- 1000 #number of iterations of the simulation
+n.individ <- 100 #number of animals to simulate settling
+radius <- c(1,3,5,10,25) #define settlment radius for conspecific attraction
+print(paste("Number of individuals per model run: ", n.individ, sep = ""))
+print(paste("Number of model iterations per parameterization: ", reps, sep = ""))
+print(paste(c("HP Parameters: ", A.coef), sep = ""))
+print(paste(c("CA Parameters: ", radius), sep = ""))
+print("Null Model contains no free parameters")
+
+#create ID matrix with cell values corresponding to cell ID
+# Have HP: habitat preference model and CA: conspecific attraction model
+IDmat <- matrix(1:dim(y)[1]^2, nrow = dim(y)[1])
+```
+
+
+To create a package myself    
+
+note on working directories: The working directory was changed to P:/hackathon/SDMerror inside a notebook chunk. The working directory will be reset when the chunk is finished running. Use the knitr root.dir option in the setup chunk to change the working directory for notebook chunks.  
+<http://web.mit.edu/insong/www/pdf/rpackage_instructions.pdf> 
+```{r}
+# Packages I need
+library("devtools")
+devtools::install_github("klutometis/roxygen")
+library(roxygen2)
+
+# Make the package directory
+setwd("P:/hackathon/SDMerror")
+devtools::create_package("ErrorinSDM")
+
+```
+
