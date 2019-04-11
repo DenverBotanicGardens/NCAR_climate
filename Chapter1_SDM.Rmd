@@ -1014,7 +1014,42 @@ model {
 }
 ```
 
+```{r}
+# sort by smallest to largest area
+sort(unique(df_dist$Area[df_dist$SpNum %in% reallistofTiffs[which(!is.na(whichsigndiff))]]))/(1000^2)
+areasortaccuracy <- unique(df_dist[df_dist$SpNum %in% reallistofTiffs[which(!is.na(whichsigndiff))], 
+                                                              c("SpNum","Area")])
 
+areasortaccuracy <- areasortaccuracy[order(areasortaccuracy$Area),"SpNum"]
+# This worked for areasort with precision because all were signficantly different so no NAs
+accuracyspeciesordered <- reallistofTiffs[which(!is.na(whichsigndiff))][match(reallistofTiffs ,areasortaccuracy)[!is.na(match(reallistofTiffs ,areasortaccuracy))]]
+
+match(reallistofTiffs[which(!is.na(whichsigndiff))],accuracyspeciesordered)
+length(reallistofTiffs[which(!is.na(whichsigndiff))])
+length(accuracyspeciesordered)
+areasortaccuracy <- c(1:33)[which(!is.na(whichsigndiff))][match(reallistofTiffs ,areasortaccuracy)[!is.na(match(reallistofTiffs ,areasortaccuracy))]]
+
+
+# What if I sorted by sample size?
+tab1$DistAvg.N  # This is with all, not just after 1980!
+
+SDM.N <- do.call(rbind, lapply(split(df_dist, df_dist$SpNum), function(y){
+  x <- y[y$year >1980,]
+  data.frame(SpNum1 = unique(x$SpNum), Species = x$Species[1], DistAvg = summarySE(x, "Dist"), 
+             Area = unique(x$Area), minYearDiff = min(x$Yeardiff), maxYearDiff = max(x$Yeardiff),
+             SpNum= unique(x$SpNum), YearDiffAvg = summarySE(x, "Yeardiff"),
+             MinEORyear = min(x$EORYear), MaxEORyear = max(x$EORYear), 
+             MinYear = min(x$year), MaxYear = max(x$year), AvgLat = summarySE(x, "decimalLatitude"))
+})) 
+
+write.csv(SDM.N, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/SDMSamplesize.csv")
+
+sort(unique(SDM.N$DistAvg.N[SDM.N$SpNum1 %in% reallistofTiffs[which(!is.na(whichsigndiff))]]))
+areasortaccuracy <- unique(df_dist[df_dist$SpNum %in% reallistofTiffs[which(!is.na(whichsigndiff))], 
+                                                              c("SpNum","Area")])
+
+
+```
 
 ```{r}
 
@@ -1024,10 +1059,10 @@ jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images
 layout(matrix(c(1:20),nrow=4, byrow = TRUE))
 
 par(mar=c(5.1,4.1,4.1,0.1))
-for(i in which(!unlist(lapply(whichsigndiff, is.na)))){
-  noerr <- data.frame(noerrorhistsofavg[[i]])
+for(i in 1:length(areasortaccuracy)){
+  noerr <- data.frame(noerrorhistsofavg[[areasortaccuracy[i]]])
   # noerr <- noerr[sample(1:nrow(noerr),1000),]
-  witherr <- data.frame(witherrorhistsofavg[[i]])
+  witherr <- data.frame(witherrorhistsofavg[[areasortaccuracy[i]]])
   # witherr <- witherr[sample(1:nrow(witherr),1000)]
   as_is <- ecdf(log(noerr$value)+log(noerr$weight))
   additional <- ecdf(log(witherr$value)+log(witherr$weight))
@@ -1035,7 +1070,11 @@ for(i in which(!unlist(lapply(whichsigndiff, is.na)))){
   #            log(data.frame(noerrorhistsofavg[[i]])$weight))
   # additional  <- ecdf(log(data.frame(witherrorhistsofavg[[i]])$value)+
   #            log(data.frame(witherrorhistsofavg[[i]])$weight))
-  plot(as_is, col = "blue", main=paste(g1g2namesall68$AcceptedName[reallistofTiffs[i]]), cex.main=2)  
+  plot(as_is, col = "blue", 
+       main=bquote(.(g1g2namesall68$AcceptedName[accuracyspeciesordered[i]]) ~
+                     .(round(unique(df_dist$Area[df_dist$SpNum==accuracyspeciesordered[i]])/(1000^2),0)) ~
+                     km^2),
+       cex.main=2)  
   lines(additional, col = rgb(0,1,0,0.5))
 }
 
@@ -2043,15 +2082,4 @@ ggplot(df_dist4, aes(Dist, NicheOverlap))+
   geom_point()+
   stat_smooth(method="lm")
 ```
-
-
-# Sample from random simulated data to say, given the same amount of random error seen above, can I get the patters of strange distribution?
-```{r}
-
-
-
-```
-
-
-
 
