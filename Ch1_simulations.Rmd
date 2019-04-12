@@ -229,7 +229,10 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10,
 }
 
 colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
-
+e <- extent(colocounties)
+spExtentobject <- as(e, 'SpatialPolygons')
+proj4string(spExtentobject) <-  CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
+spExtentobject <- spTransform(spExtentobject,CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
 ```
 
 
@@ -239,17 +242,7 @@ Simulate some data
 # Draw polygons that match the area range of Colorado rare plants
 
 areas <- seq(6740,93980440, length.out = 10)
-colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
 
-# try different scales, can I get it at an appropriate scale or at what scale do the models species have to be before it works? 
-specificitySD <- c(4,8,100,1,2) # Must be length of raster stack
-numinStack <- 5
-p.area <- areas[4] 
-N <- 12
-e <- extent(colocounties)
-spExtentobject <- as(e, 'SpatialPolygons')
-proj4string(spExtentobject) <-  CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
-spExtentobject <- spTransform(spExtentobject,CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"))
 ```
 
 ```{r}
@@ -257,23 +250,37 @@ spExtentobject <- spTransform(spExtentobject,CRS("+proj=utm +zone=13 +datum=NAD8
 # p.area is the overall area of the species
 # spExtentobject is the area within which to simulate points   
 # Can I simulate the fundamental niche (make there be points only within a certain environmental space, then put it in geographic space) pick some random points within that would show the realized niche within and see at what scale of environemtnal specificity and with what scale of points do I ever get a good model. 
+# The backgroundSDmult is a multiplier to get how much more spread should the background niche have compared to the realized niche
 
-tolerancefunction <- function(rasterstack, specificitySD, numinStack, N){
+tolerancefunction <- function(rasterstack, specificitySD, backgroundSDmult, numinStack, N){
   min.1 <- min(values(rasterstack[[numinStack]]))
   max.1 <- max(values(rasterstack[[numinStack]]))
-  centroid <- rnorm(N, runif(1, min.1, max.1), specificitySD*(max.1/100))
-  centroid
-}
-
-simulateFundamentalNiche <- function(rasterstack, numinStack, N, specificitySD){
-   # SD is some multiple of a hundreth of the maximum value of the layer, should be a vector of sample length as rasters in stack
-  tolerance_variable <- mapply(function(x,y) tolerancefunction(rasterstack, x, y, N), specificitySD, c(1:numinStack))
-  setClass("centroids", representation(SD = "numeric", SampleSize_N = "numeric", Tolerance = "matrix"))
-  out <- new("centroids", SD = specificitySD, SampleSize_N = N, Tolerance = tolerance_variable)
+  mid.1 <- runif(1, min.1, max.1)
+  centroid <- rnorm(N, mid.1, specificitySD*(max.1/100))
+  background <- rnorm(N, mid.1, (specificitySD+backgroundSDmult)*(max.1/100)) # need to make sure specificitySD and backgroundSDmult don't add up to more than 100
+  setClass("PresenceBackground", representation(Pr = "numeric", Bg = "numeric"))
+  out <- new("PresenceBackground", Pr = centroid, Bg = background)
   out
 }
 
-simulatedspecies <- lapply(seq(20,100,by=20), function(x) simulateFundamentalNiche(rasterstack, 5, N = x, runif(5, 1, 100)))
+simulateFundamentalNiche <- function(rasterstack, numinStack, N, specificitySD, backgroundSDmult){
+   # SD is some multiple of a hundreth of the maximum value of the layer, should be a vector of sample length as rasters in stack
+  tolerance_variable <- mapply(function(x,y) tolerancefunction(rasterstack, x, 
+                                                               backgroundSDmult, 
+                                                               numinStack = y, N), 
+                               specificitySD, c(1:numinStack))
+  setClass("centroids", representation(SD = "numeric", SampleSize_N = "numeric", 
+                                       Tolerance = "matrix", Background = "matrix"))
+  out <- new("centroids", SD = specificitySD, SampleSize_N = N, 
+             Tolerance = tolerance_variable)
+  out
+}
+```
+
+
+
+```{r}
+simulatedspecies <- lapply(seq(20,100,by=20), function(x) simulateFundamentalNiche(rasterstack, 5, N = x, runif(5, 1, 100), backgroundSDmult = 5))
 simulatedspecies[[2]]@SD
 
 tolerancebysamplesize<- do.call(rbind,lapply(1:length(simulatedspecies), function(x){
@@ -315,6 +322,22 @@ ggplot(data.frame(N=tolerancebysamplesize[,1],prPCA$scores), aes(Comp.1, Comp.2,
   stat_ellipse()
 
 ```
+
+# Recreate Maxent just using the made up environmental variables for presence points, need to create appropriate background points that are within various environmental distances so maybe same mean and varying SD for the spread of background points approximating how much environmental variability there is and approximating the scale of the raster cells, did you smooth out over a large area given the range of the speices.     
+<https://www.biorxiv.org/content/biorxiv/early/2017/02/16/109041.full.pdf>  
+```{r}
+library(reshape2)
+toplot <- melt(tolerancebysamplesize, id.vars=c("SampleSize"))
+
+ggplot(toplot, aes(value, fill=variable))+
+  geom_histogram()+
+  facet_wrap(~SampleSize+variable, nrow=5)+
+  theme_bw()
+
+
+
+```
+
 
 
 ```{r}
