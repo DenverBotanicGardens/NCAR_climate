@@ -236,7 +236,8 @@ spExtentobject <- spTransform(spExtentobject,CRS("+proj=utm +zone=13 +datum=NAD8
 ```
 
 
-Simulate some data
+Simulate some data   
+Assuming it is a measure of how tightly the species is connected to any of the predictor layers and how many samples you have (assuming you'd be on the low end of samples because there just wouldn't be that many indivdiuals anyway.)
 
 ```{r}
 # Draw polygons that match the area range of Colorado rare plants
@@ -251,28 +252,38 @@ areas <- seq(6740,93980440, length.out = 10)
 # spExtentobject is the area within which to simulate points   
 # Can I simulate the fundamental niche (make there be points only within a certain environmental space, then put it in geographic space) pick some random points within that would show the realized niche within and see at what scale of environemtnal specificity and with what scale of points do I ever get a good model. 
 # The backgroundSDmult is a multiplier to get how much more spread should the background niche have compared to the realized niche
-
+# matrix multiplication to make the second half have a larger SD!
 tolerancefunction <- function(rasterstack, specificitySD, backgroundSDmult, numinStack, N){
   min.1 <- min(values(rasterstack[[numinStack]]))
   max.1 <- max(values(rasterstack[[numinStack]]))
   mid.1 <- runif(1, min.1, max.1)
-  centroid <- rnorm(N, mid.1, specificitySD*(max.1/100))
-  background <- rnorm(N, mid.1, (specificitySD+backgroundSDmult)*(max.1/100)) # need to make sure specificitySD and backgroundSDmult don't add up to more than 100
-  setClass("PresenceBackground", representation(Pr = "numeric", Bg = "numeric"))
-  out <- new("PresenceBackground", Pr = centroid, Bg = background)
-  out
+  centroid <- rnorm(N*2, mid.1, specificitySD*(max.1/100))
+  # background <- rnorm(N, mid.1, (specificitySD+backgroundSDmult)*(max.1/100)) # need to make sure specificitySD and backgroundSDmult don't add up to more than 100
+  # setClass("PresenceBackground", representation(Pr = "numeric", Bg = "numeric"))
+  # out <- new("PresenceBackground", Pr = centroid, Bg = background)
+  # out <- list(centroid, background)
+  # out
+  centroid
 }
 
+
+# backgroundSDmult - how different is the background compared to the presence points
 simulateFundamentalNiche <- function(rasterstack, numinStack, N, specificitySD, backgroundSDmult){
    # SD is some multiple of a hundreth of the maximum value of the layer, should be a vector of sample length as rasters in stack
   tolerance_variable <- mapply(function(x,y) tolerancefunction(rasterstack, x, 
                                                                backgroundSDmult, 
                                                                numinStack = y, N), 
                                specificitySD, c(1:numinStack))
-  setClass("centroids", representation(SD = "numeric", SampleSize_N = "numeric", 
+  # Need to add the additional variance around the 'background' points that are the second set
+  meanVar <- apply(tolerance_variable, 2, mean)
+  newvar <- mapply(function(x,y,z) rnorm(N,x,y+z), meanVar, backgroundSDmult, specificitySD)
+  # background <- tolerance_variable[(N+1):(N*2),]*t(rnorm(1,meanVar, backgroundSDmult)
+  setClass("centroids", representation(SD = "numeric", BgSD = "numeric", SampleSize_N = "numeric", 
                                        Tolerance = "matrix", Background = "matrix"))
-  out <- new("centroids", SD = specificitySD, SampleSize_N = N, 
-             Tolerance = tolerance_variable)
+  out <- new("centroids", SD = specificitySD, BgSD = backgroundSDmult+specificitySD, 
+             SampleSize_N = N, 
+             Tolerance = tolerance_variable[1:N,], 
+             Background = newvar)
   out
 }
 ```
@@ -280,21 +291,28 @@ simulateFundamentalNiche <- function(rasterstack, numinStack, N, specificitySD, 
 
 
 ```{r}
-simulatedspecies <- lapply(seq(20,100,by=20), function(x) simulateFundamentalNiche(rasterstack, 5, N = x, runif(5, 1, 100), backgroundSDmult = 5))
-simulatedspecies[[2]]@SD
+simulatedspecies <- lapply(seq(20,100,by=20), function(x) simulateFundamentalNiche(rasterstack, 5, N = x, runif(5, 1, 100), backgroundSDmult = c(1:5)))
+simulatedspecies[[2]]@BgSD
+simulatedspecies[[1]]@Background
 
 tolerancebysamplesize<- do.call(rbind,lapply(1:length(simulatedspecies), function(x){
   df <- as.data.frame(simulatedspecies[[x]]@Tolerance)
-  data.frame(SampleSize = seq(20,100,by=20)[x],df)
+  data.frame(PrAb = 1, SampleSize = seq(20,100,by=20)[x],df)
+}))
+
+backgroundbysamplesize<- do.call(rbind,lapply(1:length(simulatedspecies), function(x){
+  df <- as.data.frame(simulatedspecies[[x]]@Background)
+  data.frame(PrAb = 0, SampleSize = seq(20,100,by=20)[x],df)
 }))
 
 
-prPCA <- princomp(tolerancebysamplesize[,-1])
+
+prPCA <- princomp(tolerancebysamplesize[,-c(1:2)])
 SDs <- do.call(rbind, lapply(1:length(simulatedspecies), function(x){
   simulatedspecies[[x]]@SD
 }))
 loadings(prPCA)
-ggplot(data.frame(N=tolerancebysamplesize[,1],prPCA$scores), aes(Comp.1, Comp.2, colour=as.factor(N)))+
+ggplot(data.frame(tolerancebysamplesize[,c(1:2)],prPCA$scores), aes(Comp.1, Comp.2, colour=as.factor(SampleSize)))+
   geom_point()+
   stat_ellipse()
 ```
@@ -391,6 +409,10 @@ Link performance to niche
 RStan causing problems
 ```{r}
 library(devtools)
+
+# To make sure download after cygwin works
+remove.packages("rstan")
+if (file.exists(".RData")) {file.remove(".RData")}
 
 # Install RStan
 install.packages("rstan", repos = "https://cloud.r-project.org/", dependencies = TRUE)
