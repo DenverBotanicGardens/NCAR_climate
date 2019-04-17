@@ -253,16 +253,17 @@ areas <- seq(6740,93980440, length.out = 10)
 # Can I simulate the fundamental niche (make there be points only within a certain environmental space, then put it in geographic space) pick some random points within that would show the realized niche within and see at what scale of environemtnal specificity and with what scale of points do I ever get a good model. 
 # The backgroundSDmult is a multiplier to get how much more spread should the background niche have compared to the realized niche
 # matrix multiplication to make the second half have a larger SD!
+# 1. Sample size first - resample/bootstrap to different sizes, known locations seq(5,200,length.out = 5 or 10 or so) amount of sample space of preditor space covered, 
+# compare background available to known points, KDE/hists for each for each variable, 
+# run with crazy background across whole area - debate on am I losing information, look back at argumetns for background point, are you then not seeing the full structure in response, need to see how different it is across the range. at what scale and how much differences does it matter
+
+# Why not working: what's the background options, is there enough variation to get any pattern or did I shoot myself in the foot in the background points selected. where's the limit - how many background, super close, 100 miles?, whole range? need to have something that differentiates, maybe so bioclim too big, might need soils, GDD. Aim to look for more, or learn driving factors - so then different leves of risk for each bit - how much specificity is required for each application (SDM and PVA...) Look at each question/use when effictivly and when - Elith or Townsend for summary of use of these models what are limits. 
+
 tolerancefunction <- function(rasterstack, specificitySD, backgroundSDmult, numinStack, N){
   min.1 <- min(values(rasterstack[[numinStack]]))
   max.1 <- max(values(rasterstack[[numinStack]]))
   mid.1 <- runif(1, min.1, max.1)
   centroid <- rnorm(N*2, mid.1, specificitySD*(max.1/100))
-  # background <- rnorm(N, mid.1, (specificitySD+backgroundSDmult)*(max.1/100)) # need to make sure specificitySD and backgroundSDmult don't add up to more than 100
-  # setClass("PresenceBackground", representation(Pr = "numeric", Bg = "numeric"))
-  # out <- new("PresenceBackground", Pr = centroid, Bg = background)
-  # out <- list(centroid, background)
-  # out
   centroid
 }
 
@@ -291,10 +292,41 @@ simulateFundamentalNiche <- function(rasterstack, numinStack, N, specificitySD, 
 
 
 ```{r}
+# select random SD for the presence points across the environmental layers as how many 100ths of the range of the variable, the backgroundSDmult is how much more variance around the mean is the background points than the presence. Sample size varied by 20 to 100
 simulatedspecies <- lapply(seq(20,100,by=20), function(x) simulateFundamentalNiche(rasterstack, 5, N = x, runif(5, 1, 100), backgroundSDmult = c(1:5)))
 simulatedspecies[[2]]@BgSD
 simulatedspecies[[1]]@Background
+simulatedspecies[[1]]@Tolerance
 
+for(i in 1:5){
+  for(j in 1:5){
+    # hist(simulatedspecies[[i]]@Tolerance[((10+1)+1):(10*2),j], col=rgb(0,0,0,0), breaks=20)
+    hist(simulatedspecies[[i]]@Tolerance[1:10,j], col=rgb(.4,.2,0,0.5), breaks=20, 
+         xlim=c(min(simulatedspecies[[i]]@Tolerance[,j]),max(simulatedspecies[[i]]@Tolerance[,j])))
+    rug(simulatedspecies[[i]]@Tolerance[,j])
+  }
+}
+```
+
+```{r}
+changingSD <-matrix(rep(seq(1,40,length.out = 10),each=5),10,5, byrow = TRUE)
+simulatedspeciesXSDdiff <- lapply(1:10, function(x) simulateFundamentalNiche(rasterstack, 5, N = 100, rep(2,5), backgroundSDmult = changingSD[x,]))
+
+  for(j in 1:5){
+for(i in 1:10){
+
+    # hist(simulatedspecies[[i]]@Tolerance[((10+1)+1):(10*2),j], col=rgb(0,0,0,0), breaks=20)
+    hist(simulatedspeciesXSDdiff[[i]]@Tolerance[1:10,j], col=rgb(.4,.2,0,0.5), breaks=20, 
+         xlim=c(min(simulatedspeciesXSDdiff[[i]]@Tolerance[,j]),
+                max(simulatedspeciesXSDdiff[[i]]@Tolerance[,j])),
+         main=paste("Layer",j,"SD diff",seq(1,20,length.out = 10)[i],sep=" "))
+    rug(simulatedspeciesXSDdiff[[i]]@Tolerance[,j])
+  }
+}
+```
+
+
+```{r}
 tolerancebysamplesize<- do.call(rbind,lapply(1:length(simulatedspecies), function(x){
   df <- as.data.frame(simulatedspecies[[x]]@Tolerance)
   data.frame(PrAb = 1, SampleSize = seq(20,100,by=20)[x],df)
@@ -321,7 +353,11 @@ All low to high specificity
 ```{r}
 # simulateFundamentalNiche <- function(rasterstack, numinStack, N, specificitySD)
 
-simulatedspecies <- lapply(matrix(rep(seq(1,100,length.out = 5), each=5), , function(x) simulateFundamentalNiche(rasterstack, 5, N = x, runif(5, 1, 100)))
+# simulatedspecies <- lapply(matrix(rep(seq(1,100,length.out = 5), each=5), , function(x){
+#   
+# })
+
+simulateFundamentalNiche(rasterstack, 5, N = x, runif(5, 1, 100)))
 simulatedspecies[[2]]@SD
 
 tolerancebysamplesize<- do.call(rbind,lapply(1:length(simulatedspecies), function(x){
@@ -423,7 +459,7 @@ pkgbuild::has_build_tools(debug = TRUE)
 # Now that the dot before cygwin is gone it doesn't try to put "<" and works
 tools::makevars_user()
 
-# Configure C++ to run fasters
+# Configure C++ to run faster
 dotR <- file.path(Sys.getenv("HOME"), ".R")
 if (!file.exists(dotR)) dir.create(dotR)
 M <- file.path(dotR, ifelse(.Platform$OS.type == "windows", "Makevars.win", "Makevars"))
