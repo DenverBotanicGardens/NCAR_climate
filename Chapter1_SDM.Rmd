@@ -240,6 +240,8 @@ whichnull <- lapply(1:68, function(i){
     g1g2namesall68$AcceptedName[i]
   }
 })
+
+notnull1_68 <- which(!unlist(lapply(distXsp_noEORgrid1_68, is.null)))
   
 notnulls68 <- which(!unlist(lapply(whichnull, is.null)))
 which(unlist(lapply(whichnull, is.null))) # 39
@@ -248,12 +250,14 @@ distXspall52 <- do.call(rbind, Map(cbind, SpNum = notnulls68[notnull1_68],
                                    distXsp_noEORgrid1_68[notnull1_68]))
 ```
 
+
+# Allow for variation in the background points scale after understanding the scale of predictor variables
 ```{r}
-# Now just putting in a data.frame that needs to be made into a spatialpointsdataframe, from herbarium so x y are longitude and latitude
+
 maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10, 
                       maxentarguments = FALSE, predictorvariables = rasterstack, 
                       pathstart, filenames, kfoldnum = 4, 
-                      error = FALSE, distdistribution = NULL){
+                      error = FALSE, distdistribution = NULL, backgroundscale = 5000){
         for(x in whichones){
             pointsspdf <- SpatialPointsDataFrame(coords = spatialpointsdataframe_herb[[x]][,c("decimalLongitude","decimalLatitude")],
                                                  data = spatialpointsdataframe_herb[[x]],
@@ -275,7 +279,7 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10,
                 df <- SpatialPointsDataFrame(coords = errorpointsout,
                                              data = pointsspdf@data,
                                              proj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
-                circlesout <- circles(df, d = 5000) #Should be 5km around
+                circlesout <- circles(df, d = backgroundscale) #Should be 5km around
                 polygns <- polygons(circlesout)
                 bgpnts <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
                 
@@ -284,7 +288,7 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10,
                 bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
           } else {
                 convertxy <- spTransform(pointsspdf, CRS("+proj=longlat +datum=WGS84"))
-                circlesout <- circles(pointsspdf, d = 5000)
+                circlesout <- circles(pointsspdf, d = backgroundscale)
                 polygns <- polygons(circlesout)
                 bgpnts <- spsample(polygns, 300, "stratified")
                 proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
