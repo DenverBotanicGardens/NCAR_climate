@@ -10,6 +10,10 @@ Making new herb train and EOR test ones with VisTrails and same size EOR numbers
 ```{r}
 rm(list=ls())
 
+library(gridExtra)
+library(grid)
+library(lattice)
+
 library(ggplot2)
 library(rgeos)
 library(raster)
@@ -121,8 +125,11 @@ coRugged_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/a
 bio1_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio1Resampled_bioclim.tif")
 bio12_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled_bioclim.tif")
 gc()
+```
 
 
+Block of functions 1
+```{r}
 rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
 rm(bio1_res,bio12_res,coAspect_res,coElev_res,coRugged_res)
 gc()
@@ -253,7 +260,6 @@ distXspall52 <- do.call(rbind, Map(cbind, SpNum = notnulls68[notnull1_68],
 
 # Allow for variation in the background points scale after understanding the scale of predictor variables
 ```{r}
-
 maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10, 
                       maxentarguments = FALSE, predictorvariables = rasterstack, 
                       pathstart, filenames, kfoldnum = 4, 
@@ -307,10 +313,13 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10,
                 
                 write.csv(data.frame(convertxy@coords,convertxy@data),
                           paste(pathstart,"presenceHerb",filenames,"Sp",x,"kfold",rep,".csv", sep=""))
+                # write.csv(data.frame(bgpnts@coords, convertxy@data[1,c("Species","Area")]),
+                #           paste(pathstart,"presenceHerb",filenames,"Sp",x,"kfold",rep,".csv", sep=""))
                 save(xm, file= paste(pathstart,"maxentHerb",filenames,"Sp",x,"kfold",rep,".Rda", sep=""))        
         
                 gc()
                 #register parallel computing backend
+                ncores <- detectCores()-1
                 cl = parallel::makeCluster(ncores)
                 doParallel::registerDoParallel(cl,ncores)
                 #compute indices for data splitting
@@ -338,63 +347,346 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10,
 
 ```
 
-
 ```{r}
-# x<-atleast12[3]
-for(x in atleast12168[21]){
-            pointsspdf <- SpatialPointsDataFrame(coords = spatialpointsdataframe_herb[[x]][,c("decimalLongitude","decimalLatitude")],
-                                                 data = spatialpointsdataframe_herb[[x]],
-                                                 proj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
-          # if(error == TRUE){
-               # for each point I will draw a circle of size (drawn from the distribution of error seen distXspall$Dist) and then pick a random point along the circle.
-              errorpointsout <- do.call(rbind,lapply(1:nrow(pointsspdf), function(r){
-                errordist <- sample(distdistribution, 1)
-                if(errordist>0){
-                  erroraround <- gBuffer(pointsspdf[r,], width=errordist)
-                  newpoint <- erroraround@polygons[[1]]@Polygons[[1]]@coords
-                  out <- newpoint[sample(1:nrow(newpoint),1),]
-                } else {
-                  out <- pointsspdf@coords[r,]
-                  }
-                out
-                }
-                ))
-                
-                df <- SpatialPointsDataFrame(coords = errorpointsout,
-                                             data = pointsspdf@data,
-                                             proj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
-                circlesout <- circles(df, d = 5000) #Should be 5km around
-                polygns <- polygons(circlesout)
-                bgpnts <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
-                
-                convertxy <- spTransform(df, CRS("+proj=longlat +datum=WGS84"))
-                proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
-                bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
-          # } else {
-          #       convertxy <- spTransform(pointsspdf, CRS("+proj=longlat +datum=WGS84"))
-          #       # bgpnts <- background_points[[match(x,notnull)]]
-          #       circlesout <- circles(pointsspdf, d = 5000)
-          #       polygns <- polygons(circlesout)
-          #       bgpnts <- spsample(polygns, 300, "stratified")
-          #       proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
-          #       bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
-          #   
-          # }
-                
-          # for(rep in 1:4){
-                convertxy$kfold <- kfold(convertxy, k=4) # to have 75:25%
-                # if(maxentarguments == TRUE){
-                #   xm <- maxent(x = predictorvariables,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords,
-                #            args=c("noautofeature","noproduct","nothreshold"))
-                # } else {
-                  # xm <- maxent(x = predictorvariables,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords)
-                # }                
-          plot(colocounties) # , xlim=c(139982.4, 773240.8), ylim=c(408691.88, 4761362.70))
-          points(bgpnts, pch=16, col="purple", cex=0.5)
-          points(spTransform(pointsspdf, CRS("+init=epsg:4326")), pch=21, col="orange")
-
-          # }
+atleast12168 <- c()
+for(l in notnull1_68){ 
+  atleast12168[match(l,notnull1_68)] <- 
+    if(nrow(distXsp_noEORgrid1_68[[l]][distXsp_noEORgrid1_68[[l]]$year>1980,])>11){
+      l } else {
+        NA
+        }
 }
+atleast12168 <- atleast12168[!is.na(atleast12168)] 
+
+
+pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_backgroundanderror/")
+
+maxentrun(whichones = atleast12168, numberofReps = 10, spatialpointsdataframe_herb = distXsp_noEORgrid1_68,
+          maxentarguments = FALSE, filenames = "asis_bg500000", pathstart = pathstart, backgroundscale = 500000)
+
+
+maxentrun(whichones = atleast12168, numberofReps = 10, spatialpointsdataframe_herb = distXsp_noEORgrid1_68,
+          error = TRUE, distdistribution = distdistribution,
+          maxentarguments = FALSE, filenames = "WITH_bg500000", pathstart = pathstart, backgroundscale = 500000)
+
+patternmatch <- paste("PredictHerb", c("asis_bg500000","WITH_bg500000"), "Sp", sep="")
+
+stitchtogether(atleast12168, pathstart = pathstart, patternmatch = patternmatch[1], rasternames = "Herbasis_bg500000kfold")
+
+stitchtogether(atleast12168, pathstart = pathstart, patternmatch = patternmatch[2], rasternames = "HerbWITH_bg500000kfold")
+
+```
+
+
+# TO DO!
+
+# show the distribution of variability of presence points in the as-is and with error datasets. rug colored by species. 
+    - need to calculate the distance from nearest polygon for the added error datasets. 
+```{r}
+# first attempt
+pathstart6266 <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/" 
+
+load(paste(pathstart6266,"maxentHerbWITHerror","Sp", 1,"kfold",1, ".Rda",sep=""))
+xm@results
+xm@presence
+xm@absence
+
+
+load(paste(pathstart6266,"evaluateHerbWITHerror","Sp", 1,"kfold",1, ".Rda",sep=""))
+e@presence
+e@cor
+
+pr.bg_with <- do.call(rbind,lapply(atleast12168, function(x){
+  outno <- do.call(rbind,lapply(1:10, function(rep){
+    load(paste(pathstart6266,"maxentHerbWITHerror","Sp", x,"kfold",rep, ".Rda",sep=""))
+    pr <- data.frame(PrBg = "pr", ErrorType = "yes", SpeciesNum = x, kfold = rep, xm@presence)
+    bg <- data.frame(PrBg = "bg", ErrorType = "yes", SpeciesNum = x, kfold = rep, xm@absence)
+    rbind(pr,bg)
+    }))
+  outno
+  }))
+
+pr.bg_asis <- do.call(rbind,lapply(atleast12168, function(x){
+  outno <- do.call(rbind,lapply(1:10, function(rep){
+    load(paste(pathstart6266,"maxentHerbnoerror","Sp", x,"kfold",rep, ".Rda",sep=""))
+    pr <- data.frame(PrBg = "pr", ErrorType = "yes", SpeciesNum = x, kfold = rep, xm@presence)
+    bg <- data.frame(PrBg = "bg", ErrorType = "yes", SpeciesNum = x, kfold = rep, xm@absence)
+    rbind(pr,bg)
+    }))
+  outno
+  }))
+
+```
+
+# TO DO go back and use just the smaller scaled DEM layers. 
+# Examine the vairaibility of the raster for each covariate   
+```{r}
+rasterstack
+
+maxValue(rasterstack)
+minValue(rasterstack)
+# cellStats(rasterstack, mean)
+
+```
+
+    How different are the background points from the presence points
+# Examine the amount of varaibility in the presence points.
+```{r}
+
+el <- ggplot(pr.bg_asis, aes(y =ElevationResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+  geom_boxplot()+
+  theme_bw()+
+  coord_flip()+ 
+  xlab("")+
+  ylim(minValue(rasterstack)[1], maxValue(rasterstack)[1])+
+  # xlab("Species ID")+
+  ylab(expression("Elevation"["meters"]))+
+  scale_fill_manual(values=c("midnightblue","darkseagreen3"),
+                       name="",
+                       breaks=c("pr","bg"),
+                       labels=c("Presence", "Background"))+
+  theme(legend.position="bottom")
+
+as <- ggplot(pr.bg_asis, aes(y =AspectResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+  geom_boxplot()+
+  theme_bw()+
+  coord_flip()+ 
+  xlab("")+
+  ylim(minValue(rasterstack)[2], maxValue(rasterstack)[2])+
+  # xlab("Species ID")+
+  ylab("Aspect")+
+  scale_fill_manual(values=c("midnightblue","darkseagreen3"),
+                       name="",
+                       breaks=c("pr","bg"),
+                       labels=c("Presence", "Background"))+
+  theme(legend.position="bottom")
+
+ru <- ggplot(pr.bg_asis, aes(y =RuggedResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+  geom_boxplot()+
+  theme_bw()+
+  coord_flip()+ 
+  xlab("")+
+  ylim(minValue(rasterstack)[3], maxValue(rasterstack)[3])+
+  # xlab("Species ID")+
+  ylab("Ruggedness")+
+  scale_fill_manual(values=c("midnightblue","darkseagreen3"),
+                       name="",
+                       breaks=c("pr","bg"),
+                       labels=c("Presence", "Background"))+
+  theme(legend.position="bottom")
+
+b1 <- ggplot(pr.bg_asis, aes(y =Bio1Resampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+  geom_boxplot()+
+  theme_bw()+
+  coord_flip()+ 
+  xlab("")+
+  ylim(minValue(rasterstack)[4], maxValue(rasterstack)[4])+
+  # xlab("Species ID")+
+  ylab(expression("Bio"["1"]))+
+  scale_fill_manual(values=c("midnightblue","darkseagreen3"),
+                       name="",
+                       breaks=c("pr","bg"),
+                       labels=c("Presence", "Background"))+
+  theme(legend.position="bottom")
+
+
+b12 <- ggplot(pr.bg_asis, aes(y =Bio12Resampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+  geom_boxplot()+
+  theme_bw()+
+  coord_flip()+ 
+  xlab("")+
+  ylim(minValue(rasterstack)[5], maxValue(rasterstack)[5])+
+  ylab(expression("Bio"["12"]))+
+  scale_fill_manual(values=c("midnightblue","darkseagreen3"), 
+                       name="",
+                       breaks=c("pr","bg"),
+                       labels=c("Presence", "Background"))+ 
+  theme(legend.position="bottom")
+
+ggsave("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/FigureXX_prbgspace.jpg",
+       grid.arrange(grobs= list(as,ru,el,b12,b1), ncol = 3,
+                    left="Species ID"), width = 20, height = 25, units="in", dpi=300)
+```
+
+Again but with background points around more area
+```{r}
+# first attempt
+pathstart6266 <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/" 
+
+load(paste(pathstart6266,"maxentHerbWITHerror","Sp", 1,"kfold",1, ".Rda",sep=""))
+xm@results
+xm@presence
+xm@absence
+
+
+load(paste(pathstart6266,"evaluateHerbWITHerror","Sp", 1,"kfold",1, ".Rda",sep=""))
+e@presence
+e@cor
+
+pr.bg_with <- do.call(rbind,lapply(atleast12168, function(x){
+  outno <- do.call(rbind,lapply(1:10, function(rep){
+    load(paste(pathstart6266,"maxentHerbWITHerror","Sp", x,"kfold",rep, ".Rda",sep=""))
+    pr <- data.frame(PrBg = "pr", ErrorType = "yes", SpeciesNum = x, kfold = rep, xm@presence)
+    bg <- data.frame(PrBg = "bg", ErrorType = "yes", SpeciesNum = x, kfold = rep, xm@absence)
+    rbind(pr,bg)
+    }))
+  outno
+  }))
+
+pr.bg_asis <- do.call(rbind,lapply(atleast12168, function(x){
+  outno <- do.call(rbind,lapply(1:10, function(rep){
+    load(paste(pathstart6266,"maxentHerbnoerror","Sp", x,"kfold",rep, ".Rda",sep=""))
+    pr <- data.frame(PrBg = "pr", ErrorType = "yes", SpeciesNum = x, kfold = rep, xm@presence)
+    bg <- data.frame(PrBg = "bg", ErrorType = "yes", SpeciesNum = x, kfold = rep, xm@absence)
+    rbind(pr,bg)
+    }))
+  outno
+  }))
+
+```
+
+# Examine the amount of varaibility in the presence points.
+```{r}
+
+el <- ggplot(pr.bg_asis, aes(y =ElevationResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+  geom_boxplot()+
+  theme_bw()+
+  coord_flip()+ 
+  xlab("")+
+  ylim(minValue(rasterstack)[1], maxValue(rasterstack)[1])+
+  # xlab("Species ID")+
+  ylab(expression("Elevation"["meters"]))+
+  scale_fill_manual(values=c("midnightblue","darkseagreen3"),
+                       name="",
+                       breaks=c("pr","bg"),
+                       labels=c("Presence", "Background"))+
+  theme(legend.position="bottom")
+
+as <- ggplot(pr.bg_asis, aes(y =AspectResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+  geom_boxplot()+
+  theme_bw()+
+  coord_flip()+ 
+  xlab("")+
+  ylim(minValue(rasterstack)[2], maxValue(rasterstack)[2])+
+  # xlab("Species ID")+
+  ylab("Aspect")+
+  scale_fill_manual(values=c("midnightblue","darkseagreen3"),
+                       name="",
+                       breaks=c("pr","bg"),
+                       labels=c("Presence", "Background"))+
+  theme(legend.position="bottom")
+
+ru <- ggplot(pr.bg_asis, aes(y =RuggedResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+  geom_boxplot()+
+  theme_bw()+
+  coord_flip()+ 
+  xlab("")+
+  ylim(minValue(rasterstack)[3], maxValue(rasterstack)[3])+
+  # xlab("Species ID")+
+  ylab("Ruggedness")+
+  scale_fill_manual(values=c("midnightblue","darkseagreen3"),
+                       name="",
+                       breaks=c("pr","bg"),
+                       labels=c("Presence", "Background"))+
+  theme(legend.position="bottom")
+
+b1 <- ggplot(pr.bg_asis, aes(y =Bio1Resampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+  geom_boxplot()+
+  theme_bw()+
+  coord_flip()+ 
+  xlab("")+
+  ylim(minValue(rasterstack)[4], maxValue(rasterstack)[4])+
+  # xlab("Species ID")+
+  ylab(expression("Bio"["1"]))+
+  scale_fill_manual(values=c("midnightblue","darkseagreen3"),
+                       name="",
+                       breaks=c("pr","bg"),
+                       labels=c("Presence", "Background"))+
+  theme(legend.position="bottom")
+
+
+b12 <- ggplot(pr.bg_asis, aes(y =Bio12Resampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+  geom_boxplot()+
+  theme_bw()+
+  coord_flip()+ 
+  xlab("")+
+  ylim(minValue(rasterstack)[5], maxValue(rasterstack)[5])+
+  ylab(expression("Bio"["12"]))+
+  scale_fill_manual(values=c("midnightblue","darkseagreen3"), 
+                       name="",
+                       breaks=c("pr","bg"),
+                       labels=c("Presence", "Background"))+ 
+  theme(legend.position="bottom")
+
+ggsave("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/FigureXX_prbgspace.jpg",
+       grid.arrange(grobs= list(as,ru,el,b12,b1), ncol = 3,
+                    left="Species ID"), width = 20, height = 25, units="in", dpi=300)
+```
+
+
+
+# Test a range of background point differences in varaibility from the presence points. 
+    - need to quantify those differences - how??
+    - need to project those differences onto geographic space from environmental space     
+
+        1. Set each layer values outside the tolerance range to NA
+        2. Find the pixels with no NAs for any layer. 
+        Example: ## Construct reproducible data! (Here a raster stack with NA values in each layer) 
+        m <- raster(ncol=10, nrow=10)
+        n <- raster(ncol=10, nrow=10)
+        m[] <- runif(ncell(m))
+        n[] <- runif(ncell(n)) * 10
+        m[m < 0.5] <- NA
+        n[n < 5] <- NA
+        s <- stack(m,n)
+        
+        ## Synchronize the NA values
+        s2 <- mask(s, calc(s,fun = sum))
+        
+        ## Check that it worked
+        plot(s2)     
+
+# Test background points
+```{r}
+colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
+x<-atleast12[3]
+
+distdistribution <- distXspall52$Dist[distXspall52$Dist<300000]
+hist(distdistribution)
+
+pointsspdf <- SpatialPointsDataFrame(coords = distXsp_noEORgrid68[[x]][,c("decimalLongitude","decimalLatitude")],
+                                                 data = distXsp_noEORgrid68[[x]],
+                                                 proj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
+
+# for each point I will draw a circle of size (drawn from the distribution of error seen distXspall$Dist) and then pick a random point along the circle.
+errorpointsout <- do.call(rbind,lapply(1:nrow(pointsspdf), function(r){
+  errordist <- sample(distdistribution, 1)
+  if(errordist>0){
+    erroraround <- gBuffer(pointsspdf[r,], width=errordist)
+    newpoint <- erroraround@polygons[[1]]@Polygons[[1]]@coords
+    out <- newpoint[sample(1:nrow(newpoint),1),]
+  } else {
+    out <- pointsspdf@coords[r,]
+    }
+  out
+  }
+  ))
+                
+      df <- SpatialPointsDataFrame(coords = errorpointsout,
+                                   data = pointsspdf@data,
+                                   proj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
+      circlesout <- circles(df, d = 50000) #Should be 5km around
+      polygns <- polygons(circlesout)
+      bgpnts <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
+      
+      convertxy <- spTransform(df, CRS("+proj=longlat +datum=WGS84"))
+      proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+      bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
+
+      
+plot(colocounties) # , xlim=c(139982.4, 773240.8), ylim=c(408691.88, 4761362.70))
+points(bgpnts, pch=16, col="purple", cex=0.5)
+points(spTransform(pointsspdf, CRS("+init=epsg:4326")), pch=21, col="orange")
 
 ```
 
