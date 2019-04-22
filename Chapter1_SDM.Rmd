@@ -510,22 +510,12 @@ ggsave("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Imag
 
 Again but with background points around more area
 ```{r}
-# first attempt
-pathstart6266 <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/" 
+# larger circles for background points
+pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_backgroundanderror/")
 
-load(paste(pathstart6266,"maxentHerbWITHerror","Sp", 1,"kfold",1, ".Rda",sep=""))
-xm@results
-xm@presence
-xm@absence
-
-
-load(paste(pathstart6266,"evaluateHerbWITHerror","Sp", 1,"kfold",1, ".Rda",sep=""))
-e@presence
-e@cor
-
-pr.bg_with <- do.call(rbind,lapply(atleast12168, function(x){
+pr.bg_with500000 <- do.call(rbind,lapply(atleast12168, function(x){
   outno <- do.call(rbind,lapply(1:10, function(rep){
-    load(paste(pathstart6266,"maxentHerbWITHerror","Sp", x,"kfold",rep, ".Rda",sep=""))
+    load(paste(pathstart,"maxentHerbWITH_bg500000","Sp", x,"kfold",rep, ".Rda",sep=""))
     pr <- data.frame(PrBg = "pr", ErrorType = "yes", SpeciesNum = x, kfold = rep, xm@presence)
     bg <- data.frame(PrBg = "bg", ErrorType = "yes", SpeciesNum = x, kfold = rep, xm@absence)
     rbind(pr,bg)
@@ -533,9 +523,9 @@ pr.bg_with <- do.call(rbind,lapply(atleast12168, function(x){
   outno
   }))
 
-pr.bg_asis <- do.call(rbind,lapply(atleast12168, function(x){
+pr.bg_asis500000 <- do.call(rbind,lapply(atleast12168, function(x){
   outno <- do.call(rbind,lapply(1:10, function(rep){
-    load(paste(pathstart6266,"maxentHerbnoerror","Sp", x,"kfold",rep, ".Rda",sep=""))
+    load(paste(pathstart,"maxentHerbasis_bg500000","Sp", x,"kfold",rep, ".Rda",sep=""))
     pr <- data.frame(PrBg = "pr", ErrorType = "yes", SpeciesNum = x, kfold = rep, xm@presence)
     bg <- data.frame(PrBg = "bg", ErrorType = "yes", SpeciesNum = x, kfold = rep, xm@absence)
     rbind(pr,bg)
@@ -548,7 +538,7 @@ pr.bg_asis <- do.call(rbind,lapply(atleast12168, function(x){
 # Examine the amount of varaibility in the presence points.
 ```{r}
 
-el <- ggplot(pr.bg_asis, aes(y =ElevationResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+el5 <- ggplot(pr.bg_asis500000, aes(y =ElevationResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
   geom_boxplot()+
   theme_bw()+
   coord_flip()+ 
@@ -562,7 +552,7 @@ el <- ggplot(pr.bg_asis, aes(y =ElevationResampled_bioclim, x = as.factor(Specie
                        labels=c("Presence", "Background"))+
   theme(legend.position="bottom")
 
-as <- ggplot(pr.bg_asis, aes(y =AspectResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+as5 <- ggplot(pr.bg_asis500000, aes(y =AspectResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
   geom_boxplot()+
   theme_bw()+
   coord_flip()+ 
@@ -576,7 +566,7 @@ as <- ggplot(pr.bg_asis, aes(y =AspectResampled_bioclim, x = as.factor(SpeciesNu
                        labels=c("Presence", "Background"))+
   theme(legend.position="bottom")
 
-ru <- ggplot(pr.bg_asis, aes(y =RuggedResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+ru5 <- ggplot(pr.bg_asis500000, aes(y =RuggedResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
   geom_boxplot()+
   theme_bw()+
   coord_flip()+ 
@@ -590,7 +580,7 @@ ru <- ggplot(pr.bg_asis, aes(y =RuggedResampled_bioclim, x = as.factor(SpeciesNu
                        labels=c("Presence", "Background"))+
   theme(legend.position="bottom")
 
-b1 <- ggplot(pr.bg_asis, aes(y =Bio1Resampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+b15 <- ggplot(pr.bg_asis500000, aes(y =Bio1Resampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
   geom_boxplot()+
   theme_bw()+
   coord_flip()+ 
@@ -605,7 +595,7 @@ b1 <- ggplot(pr.bg_asis, aes(y =Bio1Resampled_bioclim, x = as.factor(SpeciesNum)
   theme(legend.position="bottom")
 
 
-b12 <- ggplot(pr.bg_asis, aes(y =Bio12Resampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+b125 <- ggplot(pr.bg_asis500000, aes(y =Bio12Resampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
   geom_boxplot()+
   theme_bw()+
   coord_flip()+ 
@@ -618,11 +608,103 @@ b12 <- ggplot(pr.bg_asis, aes(y =Bio12Resampled_bioclim, x = as.factor(SpeciesNu
                        labels=c("Presence", "Background"))+ 
   theme(legend.position="bottom")
 
-ggsave("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/FigureXX_prbgspace.jpg",
-       grid.arrange(grobs= list(as,ru,el,b12,b1), ncol = 3,
-                    left="Species ID"), width = 20, height = 25, units="in", dpi=300)
+ggsave("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/FigureXX_prbgspace5.jpg",
+       grid.arrange(grobs= list(as5,ru5,el5,b125,b15), ncol = 1,
+                    left="Species ID"), width = 5, height = 25, units="in", dpi=300)
 ```
 
+```{r}
+pr.bg_asis$Background = 5000
+pr.bg_asis$DataType = "as-is"
+pr.bg_asis500000$Background = 5000000
+pr.bg_asis500000$DataType = "as-is"
+
+pr.bg_with$Background = 5000
+pr.bg_with$DataType = "as-is"
+pr.bg_asis500000$Background = 5000000
+pr.bg_asis500000$DataType = "as-is"
+
+pr.bg_asisall <- rbind(pr.bg_asis, pr.bg_asis500000)
+
+elboth <- ggplot(pr.bg_asisall, aes(y =ElevationResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+  geom_boxplot()+
+  theme_bw()+
+  coord_flip()+ 
+  xlab("")+
+  ylim(minValue(rasterstack)[1], maxValue(rasterstack)[1])+
+  # xlab("Species ID")+
+  ylab(expression("Elevation"["meters"]))+
+  scale_fill_manual(values=c("midnightblue","darkseagreen3"),
+                       name="",
+                       breaks=c("pr","bg"),
+                       labels=c("Presence", "Background"))+
+  theme(legend.position="bottom")+
+  facet_wrap(~Background)
+
+asboth <- ggplot(pr.bg_asisall, aes(y =AspectResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+  geom_boxplot()+
+  theme_bw()+
+  coord_flip()+ 
+  xlab("")+
+  ylim(minValue(rasterstack)[2], maxValue(rasterstack)[2])+
+  # xlab("Species ID")+
+  ylab("Aspect")+
+  scale_fill_manual(values=c("midnightblue","darkseagreen3"),
+                       name="",
+                       breaks=c("pr","bg"),
+                       labels=c("Presence", "Background"))+
+  theme(legend.position="bottom")+
+  facet_wrap(~Background)
+
+ruboth <- ggplot(pr.bg_asisall, aes(y =RuggedResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+  geom_boxplot()+
+  theme_bw()+
+  coord_flip()+ 
+  xlab("")+
+  ylim(minValue(rasterstack)[3], maxValue(rasterstack)[3])+
+  # xlab("Species ID")+
+  ylab("Ruggedness")+
+  scale_fill_manual(values=c("midnightblue","darkseagreen3"),
+                       name="",
+                       breaks=c("pr","bg"),
+                       labels=c("Presence", "Background"))+
+  theme(legend.position="bottom")+
+  facet_wrap(~Background)
+
+b1both <- ggplot(pr.bg_asisall, aes(y =Bio1Resampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+  geom_boxplot()+
+  theme_bw()+
+  coord_flip()+ 
+  xlab("")+
+  ylim(minValue(rasterstack)[4], maxValue(rasterstack)[4])+
+  # xlab("Species ID")+
+  ylab(expression("Bio"["1"]))+
+  scale_fill_manual(values=c("midnightblue","darkseagreen3"),
+                       name="",
+                       breaks=c("pr","bg"),
+                       labels=c("Presence", "Background"))+
+  theme(legend.position="bottom")+
+  facet_wrap(~Background)
+
+
+b12both <- ggplot(pr.bg_asisall, aes(y =Bio12Resampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+  geom_boxplot()+
+  theme_bw()+
+  coord_flip()+ 
+  xlab("")+
+  ylim(minValue(rasterstack)[5], maxValue(rasterstack)[5])+
+  ylab(expression("Bio"["12"]))+
+  scale_fill_manual(values=c("midnightblue","darkseagreen3"), 
+                       name="",
+                       breaks=c("pr","bg"),
+                       labels=c("Presence", "Background"))+ 
+  theme(legend.position="bottom")+
+  facet_wrap(~Background)
+
+ggsave("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/FigureXX_prbgspaceboth.jpg",
+       grid.arrange(grobs= list(asboth,ruboth,elboth,b12both,b1both), ncol = 1,
+                    left="Species ID"), width = 6, height = 35, units="in", dpi=300)
+```
 
 
 # Test a range of background point differences in varaibility from the presence points. 
