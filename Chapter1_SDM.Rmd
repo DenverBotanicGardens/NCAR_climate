@@ -620,13 +620,13 @@ pr.bg_asis500000$Background = 5000000
 pr.bg_asis500000$DataType = "as-is"
 
 pr.bg_with$Background = 5000
-pr.bg_with$DataType = "as-is"
-pr.bg_asis500000$Background = 5000000
-pr.bg_asis500000$DataType = "as-is"
+pr.bg_with$DataType = "with"
+pr.bg_with500000$Background = 5000000
+pr.bg_with500000$DataType = "with"
 
-pr.bg_asisall <- rbind(pr.bg_asis, pr.bg_asis500000)
+pr.bg_all <- rbind(pr.bg_asis, pr.bg_asis500000, pr.bg_with, pr.bg_with500000)
 
-elboth <- ggplot(pr.bg_asisall, aes(y =ElevationResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+elboth <- ggplot(pr.bg_all, aes(y =ElevationResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
   geom_boxplot()+
   theme_bw()+
   coord_flip()+ 
@@ -639,9 +639,9 @@ elboth <- ggplot(pr.bg_asisall, aes(y =ElevationResampled_bioclim, x = as.factor
                        breaks=c("pr","bg"),
                        labels=c("Presence", "Background"))+
   theme(legend.position="bottom")+
-  facet_wrap(~Background)
+  facet_wrap(~Background+DataType)
 
-asboth <- ggplot(pr.bg_asisall, aes(y =AspectResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+asboth <- ggplot(pr.bg_all, aes(y =AspectResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
   geom_boxplot()+
   theme_bw()+
   coord_flip()+ 
@@ -654,9 +654,9 @@ asboth <- ggplot(pr.bg_asisall, aes(y =AspectResampled_bioclim, x = as.factor(Sp
                        breaks=c("pr","bg"),
                        labels=c("Presence", "Background"))+
   theme(legend.position="bottom")+
-  facet_wrap(~Background)
+  facet_wrap(~Background+DataType)
 
-ruboth <- ggplot(pr.bg_asisall, aes(y =RuggedResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+ruboth <- ggplot(pr.bg_all, aes(y =RuggedResampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
   geom_boxplot()+
   theme_bw()+
   coord_flip()+ 
@@ -669,9 +669,9 @@ ruboth <- ggplot(pr.bg_asisall, aes(y =RuggedResampled_bioclim, x = as.factor(Sp
                        breaks=c("pr","bg"),
                        labels=c("Presence", "Background"))+
   theme(legend.position="bottom")+
-  facet_wrap(~Background)
+  facet_wrap(~Background+DataType)
 
-b1both <- ggplot(pr.bg_asisall, aes(y =Bio1Resampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+b1both <- ggplot(pr.bg_all, aes(y =Bio1Resampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
   geom_boxplot()+
   theme_bw()+
   coord_flip()+ 
@@ -684,10 +684,10 @@ b1both <- ggplot(pr.bg_asisall, aes(y =Bio1Resampled_bioclim, x = as.factor(Spec
                        breaks=c("pr","bg"),
                        labels=c("Presence", "Background"))+
   theme(legend.position="bottom")+
-  facet_wrap(~Background)
+  facet_wrap(~Background+DataType)
 
 
-b12both <- ggplot(pr.bg_asisall, aes(y =Bio12Resampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
+b12both <- ggplot(pr.bg_all, aes(y =Bio12Resampled_bioclim, x = as.factor(SpeciesNum), fill=PrBg))+
   geom_boxplot()+
   theme_bw()+
   coord_flip()+ 
@@ -699,16 +699,16 @@ b12both <- ggplot(pr.bg_asisall, aes(y =Bio12Resampled_bioclim, x = as.factor(Sp
                        breaks=c("pr","bg"),
                        labels=c("Presence", "Background"))+ 
   theme(legend.position="bottom")+
-  facet_wrap(~Background)
+  facet_wrap(~Background+DataType)
 
 ggsave("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/FigureXX_prbgspaceboth.jpg",
-       grid.arrange(grobs= list(asboth,ruboth,elboth,b12both,b1both), ncol = 1,
-                    left="Species ID"), width = 6, height = 35, units="in", dpi=300)
+       grid.arrange(grobs= list(asboth,ruboth,elboth,b12both,b1both), ncol = 5,
+                    left="Species ID"), width = 20, height = 10, units="in", dpi=300)
 ```
 
 
 # Test a range of background point differences in varaibility from the presence points. 
-    - need to quantify those differences - how??
+    - need to quantify those differences - how?? maybe how much space the presence points take up vs. how much space the background ranges take up. 
     - need to project those differences onto geographic space from environmental space     
 
         1. Set each layer values outside the tolerance range to NA
@@ -727,6 +727,77 @@ ggsave("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Imag
         
         ## Check that it worked
         plot(s2)     
+
+Ask Andrea about making covariate layers
+# test by setting within the center quantile
+```{r}
+
+areaandmaps <- do.call(rbind,lapply(atleast12168, function(x){
+  asp.r <- rasterstack[[2]]
+  ele.r <- rasterstack[[1]]
+  rug.r <- rasterstack[[3]]
+  bio1.r <- rasterstack[[4]]
+  bio12.r <- rasterstack[[5]]
+
+  elev.q <- quantile(pr.bg_all$ElevationResampled_bioclim[pr.bg_all$SpeciesNum==x])
+  asp.q <- quantile(pr.bg_all$AspectResampled_bioclim[pr.bg_all$SpeciesNum==x])
+  rug.q <- quantile(pr.bg_all$RuggedResampled_bioclim[pr.bg_all$SpeciesNum==x])
+  bio1.q <- quantile(pr.bg_all$Bio1Resampled_bioclim[pr.bg_all$SpeciesNum==x])
+  bio12.q <- quantile(pr.bg_all$Bio12Resampled_bioclim[pr.bg_all$SpeciesNum==x])
+  
+  # elev.q <- summary(pr.bg_all$ElevationResampled_bioclim[pr.bg_all$SpeciesNum==x])
+  # asp.q <- summary(pr.bg_all$AspectResampled_bioclim[pr.bg_all$SpeciesNum==x])
+  # rug.q <- summary(pr.bg_all$RuggedResampled_bioclim[pr.bg_all$SpeciesNum==x])
+  # bio1.q <- summary(pr.bg_all$Bio1Resampled_bioclim[pr.bg_all$SpeciesNum==x])
+  # bio12.q <- summary(pr.bg_all$Bio12Resampled_bioclim[pr.bg_all$SpeciesNum==x])
+
+  ele.r[ele.r < elev.q[2] | ele.r > elev.q[4]] <- NA
+  asp.r[asp.r < asp.q[2] |asp.r > asp.q[4]] <- NA
+  rug.r[rug.r < rug.q[2] | rug.r > rug.q[4]] <- NA
+  bio1.r[bio1.r < bio1.q[2] |bio1.r > bio1.q[4]] <- NA
+  bio12.r[bio12.r < bio12.q[2] |bio12.r > bio12.q[4]] <- NA
+  
+  # Sums over the group value, different values over the area of the raster; the values are 2023 to 2620
+  # So gives the number of cells that have each value - value being the area of each cell
+  
+  # s.ele <- tapply(area(ele.r), ele.r[], function(x) sum(x, na.rm = TRUE))
+  # sum(s.ele)
+
+  s <- stack(ele.r, asp.r, rug.r, bio1.r, bio12.r)
+  s2 <- mask(s, calc(s, fun=sum))
+
+#   plot(s)
+# plot(s2)  
+  
+  polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[x],
+                                          g1g2namesall68$Taxon[x]),] 
+  proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+  polys <- spTransform(polys,CRS("+proj=longlat +datum=WGS84"))
+  herbpoints <- SpatialPointsDataFrame(coords = distXsp_noEORgrid1_68[[x]][,c("decimalLongitude","decimalLatitude")],
+                                       data = distXsp_noEORgrid1_68[[x]],
+                                       proj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))    
+  herbpoints <- spTransform(herbpoints, CRS("+proj=longlat +datum=WGS84"))
+  
+  # plot(s2[[1]]); plot(polys, add=TRUE); points(herbpoints,pch=21, col="red", cex=2)
+  # 
+  # Sizes of all cells
+  suitablearea <- area(s2, na.rm=TRUE, weights = FALSE)
+  areasout <- sum(values(suitablearea), na.rm = TRUE)
+  gc()
+  out <- data.frame(SuitableArea = areasout, SpNum = x, ElevationAvail = sum(values(area(ele.r))),
+                    AspectAvail = sum(values(area(asp.r))),
+                    RuggedAvail = sum(values(area(rug.r))),
+                    Bio1Avail = sum(values(area(bio1.r))),
+                    Bio12Avail = sum(values(area(bio12.r))))
+                    
+  out
+}))
+
+save(areaandmaps, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/areaandmaps.Rda")
+
+```
+
+
 
 # Test background points
 ```{r}
