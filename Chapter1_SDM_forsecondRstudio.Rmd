@@ -27,6 +27,8 @@ load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid68.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid1_68.Rda")
+
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/nichevaluesbySDM.Rda")
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
 
 ##Each polygon might be made of multiple disconnected polygons. Need to separate and label
@@ -200,7 +202,8 @@ for(l in notnull1_68){  # notnull1_68
 atleast12168 <- atleast12168[!is.na(atleast12168)] 
 reallistofTiffs <- atleast12168[!atleast12168 %in% c(29,40)]
 
-reallistofTiffs[2:5]
+whichones <- reallistofTiffs[2:5]
+whichones <- reallistofTiffs[2]
 
 habitatSpecificity <- function(whichones, pathstart, replicates){
   habspno <- do.call(rbind,lapply(whichones, function(x){
@@ -211,6 +214,7 @@ habitatSpecificity <- function(whichones, pathstart, replicates){
     }))
   outno
   }))
+  
   habspwith <- do.call(rbind,lapply(whichones, function(x){
   outWITH <- do.call(rbind,lapply(1:replicates, function(rep){
     load(paste(pathstart,"maxentHerbWITHerror","Sp", x,"kfold",rep, ".Rda",sep=""))
@@ -227,12 +231,31 @@ habitatSpecificity <- function(whichones, pathstart, replicates){
     EORpnts <- do.call(rbind, lapply(1:length(polys), function(f){
          outline <- polys@polygons[[f]]@Polygons[[1]]@coords
          outlineout <- data.frame(x=outline[,1],y=outline[,2])
-         grid <- makegrid(polys, cellsize = 500) # cellsize in map units!
+         areas <- sapply(slot(polys, "polygons"), slot, "area")
+         if(min(extent(polys[f,])@xmax-extent(polys[f,])@xmin,
+                extent(polys[f,])@ymax-extent(polys[f,])@ymin)>100)
+         if(areas[f]<)
+         grid <- makegrid(polys, cellsize = 100) # cellsize in map units!
          names(grid) <- c("x","y")
          gridout <- grid[inout(grid,outline), ]
          pntsout <- rbind(gridout,outlineout)
          pntsout
          }))
+    
+# cell size doesn't work soemtimes, maybe divide sample size by area then thin?    
+for(f in 1:length(polys)){
+  # print(extents[f,])
+  #   print(round(areas[f]/(sum(areas)),0)+1)
+  outline <- polys@polygons[[f]]@Polygons[[1]]@coords
+  grid <- (makegrid(polys, cellsize = 100 ))
+  names(grid) <- c("x","y")
+  print(grid[inout(grid,outline), ])
+}
+    
+    extents <- do.call(rbind,lapply(1:length(polys), function(x){
+      ex <- extent(polys[x,])
+      data.frame(xrange = ex@xmax-ex@xmin, yrange= ex@ymax-ex@ymin)
+    }) )
     # Get the sample size of one replicate of each species (x)
     habspeor <- habspno[habspno$SpeciesNum==x & habspno$kfold == 1,]
     if(nrow(EORpnts)>nrow(habspeor)) EORpnts <- thin.max(EORpnts, c("x","y"), nrow(habspeor))
@@ -249,18 +272,14 @@ habitatSpecificity <- function(whichones, pathstart, replicates){
   allsphabsp <- data.frame(habsp[,1:3],prPCA$scores)
   allsphabsp$HerbType <- as.character(allsphabsp$HerbType)
   
-  # for all species and both error and no and EOR
+  # for all species and both error and no and EOR, dropping parameters (kfolds in EOR; only 1)
   habspecificity <- do.call(rbind,
-                            lapply(whichones, function(x){
-  ellipseoutwhichones <- do.call(rbind,
-           lapply(unique(allsphabsp$HerbType[allsphabsp$SpeciesNum==x]),
-                                          function(HT){
-      ellipseoutfold <- do.call(rbind,
-                                lapply(unique(allsphabsp$kfold[allsphabsp$HerbType == HT &
-                                                                 allsphabsp$SpeciesNum==x]), 
-                                       function(k){
-   p <- ggplot(allsphabsp[allsphabsp$SpeciesNum==x & allsphabsp$kfold==k & allsphabsp$HerbType==HT,], 
-                aes(Comp.1,Comp.2))+
+                            lapply(split(allsphabsp, 
+                                         list(allsphabsp$SpeciesNum,
+                                              allsphabsp$kfold,
+                                              allsphabsp$HerbType), drop=TRUE), function(x){
+
+      p <- ggplot(x, aes(Comp.1,Comp.2))+
       geom_point()+
       stat_ellipse(segments=201) #default is to draw 51 line segments to make the ellipse
     # get ellipse coordinates
@@ -276,13 +295,11 @@ habitatSpecificity <- function(whichones, pathstart, replicates){
     
     # Area of ellipse from semi-major and semi-minor axes which are largest and smallest of dist to center
     habitatspecificity <- pi*min(dist2center)*max(dist2center)
-    ellipseoutfold <- data.frame(SpeciesNum = x, kfold = rep, HerbType = HT, habspec = habitatspecificity)
+    ellipseoutfold <- data.frame(SpeciesNum = unique(x$SpeciesNum), 
+                                 kfold = unique(x$kfold), 
+                                 HerbType = unique(x$HerbType), habspec = habitatspecificity)
     ellipseoutfold
         }))
-      ellipseoutfold
-      }))
-    ellipseoutwhichones
-    }))
   habspecificity
 }
 testhabsp <- habitatSpecificity(reallistofTiffs[4:5], pathstart, replicates = 10)
@@ -359,3 +376,55 @@ for(x in atleast12[20:28]){
 ```
 
 
+
+```{r}
+
+pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/")
+atleast12168 <- c()
+for(l in notnull1_68){  # notnull1_68
+  atleast12168[match(l,notnull1_68)] <- if(nrow(distXsp_noEORgrid1_68[[l]])>11){   # match(l,notnull1_68)
+    l } else {
+      NA
+    }
+}
+atleast12168 <- atleast12168[!is.na(atleast12168)] 
+
+reallistofTiffs <- atleast12168[!atleast12168 %in% c(29,40)]
+
+nichevaluesbySDM <- lapply(c(reallistofTiffs), function(i){
+  gc()
+  resultpathno <- list.files(path = pathstart, 
+                           pattern = paste("AvgTiffSp",i,"Herbnoerror",sep=""), 
+                           full.names=TRUE)
+  rastoutno <- raster(resultpathno)
+  resultpathWITH <- list.files(path = pathstart, 
+                     pattern = paste("AvgTiffSp",i,"HerbWITHerror",sep=""), 
+                     full.names=TRUE)
+  rastoutWITH <- raster(resultpathWITH)
+
+  quantilesno <- summary(values(rastoutno))
+  tenthsno <- (quantilesno[5]-quantilesno[1])/10
+  quantilesWITH <- summary(values(rastoutWITH))
+  tenthsWITH <- (quantilesWITH[5]-quantilesWITH[1])/10
+  notenths <- lapply(2:10, function(t){
+    D <- overlay(rasterstack, rastoutno, fun=function(x,y){ 
+      x[y<((t-1)*tenthsno) | y>(t*tenthsno)] <- NA; x})
+    plot(D)
+    
+    
+    out <- na.omit(values(D))
+    out <- data.frame(out)
+    out
+  })
+  withtenths <- lapply(2:10, function(t){
+    D <- overlay(rasterstack, rastoutWITH, fun=function(x,y){ 
+      x[y<((t-1)*tenthsno) | y>(t*tenthsWITH)] <- NA; x})
+    out <- na.omit(values(D))
+    out <- data.frame(out)
+    out
+  })
+  list(notenths,withtenths)
+})
+
+plot(D)
+```
