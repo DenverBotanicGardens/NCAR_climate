@@ -28,6 +28,7 @@ library(rgdal)
 library(ENMeval)
 library(Taxonstand)
 library(grid) # for rectGrob
+library(RCurl)
 
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/habspEORandNoandWith.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/coloradosps.g1g2_168.Rda")
@@ -58,13 +59,13 @@ namesg1g2 <- table(as.character(l1G1G2$GNAME))
 length(namesg1g2) #60 species
 namesg1g2and <- table(as.character(l1G1G2and$GNAME))
 length(namesg1g2and) # 68
-#What? are some in twice? 
+
 namesg1g2and <- c(namesg1g2and[match(names(namesg1g2),names(namesg1g2and))],
                   namesg1g2and[setdiff(names(namesg1g2and),names(namesg1g2))])
 
 # g1g2names <- TPL(names(namesg1g2))
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
-g1g2names61_68 <- TPL(names(namesg1g2and[61:68]))
+# g1g2names61_68 <- TPL(names(namesg1g2and[61:68]))
 
 
 notnull <- which(!unlist(lapply(distXsp_noEORgrid, is.null)))
@@ -88,7 +89,7 @@ rm(l)
 #Each polygon might be made of multiple disconnected polygons. Need to separate and label
 length(namesg1g2) #60 species
 length(namesg1g2and) # 68
-g1g2namesall68 <- TPL(names(namesg1g2and))
+# g1g2namesall68 <- TPL(names(namesg1g2and))
 g1g2namesall68$AcceptedName <- paste(g1g2namesall68$New.Genus,g1g2namesall68$New.Species)
 
 
@@ -507,6 +508,9 @@ ggsave("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Imag
        grid.arrange(grobs= list(as,ru,el,b12,b1), ncol = 3,
                     left="Species ID"), width = 20, height = 25, units="in", dpi=300)
 ```
+
+
+
 
 Again but with background points around more area
 ```{r}
@@ -982,11 +986,11 @@ tab1 <- do.call(rbind, lapply(split(df_dist, df_dist$SpNum), function(x){
 
 tab1$SDM[tab1$SpNum %in% atleast12168] <- "x"
 
-write.csv(tab1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/table1.csv")
+# write.csv(tab1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/table1.csv")
 
-library(Taxonstand)
-TPLtbl1 <- TPL(tab1$Species)
-write.csv(TPLtbl1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/TPLtbl1.csv")
+
+# TPLtbl1 <- TPL(tab1$Species)
+# write.csv(TPLtbl1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/TPLtbl1.csv")
 
 ```
 
@@ -1275,16 +1279,6 @@ Accuracy
 ```{r}
 # load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 library(maptools)
-l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
-l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
-l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
-                                       function(x){
-              x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
-              x
-              }))
-plot(l1G1G2)
-
-
 
 pathstartwithnoerror <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
 patternmatchno <- "Herbnoerrorkfold"
@@ -1326,6 +1320,54 @@ accuracyhists <- function(pathstart, probmapnames, whichones, reps = 1:10){
   })
 }
 
+# Not each of the replicates but the average or the SD of the replicates, one per species
+# Add in the overlap of the rasterstack 
+accuracyhistsOneperSp_climate <- function(pathstart, whichones = reallistofTiffs, SDorAVG = "Avg", WithorNo = "WITH"){
+  lapply(whichones, function(i){
+    resultpath <- list.files(path = pathstart, 
+                         pattern = paste(SDorAVG,"TiffSp",i,"Herb",WithorNo, sep=""), 
+                         full.names=TRUE)
+    
+    r <- raster(resultpath)
+    polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[i],
+                                              g1g2namesall68$Taxon[i]),] 
+
+    # Only want ones after 1980
+    years <- as.numeric(substring(polys$LASTOBS,1,4))
+    yearlater1980 <- c()
+    for(l in 1:length(years)){
+      yearlater1980[l] <- if(years[l]>1980){
+                                      l } else {
+                                        NA
+                                      }
+    }
+    yearlater1980 <- yearlater1980[!is.na(yearlater1980)]
+    polys <- polys[yearlater1980,]
+    
+    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+    
+    
+    f <- spTransform(polys, CRS("+proj=longlat +datum=WGS84"))   
+    fr <- extract(r, f, small = TRUE, weights = TRUE)
+    
+    # environr <- calc(rasterstack, function(x) extract(x, f, small= TRUE, weights = TRUE))
+    environr <- lapply(1:5, function(x){
+      out <- extract(rasterstack[[x]], f, small=TRUE, weights = TRUE)
+      do.call(rbind, out)
+    })
+    outenviron <- do.call(cbind, environr)
+    newnames <- mapply(function(x,y) paste(x,y,sep="_"),x = rep(c("value","weight"),5),y = rep(names(rasterstack),each=2))
+    rasterstackpoly <- data.frame(outenviron)
+    names(rasterstackpoly) <- newnames
+    # Want the value [,1] for each polygon but use the weight [,2] to get the pro-rated cells 
+    out <- do.call(rbind,fr)
+    out <- data.frame(out)
+    data.frame(out,rasterstackpoly)
+    })
+}
+```
+
+```{r}
 
 accuracyhistsOneperSp <- function(pathstart, whichones = reallistofTiffs, SDorAVG = "Avg", WithorNo = "WITH"){
   lapply(whichones, function(i){
@@ -1358,22 +1400,35 @@ accuracyhistsOneperSp <- function(pathstart, whichones = reallistofTiffs, SDorAV
     out
     })
 }
+```
 
+```{r}
 pathstart1 <- "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/"
 # probmapnames1 <- "Herbnoerrorkfold"
 # whichones1 <- atleast12[atleast12!=8]
 
-noerrorhists <- accuracyhists(pathstart1, probmapnames1, whichones1)
-hist(noerrorhists[[1]][[2]])
+# noerrorhists <- accuracyhists(pathstart1, probmapnames1, whichones1)
+# hist(noerrorhists[[1]][[2]])
 
 witherrorhists <- accuracyhists("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/", "HerbWITHerrorkfold", whichones1)
-
-reallistofTiffs <- atleast12168[!atleast12168 %in% c(29,40)]
+# 
+# reallistofTiffs <- atleast12168[!atleast12168 %in% c(29,40)]
+# 
+# #Averaged and SD of probability maps second function
+# noerrorhistsofavg <- accuracyhistsOneperSp(whichones = reallistofTiffs, pathstart1, WithorNo = "no")
+# witherrorhistsofavg <- accuracyhistsOneperSp(whichones = reallistofTiffs,pathstart1)
 
 #Averaged and SD of probability maps second function
-noerrorhistsofavg <- accuracyhistsOneperSp(whichones = reallistofTiffs, pathstart1, WithorNo = "no")
-witherrorhistsofavg <- accuracyhistsOneperSp(whichones = reallistofTiffs,pathstart1)
+# noerrorhistsofavg_withclimate <- accuracyhistsOneperSp_climate(whichones = reallistofTiffs, pathstart1, WithorNo = "no")
+# witherrorhistsofavg_withclimate <- accuracyhistsOneperSp_climate(whichones = reallistofTiffs,pathstart1)
+# 
+# save(noerrorhistsofavg_withclimate, file = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/noerrorhistsofavg_withclimate.Rdata")
+# 
+# save(witherrorhistsofavg_withclimate, file = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/witherrorhistsofavg_withclimate.Rdata")
 
+
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/noerrorhistsofavg_withclimate.Rdata")
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/witherrorhistsofavg_withclimate.Rdata")
 
 # kstest are they different or the same,
 # then 
@@ -1384,9 +1439,9 @@ witherrorhistsofavg <- accuracyhistsOneperSp(whichones = reallistofTiffs,pathsta
 # plots same or different 
 # AICc has wrong parameters
 
-save(noerrorhistsofavg, file = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/noerrorhistsofavg.Rdata")
-
-save(witherrorhistsofavg, file = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/witherrorhistsofavg.Rdata")
+# save(noerrorhistsofavg, file = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/noerrorhistsofavg.Rdata")
+# 
+# save(witherrorhistsofavg, file = "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/witherrorhistsofavg.Rdata")
 ```
 
 
@@ -1402,6 +1457,255 @@ ks.outs <- lapply(1:length(noerrorhistsofavg), function(i){
              log(data.frame(witherrorhistsofavg[[i]])$weight))
 })
 
+#Which are different for climate and slope things?
+ks.elev <- lapply(1:length(witherrorhistsofavg_withclimate), function(i){
+  ks.test(log(data.frame(noerrorhistsofavg_withclimate[[i]])$value_ElevationResampled_bioclim)+
+             log(data.frame(noerrorhistsofavg_withclimate[[i]])$weight_ElevationResampled_bioclim),
+          log(data.frame(witherrorhistsofavg_withclimate[[i]])$value_ElevationResampled_bioclim)+
+             log(data.frame(witherrorhistsofavg_withclimate[[i]])$weight_ElevationResampled_bioclim))
+})
+
+ks.asp <- lapply(1:length(witherrorhistsofavg_withclimate), function(i){
+  ks.test(log(data.frame(noerrorhistsofavg_withclimate[[i]])$value_AspectResampled_bioclim)+
+             log(data.frame(noerrorhistsofavg_withclimate[[i]])$weight_AspectResampled_bioclim),
+          log(data.frame(witherrorhistsofavg_withclimate[[i]])$value_AspectResampled_bioclim)+
+             log(data.frame(witherrorhistsofavg_withclimate[[i]])$weight_AspectResampled_bioclim))
+})
+
+ks.rugged <- lapply(1:length(witherrorhistsofavg_withclimate), function(i){
+  ks.test(log(data.frame(noerrorhistsofavg_withclimate[[i]])$value_RuggedResampled_bioclim)+
+             log(data.frame(noerrorhistsofavg_withclimate[[i]])$weight_RuggedResampled_bioclim),
+          log(data.frame(witherrorhistsofavg_withclimate[[i]])$value_RuggedResampled_bioclim)+
+             log(data.frame(witherrorhistsofavg_withclimate[[i]])$weight_RuggedResampled_bioclim))
+})
+
+ks.bio1 <- lapply(1:length(witherrorhistsofavg_withclimate), function(i){
+  ks.test(log(data.frame(noerrorhistsofavg_withclimate[[i]])$value_Bio1Resampled_bioclim)+
+             log(data.frame(noerrorhistsofavg_withclimate[[i]])$weight_Bio1Resampled_bioclim),
+          log(data.frame(witherrorhistsofavg_withclimate[[i]])$value_Bio1Resampled_bioclim)+
+             log(data.frame(witherrorhistsofavg_withclimate[[i]])$weight_Bio1Resampled_bioclim))
+})
+
+ks.bio12 <- lapply(1:length(witherrorhistsofavg_withclimate), function(i){
+  ks.test(log(data.frame(noerrorhistsofavg_withclimate[[i]])$value_Bio12Resampled_bioclim)+
+             log(data.frame(noerrorhistsofavg_withclimate[[i]])$weight_Bio12Resampled_bioclim),
+          log(data.frame(witherrorhistsofavg_withclimate[[i]])$value_Bio12Resampled_bioclim)+
+             log(data.frame(witherrorhistsofavg_withclimate[[i]])$weight_Bio12Resampled_bioclim))
+})
+
+# *noerrorhistsofavg_withclimate[[i]]$weight_AspectResampled_bioclim
+# *noerrorhistsofavg_withclimate[[i]]$weight
+# *witherrorhistsofavg_withclimate[[i]]$weight_AspectResampled_bioclim
+# *witherrorhistsofavg_withclimate[[i]]$weight
+
+for(i in 1:length(witherrorhistsofavg_withclimate)){
+  plot(noerrorhistsofavg_withclimate[[i]]$value_AspectResampled_bioclim,
+       noerrorhistsofavg_withclimate[[i]]$value,
+       xlab = "Aspect",
+       ylab= "Suitability", pch=16,
+       main = g1g2namesall68$AcceptedName[reallistofTiffs[i]])
+  points(witherrorhistsofavg_withclimate[[i]]$value_AspectResampled_bioclim,
+       witherrorhistsofavg_withclimate[[i]]$value, col="grey50", pch=24)
+}
+```
+
+```{r}
+for(i in 1:length(witherrorhistsofavg_withclimate)){
+  plot <- ggplot()+
+    geom_point(data=noerrorhistsofavg_withclimate[[i]], aes(value_RuggedResampled_bioclim,value))+
+    stat_smooth(data=noerrorhistsofavg_withclimate[[i]], aes(value_RuggedResampled_bioclim,value),
+                colour = "black")+
+    
+    geom_point(data=witherrorhistsofavg_withclimate[[i]], aes(value_RuggedResampled_bioclim,value), 
+               colour= "grey50", pch=24)+
+    stat_smooth(data=witherrorhistsofavg_withclimate[[i]], aes(value_RuggedResampled_bioclim,value),
+                colour = "grey30")+
+    xlab("Ruggedness")+
+    ylab("Suitability")+
+    labs(title = paste(g1g2namesall68$AcceptedName[reallistofTiffs[i]]))+
+    theme_bw()
+  # scatter.smooth(witherrorhistsofavg_withclimate[[i]]$value_ElevationResampled_bioclim,
+  #      witherrorhistsofavg_withclimate[[i]]$value, col="grey50", pch=24, new = FALSE)
+  print(plot)
+}
+
+
+```
+
+```{r}
+for(i in 1:length(witherrorhistsofavg_withclimate)){
+  plot <- ggplot()+
+    geom_point(data=noerrorhistsofavg_withclimate[[i]], aes(value_ElevationResampled_bioclim,value))+
+    stat_smooth(data=noerrorhistsofavg_withclimate[[i]], aes(value_ElevationResampled_bioclim,value),
+                colour = "black")+
+    
+    geom_point(data=witherrorhistsofavg_withclimate[[i]], aes(value_ElevationResampled_bioclim,value), 
+               colour= "grey50", pch=24)+
+    stat_smooth(data=witherrorhistsofavg_withclimate[[i]], aes(value_ElevationResampled_bioclim,value),
+                colour = "grey30")+
+    xlab("Elevation")+
+    ylab("Suitability")+
+    labs(title = paste(g1g2namesall68$AcceptedName[reallistofTiffs[i]]))+
+    theme_bw()
+  # scatter.smooth(witherrorhistsofavg_withclimate[[i]]$value_ElevationResampled_bioclim,
+  #      witherrorhistsofavg_withclimate[[i]]$value, col="grey50", pch=24, new = FALSE)
+  print(plot)
+}
+
+
+```
+
+```{r}
+noerrorhistsofavg_withclimate[[4]]
+witherrorhistsofavg_withclimate[[4]]
+```
+
+
+```{r}
+lapply(grep("value",names(noerrorhistsofavg_withclimate[[i]]))[-1], function(col){
+  
+  lapply(1:length(witherrorhistsofavg_withclimate), function(i){
+    noerrnow <- noerrorhistsofavg_withclimate[[i]][,c(1,col)]
+    names(noerrnow) <- c("value","now")
+    witherrnow <- witherrorhistsofavg_withclimate[[i]][,c(1,col)]
+    names(witherrnow) <- c("value","now")
+    plot <- ggplot()+
+      geom_boxplot(data=noerrnow, aes(now,value))+
+      stat_smooth(data=noerrnow, method = lm, formula = y ~ splines::bs(x, 3), se = FALSE,
+                  aes(now,value),colour = "black")+
+      
+      geom_point(data=witherrnow, aes(now,value), 
+                 colour= "grey50", pch=24)+
+      geom_smooth(data=witherrnow, method = lm, formula = y ~ splines::bs(x, 3), se = FALSE, aes(now,value),
+                  colour = "grey30")+
+      xlab(paste(names(noerrorhistsofavg_withclimate[[i]][col])))+
+      ylab("Suitability")+
+      labs(title = paste(g1g2namesall68$AcceptedName[reallistofTiffs[i]]))+
+      theme_bw()
+  print(plot)
+  })
+})
+
+
+```
+
+
+# Regardless of how the suitability changes with the climatic variables, how much does the suitability vary in the two surfaces where the species is known to be found. 
+```{r}
+
+suittoplot <- do.call(rbind,lapply(1:length(witherrorhistsofavg_withclimate), function(i){
+  noout <- data.frame(Species = g1g2namesall68$AcceptedName[reallistofTiffs[i]],
+                    Error = "as-is", noerrorhistsofavg_withclimate[[i]])
+  # bind the species specificity and area to this table.
+  noout <- cbind(noout, 
+                 distXspall52[distXspall52$Species == g1g2namesall68$AcceptedName[reallistofTiffs[i]],])
+                              # &distXspall52$year > 1980,])
+  
+  addedout <- data.frame(Species = g1g2namesall68$AcceptedName[reallistofTiffs[i]],
+                    Error = "additional", witherrorhistsofavg_withclimate[[i]])
+  addedout <- cbind(addedout, 
+                    distXspall52[distXspall52$Species == g1g2namesall68$AcceptedName[reallistofTiffs[i]],])
+                                 # &distXspall52$year > 1980,])
+  out <- rbind(noout, addedout)
+  out
+}))
+
+# unlist(lapply(distXsp_noEORgrid68, function(x){
+#   print(nrow(x))
+# }))
+
+distXsp_noEORgrid68[[1]] # There are way fewer... 
+distXsp_noEORgrid1_68[[1]] 
+
+unlist(lapply(distXsp_noEORgrid1_68, function(x){
+  print(nrow(x))
+}))
+```
+
+```{r}
+lapply(noerrorhistsofavg_withclimate, function(x){
+  print(nrow(x))
+})
+
+```
+
+
+```{r}
+ggplot(suittoplot, aes(x = Error, y=value, colour=Species))+
+  geom_boxplot()+
+  # geom_jitter(position=position_jitter(0.2))+
+  ylab("Suitability")+
+  theme_bw()
+
+ggplot(suittoplot, aes(x =Species , y=value, colour=Error))+
+  geom_boxplot()+
+  # geom_jitter(position=position_jitter(0.2))+
+  ylab("Suitability")+
+  theme_bw()+ 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+Plot the paired differences
+```{r}
+lapply(1:length(witherrorhistsofavg_withclimate), function(i){
+  lapply(grep("value",names(noerrorhistsofavg_withclimate[[i]]))[-1], function(col){
+    print(col)
+    difference.df <- data.frame(noerrorhistsofavg_withclimate[[i]]$value-
+                                  witherrorhistsofavg_withclimate[[i]]$value,
+                 noerrorhistsofavg_withclimate[[i]][,col])
+    names(difference.df) <- c("Diff","climate")
+  
+  plot <- ggplot(difference.df, aes(climate, Diff))+
+    geom_point()+
+    stat_smooth(colour = "black")+
+    xlab(paste(names(noerrorhistsofavg_withclimate[[i]][col])))+
+    ylab("Difference in Suitability (as-is - additional)")+
+    labs(title = paste(g1g2namesall68$AcceptedName[reallistofTiffs[i]]))+
+    theme_bw()
+  # scatter.smooth(witherrorhistsofavg_withclimate[[i]]$value_ElevationResampled_bioclim,
+  #      witherrorhistsofavg_withclimate[[i]]$value, col="grey50", pch=24, new = FALSE)
+  print(plot)
+  })
+})
+
+
+```
+
+
+```{r}
+for(i in 1:length(witherrorhistsofavg_withclimate)){
+  plot(noerrorhistsofavg_withclimate[[i]]$value_RuggedResampled_bioclim,
+       noerrorhistsofavg_withclimate[[i]]$value,
+       xlab = "Ruggedness",
+       ylab= "Suitability", pch=16,
+       main = g1g2namesall68$AcceptedName[reallistofTiffs[i]])
+  points(witherrorhistsofavg_withclimate[[i]]$value_RuggedResampled_bioclim,
+       witherrorhistsofavg_withclimate[[i]]$value, col="grey50", pch=24)
+}
+
+
+```
+```{r}
+for(i in 1:length(witherrorhistsofavg_withclimate)){
+  plot(noerrorhistsofavg_withclimate[[i]]$value_Bio1Resampled_bioclim,
+       noerrorhistsofavg_withclimate[[i]]$value,
+       xlab = "Bio1",
+       ylab= "Suitability", pch=16,
+       main = g1g2namesall68$AcceptedName[reallistofTiffs[i]])
+  points(witherrorhistsofavg_withclimate[[i]]$value_Bio1Resampled_bioclim,
+       witherrorhistsofavg_withclimate[[i]]$value, col="grey50", pch=24)
+}
+
+
+```
+```{r}
+witherrorhistsofavg_withclimate[[4]]
+noerrorhistsofavg_withclimate[[4]]
+
+```
+
+```{r}
 length(notnulls68) # 67
 
 sapply(ks.outs, '[',2)
@@ -1433,35 +1737,7 @@ par(mar=c(5.1, 4.1, 4.1, 2.1))
 <https://stats.stackexchange.com/questions/324841/fitting-regression-spline> 
 Using Stan to fit regression splines  
 <https://mc-stan.org/users/documentation/case-studies/splines_in_stan.html> 
-```{r}
-library(splines)
-functions {
-  vector f(vector t, real gamma_1, real gamma_3); // implement this spline
-}
-data {
-  int<lower=1> subjects;
-  int<lower=1> periods;
-  vector[periods] y[subjects];
-  vector[periods] t[subjects];
-}
-parameters {
-  vector[3] gamma_raw[subjects]; // using non-centered parameterization
-  cholesky_factor_corr[3] C:
-  vector<lower=0>[3] lambda; // standard deviations for gamma
-  real<lower=0> sigma;
-}
-model {
-  matrix[3,3] L = diag_pre_multiply(C, lambda);
-  for (s in 1:subjects) {
-    vector[3] gamma = L * gamma_raw[s];
-    target += normal_lpdf(gamma_raw[s] | 0, 1); // implies gamma is MVN
-    target += normal_lpdf(y[s] | gamma[2] + f(t[s], gamma[1], gamma[3]),
-                                 sigma);
-  }
-  target += lkj_corr_cholesky(C | 1); // C * C' is uniform a priori
-  // priors on lambda and sigma
-}
-```
+
 
 ```{r}
 # sort by smallest to largest area
@@ -1500,6 +1776,8 @@ areasortaccuracy <- unique(df_dist[df_dist$SpNum %in% reallistofTiffs[which(!is.
 
 ```
 
+
+ sorting is not working. But want to look at the distribution of suitability according to climate variables. 
 ```{r}
 
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure4_accuracy.jpg",
@@ -1530,6 +1808,16 @@ for(i in 1:length(areasortaccuracy)){
 
 dev.off()
 ```
+
+
+
+#Cummulative Distribution curve of the raster cells against the climate variables to compare as-is to with error. 
+```{r}
+
+
+```
+
+
 
 # try ks plot kernel smoothing, smothing optimized for display
 # plot ecdf, the sum of logs 
