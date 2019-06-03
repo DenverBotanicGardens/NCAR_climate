@@ -44,12 +44,22 @@ library(foreach)
 require(lme4)
 require(lattice)
 require(AICcmodavg)
+library(splancs)
 
-
-     library(splancs)
 
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
+
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_v3.Rda")
+notnull <- which(!unlist(lapply(mapply('[[', distXsp_noEORgrid, 1), is.null)))
+atleast12 <- c()
+for(l in notnull){
+  atleast12[match(l,notnull)] <- if(nrow(distXsp_noEORgrid[[l]])>11){ 
+    l } else {
+      NA
+    }
+}
+atleast12 <- atleast12[!is.na(atleast12)] 
 
 
 # load("P:/hackathon/Simulations/coloradosps.Rda")
@@ -229,6 +239,18 @@ length(unique(as.character(l1G1G2and$GNAME)))
 # Was HerbPntsEORs_CO.jpg --> changing to Figure 1 in .eps format
 # grDevices::setEPS; says ps.options needs to be called before calling postscript and the override with more arguments to postscript
 
+coElev_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled_bioclim.tif")
+# aspect50int.tif
+coAspect_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/AspectResampled_bioclim.tif")
+# COplus_ruggedInt50.tif
+coRugged_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/RuggedResampled_bioclim.tif")
+bio1_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio1Resampled_bioclim.tif")
+bio12_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled_bioclim.tif")
+gc()
+rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
+rm(bio1_res,bio12_res,coAspect_res,coElev_res,coRugged_res)
+gc()
+
 outside <- extent(rasterstack[[1]])
 e <- as(outside, "SpatialPolygons")
 sp::proj4string(e) <-  CRS("+proj=longlat +datum=WGS84") 
@@ -368,8 +390,8 @@ coloradosps.g1g2_6168$lat2 <- round(coloradosps.g1g2_6168$decimalLatitude,2)
 coloradosps.g1g2_6168$lon3 <- round(coloradosps.g1g2_6168$decimalLongitude,3) # about 110 m
 coloradosps.g1g2_6168$lat3 <- round(coloradosps.g1g2_6168$decimalLatitude,3)
 
-save(g1g2namesall68, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2namesall68.Rda")
-save(coloradosps.g1g2_168, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/coloradosps.g1g2_168.Rda")
+# save(g1g2namesall68, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2namesall68.Rda")
+# save(coloradosps.g1g2_168, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/coloradosps.g1g2_168.Rda")
 
 ```
 
@@ -495,6 +517,8 @@ length(distXsp_noEORgrid1_68) # 68
 
 Yeardiff is the herbarium colleciton year - the polygon mapped year (LastOBS) so positive values are herbarium later than mapped, negative numbers are the herbarium colleciton before the mapped time
 ```{r}
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid1_68.Rda") 
+
 distXspall <- do.call(rbind, distXsp_noEORgrid1_68)
 distXspall$New.Genus <- gsub("([A-Za-z]+).*", "\\1", distXspall$Species)
 table(distXspall$Yeardiff) # 9999 for unknown year of EOR mapping --> removed now
@@ -502,37 +526,8 @@ distXspall[distXspall$Yeardiff< -100,c("EORdate","year")] # Collections made in 
 names(distXspall)
 ```
 
-Models included (1) species range, (2) collection year, (3) Genus, (4) years between collection and mapping, (5) collection year + species range, (6) collection year * species range, (7) Genus * Year, (8) Genus * collection year * species range, (9) Genus * years between collection and mapping * species range, and (10) intercept only (null model).
-```{r}
-f1 <- lm(Dist ~ as.factor(New.Genus)*year + Area, data= distXspall)
-f2 <- lm(Dist ~ year + Area, data= distXspall)
-f3 <- lm(Dist ~ year, data= distXspall)
-f4 <- lm(Dist ~ Area, data= distXspall) #x is the area of the species known range
-f5 <- lm(Dist ~ 1, data= distXspall)
-f6 <- lm(Dist ~ year*Area, data= distXspall) #year given the range
-f7 <- lm(Dist ~ as.factor(New.Genus)*(year), data= distXspall)
-f8 <- lm(Dist ~ Yeardiff, data= distXspall) # range shift
-f9 <- lm(Dist ~ as.factor(New.Genus)*year*Area, data= distXspall)
-f10 <- lm(Dist ~ as.factor(New.Genus)*Yeardiff*Area, data= distXspall)
 
-
-(lmresults <- aictab(list(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10),
-       modnames=as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10),formula))),
-       second.ord = FALSE))
-
-evidence(aictab(cand.set = list(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10),
-                modnames = as.character(unlist(lapply(list(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10),formula)))))
-
-sapply(1:length(lmresults$Delta_AICc), function(i){
-  exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
-})
-
-(er1 <- exp(0.5*lmresults$Delta_AICc[2]))
-(er2 <- exp(0.5*lmresults$Delta_AICc[3]))
-
-```
-
-When ignoring genus since those are so unevenly applied (lots of mustards)
+When ignoring genus since those are so unevenly applied (lots of mustards)   
 ```{r}
 
 # Why is aictab adding an extra parameter
@@ -572,11 +567,59 @@ sapply(1:length(lmresults$Delta_AICc), function(i){
 (er3 <- exp(0.5*lmresults$Delta_AICc[4]))
 (er4 <- exp(0.5*lmresults$Delta_AICc[5]))
 (er5 <- exp(0.5*lmresults$Delta_AICc[6]))
+table(distXspall$SpNum)
 
+summary(f6)
+summary(f3)
+summary(f4)
 ```
 
+5/22/2019 - doesn't really matter which was earlier, the herbarium specimen or the EOR just that they are separated by more time means more time for range to migrate. 
+```{r}
 
+# Why is aictab adding an extra parameter
+# maybe AICc
 
+# f1 <- lm(Dist ~ as.factor(New.Genus)*year + Area, data= distXspall)
+f2 <- lm(Dist ~ year + Area, data= distXspall)
+f3 <- lm(Dist ~ year, data= distXspall)
+f4 <- lm(Dist ~ Area, data= distXspall) #x is the area of the species known range
+f5 <- lm(Dist ~ 1, data= distXspall)
+f6 <- lm(Dist ~ year*Area, data= distXspall) #year given the range
+# f7 <- lm(Dist ~ as.factor(New.Genus)*(year), data= distXspall)
+f8 <- lm(Dist ~ abs(Yeardiff), data= distXspall) # range shift
+# f9 <- lm(Dist ~ as.factor(New.Genus)*year*Area, data= distXspall)
+# f10 <- lm(Dist ~ as.factor(New.Genus)*Yeardiff*Area, data= distXspall)
+
+f11 <- lm(Dist ~ abs(Yeardiff)*Area, data= distXspall) # range shift by specificity
+
+f12 <- lm(Dist ~ abs(Yeardiff)+Area, data= distXspall) # range shift by specificity
+
+aictab(list(f4))
+
+AICc(f4, second.ord=FALSE, return.K = TRUE)
+
+(lmresults <- aictab(list(f2,f3,f4,f5,f6,f8,f11,f12),
+       modnames=as.character(unlist(lapply(list(f2,f3,f4,f5,f6,f8,f11,f12),formula)))))
+
+evidence(aictab(cand.set = list(f2,f3,f4,f5,f6,f8,f11,f12),
+                modnames = as.character(unlist(lapply(list(f2,f3,f4,f5,f6,f8,f11,f12),formula)))))
+
+sapply(1:length(lmresults$Delta_AICc), function(i){
+  exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
+})
+
+(er1 <- exp(0.5*lmresults$Delta_AICc[2]))
+(er2 <- exp(0.5*lmresults$Delta_AICc[3]))
+(er3 <- exp(0.5*lmresults$Delta_AICc[4]))
+(er4 <- exp(0.5*lmresults$Delta_AICc[5]))
+(er5 <- exp(0.5*lmresults$Delta_AICc[6]))
+table(distXspall$SpNum)
+
+summary(f6)
+summary(f3)
+summary(f4)
+```
 
 
 
@@ -619,11 +662,13 @@ class(bioclim.colorado)
 
 #Need back to latlon for bioclim layers
 pointsXsp.latlon <- list()
-for(i in 1:length(want)){
-  pointsXsp.latlon[[i]] <- spTransform(distXsp[[want[i]]][[1]], CRS(proj4string(bioclim.colorado)))
-}
+# for(i in 1:length(want)){
+#   pointsXsp.latlon[[i]] <- spTransform(distXsp[[want[i]]][[1]], CRS(proj4string(bioclim.colorado)))
+# }
 
 ```
+
+# does it matter which way in time years between herb and EOR, should be abs(), no?
 
 ```{r}
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure2_v2.jpg",
@@ -631,29 +676,29 @@ jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images
 
 layout(matrix(c(1,2,3), 1,3))
 plot(distXspall$Area,
-     distXspall$Dist,
+     log(distXspall$Dist+1),
      xlab=expression(paste("Species Range km" ^2)),
-     ylab=expression(paste("km")),
-     pch=16, cex= .5, yaxt="n", xaxt="n")
-     axis(2, at=c(0,100,200,300,400)*1000, labels=c(0,100,200,300,400))
+     ylab=expression(paste(km["log"])),
+     pch=16, cex= .5, xaxt="n") # , yaxt="n"
+     # axis(2, at=c(0,100,200,300,400)*1000, labels=c(0,100,200,300,400))
      axis(1, at=c(0,10,20,30,40,50,60,70,80,90)*(1000^2), labels=c(0,10,20,30,40,50,60,70,80,90))
-abline(lm(Dist~Area, data=distXspall))
+abline(lm(log(Dist+1)~Area, data=distXspall))
 mtext("a)", side=3, line=0, adj=0)
 plot(jitter(distXspall$year ),
-     distXspall$Dist,
+     log(distXspall$Dist+1),
      xlab="Year",
      ylab="",
-     pch=16, cex= .25, yaxt="n")
-     axis(2, at=c(0,100,200,300,400)*1000, labels=c(0,100,200,300,400))
-abline(lm(Dist~year, data=distXspall))
+     pch=16, cex= .25) # , yaxt="n")
+     # axis(2, at=c(0,100,200,300,400)*1000, labels=c(0,100,200,300,400))
+abline(lm(log(Dist+1)~year, data=distXspall))
 mtext("b)", side=3, line=0, adj=0)
-plot(jitter(distXspall$Yeardiff ),
-     distXspall$Dist,
+plot(jitter(abs(distXspall$Yeardiff) ),
+     log(distXspall$Dist),
      xlab="Difference in collection year and mapped year",
      ylab="",
-     pch=16, cex= .25, yaxt="n")
-     axis(2, at=c(0,100,200,300,400)*1000, labels=c(0,100,200,300,400))
-abline(lm(Dist~Yeardiff, data=distXspall))
+     pch=16, cex= .25) # , yaxt="n")
+     # axis(2, at=c(0,100,200,300,400)*1000, labels=c(0,100,200,300,400))
+abline(lm(log(Dist+1)~abs(Yeardiff), data=distXspall))
 mtext("c)", side=3, line=0, adj=0)
 dev.off()
 ```
