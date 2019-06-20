@@ -232,21 +232,6 @@ save(distXsp_EOR, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in ni
 
 #Maxent function
 ```{r}
-x = atleast12[3]
-numberofReps = 10
-error = FALSE
-Whichproj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
-spatialpointsdataframe_herb <- distXsp_justEOR_spdf
-maxentarguments = FALSE
-filenames = "EOR_bg5000"
-predictorvariables = rasterstack
-pathstart = pathstart
-backgroundscale = 5000
-distdistribution <- rpois(1000,100)
-
-
-rm(spatialpointsdataframe_herb,whichones,numberofReps,error,Whichproj4string,maxentarguments,filenames,predictorvariables,backgroundscale)
-
 maxentrun <- function(whichones, spatialpointsdataframe_herb, 
                       Whichproj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"),
                       numberofReps = 10, 
@@ -349,14 +334,6 @@ match(1:68,notnull)
 atleast12 <- unlist(lapply(notnull, function(l){
   if(nrow(distXsp_EOR[[l]][[2]])>11) l
   }))
-
-# spatialpointsdataframe_herb will be turned into a spatialpointsdataframe from x =  "decimalLongitude" and y = "decimalLatitude as the coords"
-# distXsp_justEOR <- mapply('[[', distXsp_EOR, 2)
-# distXsp_justEOR <- lapply(atleast12, function(x){
-#   out <- data.frame(distXsp_justEOR[x])
-#   colnames(out) <- c("decimalLongitude","decimalLatitude")
-#   out
-#   })
 
 
 distXsp_justEOR_forspdf <- mapply('[[', distXsp_EOR, 2)
