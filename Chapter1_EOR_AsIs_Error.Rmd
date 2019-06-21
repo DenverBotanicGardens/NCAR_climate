@@ -264,14 +264,14 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb,
                 bgpnts <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
                 
                 convertxy <- spTransform(df, CRS("+proj=longlat +datum=WGS84"))
-                proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+                proj4string(bgpnts) <- Whichproj4string
                 bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
           } else {
                 convertxy <- spTransform(pointsspdf, CRS("+proj=longlat +datum=WGS84"))
                 circlesout <- circles(pointsspdf, d = backgroundscale)
                 polygns <- polygons(circlesout)
                 bgpnts <- spsample(polygns, 300, "stratified")
-                # proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+                proj4string(bgpnts) <- Whichproj4string
                 bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
             
           }
@@ -335,7 +335,7 @@ atleast12 <- unlist(lapply(notnull, function(l){
   if(nrow(distXsp_EOR[[l]][[2]])>11) l
   }))
 
-
+# Selected polygons mapped after 1980, found overlapping raster cells for points; thinned to matching number of points from herbarium specimens (the number of raster cells covered by herbarium specimens collected after 1980). May lead to repeated points from EOR records. 
 distXsp_justEOR_forspdf <- mapply('[[', distXsp_EOR, 2)
 distXsp_justEOR_spdf <- lapply(1:68, function(x) NA)
 for(i in atleast12){
@@ -344,13 +344,46 @@ for(i in atleast12){
   distXsp_justEOR_spdf[[i]] <- out
 }
 
+distdistribution <- do.call(rbind, mapply('[[', distXsp_EOR, 1))
+hist(distdistribution$Dist/1000, breaks=50,main="Error distribution (km)") 
+
+
+# Herbarium specimens after 1980
+distXsp_justHerb <- mapply('[[', distXsp_EOR, 1)
+distXsp_justHerb <- lapply(distXsp_justHerb, function(x){
+  out <- x[x$year > 1980,]
+  out
+})
+
+```
+
+Run maxent for the three datasets - EOR, As-IS, and Error; all with background of 5000 meters
+```{r}
+
 pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_EOR_asis_error/")
+
+# Sample size will be at least 12 except for some where there were not enough mapped polygons to cover 12 different raster cells, in this case there are repeated points. 
 maxentrun(whichones = atleast12, numberofReps = 10, error = FALSE,
           Whichproj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"),
           spatialpointsdataframe_herb = distXsp_justEOR_spdf,
           maxentarguments = FALSE, filenames = "EOR_bg5000", 
           predictorvariables = rasterstack, pathstart = pathstart, backgroundscale = 5000)
 
+# Herbarium as-is
+maxentrun(whichones = atleast12, numberofReps = 10, error = FALSE,
+          Whichproj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"),
+          spatialpointsdataframe_herb = distXsp_justHerb,
+          maxentarguments = FALSE, filenames = "As-Is_bg5000", 
+          predictorvariables = rasterstack, pathstart = pathstart, backgroundscale = 5000)
 
 
+# Herbarium Error
+maxentrun(whichones = atleast12, numberofReps = 10, error = TRUE,
+          Whichproj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"),
+          distdistribution = distdistribution$Dist,
+          spatialpointsdataframe_herb = distXsp_justHerb,
+          maxentarguments = FALSE, filenames = "Error_bg5000", 
+          predictorvariables = rasterstack, pathstart = pathstart, backgroundscale = 5000)
 ```
+
+
