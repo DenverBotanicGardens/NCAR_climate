@@ -197,7 +197,8 @@ distXsp_EOR <- lapply(1:nrow(g1g2namesall68), function(i){
 
   # Convert polys to match rasterstack; only those mapped after 1980
     polys@data$LASTOBS <- as.numeric(substring(polys@data$LASTOBS,1,4))
-    polys_after1980 <- polys[polys$LASTOBS > 1980,]
+    polys <- polys[polys@data$LASTOBS < 2020,] # when keeping all polys, need to remove unknown year
+    polys_after1980 <- polys[polys$LASTOBS > 1980 & polys$LASTOBS < 2020,] # and not unknown 9999
     polys_latlon <- spTransform(polys, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
 
     # Get cell number of where the herbarium specimens fall; for records after 1980
@@ -235,6 +236,46 @@ distXsp_EOR <- lapply(1:nrow(g1g2namesall68), function(i){
 save(distXsp_EOR, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_EOR.Rda") 
 
 ```
+
+#Distribution of error in herbarium specimens 
+    
+    1) Habitat Specificity
+        i.  Table 1 of distance, area, year, year differences
+        ii. AIC to compare habitt specificity, range, year, difference in years EOR to herbarium on distance from nearest EOR     
+        
+```{r}
+df_dist <- do.call(rbind,Map(cbind, mapply('[[', distXsp_EOR, 1)[notnull], SpNum = notnull))
+df_dist$EORYear <- as.numeric(substring(df_dist$EORdate,1,4))
+
+out <- Rmisc::summarySE(df_dist, "Dist", "SpNum", na.rm=TRUE)
+tab1 <- do.call(rbind, lapply(split(df_dist, df_dist$SpNum), function(x){
+  data.frame(SpNum1 = unique(x$SpNum), Species = x$Species[1], DistAvg = summarySE(x, "Dist"), 
+             Area = unique(x$Area), minYearDiff = min(x$Yeardiff), maxYearDiff = max(x$Yeardiff),
+             SpNum= unique(x$SpNum), YearDiffAvg = summarySE(x, "Yeardiff"),
+             MinEORyear = min(x$EORYear), MaxEORyear = max(x$EORYear), 
+             MinYear = min(x$year), MaxYear = max(x$year), AvgLat = summarySE(x, "decimalLatitude"))
+})) 
+tab1$SDM[tab1$SpNum %in% atleast12] <- "x"
+
+write.csv(tab1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/table1_20190804.csv")
+
+
+```
+
+Habitat Specificity   
+```{r}
+
+
+```
+
+
+
+AIC
+```{r}
+
+
+```
+
 
 #Maxent function
 ```{r}
@@ -392,13 +433,14 @@ forhistofsd <- function(whichones = atleast12, pathstart, patternmatch){
   stacktoaverage
 }
 
-habitatSpecificity <- function(whichones, pathstart, replicates = 10, filenames){
+habitatSpecificity <- function(whichones, pathstart, replicates = 10, filenames, rasterstack){
   
+  # collect all the presence points used in the SDM
   habsp <- do.call(rbind,lapply(whichones, function(x){
     out <- do.call(rbind,lapply(filenames, function(nams){
       outno <- do.call(rbind,lapply(1:replicates, function(rep){
-        load(paste(pathstart,"maxentHerb", nams,"Sp", x,"kfold",rep, ".Rda",sep=""))
-        outinner <- data.frame(SpeciesNum = x, kfold = rep, HerbType = "NoError", xm@presence)
+        load(paste(pathstart,"maxentHerb", nams, "Sp", x,"kfold",rep, ".Rda",sep=""))
+        outinner <- data.frame(SpeciesNum = x, kfold = rep, HerbType = nams, xm@presence)
         outinner
         }))
       outno      
@@ -704,10 +746,44 @@ ggplot()
 ```
 
 ```{r}
-All_nicheEquivalency <- foreach(i = atleast12, .combine='c') %dopar% {
-  
-}
+cl <- makeCluster(10)
 
+#bootstrapping by taking 100 samples, so slow, maybe better to just go through each? The presence point are the same for all the As-Is/uncleaned but should be different for some EOR and all error
+
+All_nicheEquivalency <- lapply(atleast12, function(i) {
+      # Sample from the kfolds and repeat a few times
+      sp1 <- read.csv(paste(pathstart, "presenceHerb",filenames[1],"Sp", i, "kfold",
+                            sample(1:10, 1),".csv", sep=""))
+      sp2 <- read.csv(paste(pathstart, "presenceHerb",filenames[2],"Sp", i, "kfold1",
+                            ".csv",sep="")) # As-Is or uncleaned all the same
+      sp3 <- read.csv(paste(pathstart, "presenceHerb",filenames[3],"Sp", i, "kfold",
+                            sample(1:10, 1),".csv", sep=""))
+      Sp1 <- SpatialPoints(sp1[,c("decimalLongitude","decimalLatitude")],
+                           proj4string =
+                             CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+      Sp2 <- SpatialPoints(sp2[,c("decimalLongitude","decimalLatitude")],
+                           proj4string =
+                             CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+      Sp3 <- SpatialPoints(sp3[,c("decimalLongitude","decimalLatitude")],
+                           proj4string =
+                             CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+      registerDoParallel(cl)
+      trials <- 100
+      foreach(icount(trials),  
+              .combine='c', 
+              .packages = c("dismo")) %dopar% {
+                
+                equiv1_2 <- nicheEquivalency(Sp1, Sp2, rasterstack, n=100)
+                equiv1_3 <- nicheEquivalency(Sp1, Sp3, rasterstack, n=100)
+                equiv2_3 <- nicheEquivalency(Sp2, Sp3, rasterstack, n=100)
+                list(equiv1_2,equiv1_3,equiv2_3)
+              }
+      
+      stopCluster(cl)
+      })
+
+save(equiv1_2, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/equiv1_2_Sp1.Rda") 
 ```
 
 ## Errors, need more paralelling or more power to do the 30 meter resolution one
