@@ -30,24 +30,31 @@ library(Taxonstand)
 library(grid) # for rectGrob
 library(RCurl)
 
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/habspEORandNoandWith.Rda")
+# Already made
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/habspEORandNoandWith.Rda") # need to remake with 5000 and 500000 background areas
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/coloradosps.g1g2_168.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2namesall68.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid68.Rda")
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid1_68.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid68.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid1_68.Rda")
+
+# Make points (one per grid cell of size rasterstack) that are covered by EOR polygons in equal number of herbarium specimens using thin.max to have them spatial spread 
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_EOR.Rda")
 # load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/nichevaluesbySDM.Rda")
+
+# Check if I need to remake these before just loading - 2019-08-01
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/toplot.Rda")
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/nicheoverlaps.Rdata")
 
+# Ready to load
 l1eor <- readShapePoly("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/L1shp")
 #Each polygon might be made of multiple disconnected polygons. Need to separate and label
-l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
-l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
-                                       function(x){
-              x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
-              x
-              }))
+# l1G1G2 <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2"),])
+# l1G1G2$PolyID <- do.call(rbind, lapply(split(l1G1G2,l1G1G2$OBJECTID),
+#                                        function(x){
+#               x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
+#               x
+#               }))
 
 l1G1G2and <- disaggregate(l1eor[l1eor$GRANK %in% c("G1","G2","G1G2"),])
 l1G1G2and$PolyID <- do.call(rbind, lapply(split(l1G1G2and,l1G1G2and$OBJECTID),
@@ -55,39 +62,46 @@ l1G1G2and$PolyID <- do.call(rbind, lapply(split(l1G1G2and,l1G1G2and$OBJECTID),
               x$POlyID <- paste(x$EO_ID, LETTERS[seq(from=1, to= nrow(x))],sep="")
               x
               }))
-namesg1g2 <- table(as.character(l1G1G2$GNAME))
-length(namesg1g2) #60 species
+# namesg1g2 <- table(as.character(l1G1G2$GNAME))
+# length(namesg1g2) #60 species
 namesg1g2and <- table(as.character(l1G1G2and$GNAME))
 length(namesg1g2and) # 68
 
-namesg1g2and <- c(namesg1g2and[match(names(namesg1g2),names(namesg1g2and))],
-                  namesg1g2and[setdiff(names(namesg1g2and),names(namesg1g2))])
+# namesg1g2and <- c(namesg1g2and[match(names(namesg1g2),names(namesg1g2and))],
+#                   namesg1g2and[setdiff(names(namesg1g2and),names(namesg1g2))])
 
 # g1g2names <- TPL(names(namesg1g2))
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
+# load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2names.Rda")
 # g1g2names61_68 <- TPL(names(namesg1g2and[61:68]))
 
 
-notnull <- which(!unlist(lapply(distXsp_noEORgrid, is.null)))
-notnull61668 <- which(!unlist(lapply(distXsp_noEORgrid68, is.null)))
+# notnull <- which(!unlist(lapply(distXsp_noEORgrid, is.null)))
+# notnull61668 <- which(!unlist(lapply(distXsp_noEORgrid68, is.null)))
 
-distXspall <- do.call(rbind, Map(cbind, distXsp_noEORgrid[notnull], 
-                     SpNum = notnull))
-distXsp6168 <- do.call(rbind, Map(cbind, distXsp_noEORgrid68[notnull61668],
-                                  SpNum = notnull61668+60))
+# distXspall <- do.call(rbind, Map(cbind, distXsp_noEORgrid[notnull], 
+#                      SpNum = notnull))
+# distXsp6168 <- do.call(rbind, Map(cbind, distXsp_noEORgrid68[notnull61668],
+#                                   SpNum = notnull61668+60))
+# 
+# atleast12 <- c()
+# for(l in notnull){
+#   atleast12[match(l,notnull)] <- if(nrow(distXsp_noEORgrid[[l]])>11){ 
+#     l } else {
+#       NA
+#     }
+# }
+# atleast12 <- atleast12[!is.na(atleast12)] 
+# rm(l)
 
-atleast12 <- c()
-for(l in notnull){
-  atleast12[match(l,notnull)] <- if(nrow(distXsp_noEORgrid[[l]])>11){ 
-    l } else {
-      NA
-    }
-}
-atleast12 <- atleast12[!is.na(atleast12)] 
-rm(l)
+notnull <- which(!unlist(lapply(distXsp_EOR, is.null)))
+length(notnull)
+match(1:68,notnull)
+atleast12 <- unlist(lapply(notnull, function(l){
+  if(nrow(distXsp_EOR[[l]][[2]])>11) l
+  }))
 
 #Each polygon might be made of multiple disconnected polygons. Need to separate and label
-length(namesg1g2) #60 species
+# length(namesg1g2) #60 species
 length(namesg1g2and) # 68
 # g1g2namesall68 <- TPL(names(namesg1g2and))
 g1g2namesall68$AcceptedName <- paste(g1g2namesall68$New.Genus,g1g2namesall68$New.Species)
@@ -103,7 +117,27 @@ g1g2namesall68$AcceptedName <- paste(g1g2namesall68$New.Genus,g1g2namesall68$New
 # atleast1268 <- atleast1268[!is.na(atleast1268)] 
 # rm(l)
 
+# Selected polygons mapped after 1980, found overlapping raster cells for points; thinned to matching number of points from herbarium specimens (the number of raster cells covered by herbarium specimens collected after 1980). May lead to repeated points from EOR records. 
+distXsp_justEOR_forspdf <- mapply('[[', distXsp_EOR, 2)
+distXsp_justEOR_spdf <- lapply(1:68, function(x) NA)
+for(i in atleast12){
+  out <- data.frame(distXsp_justEOR_forspdf[[i]])
+  colnames(out) <- c("decimalLongitude","decimalLatitude")
+  distXsp_justEOR_spdf[[i]] <- out
+}
+distdistribution <- do.call(rbind, mapply('[[', distXsp_EOR, 1))
+hist(distdistribution$Dist/1000, breaks=50,main="Error distribution (km)") 
+# Herbarium specimens after 1980
+distXsp_justHerb <- mapply('[[', distXsp_EOR, 1)
+distXsp_justHerb <- lapply(distXsp_justHerb, function(x){
+  out <- x[x$year > 1980,]
+  out
+})
+```
+
+
 # February 26, 2019 added _bioclim where I've resampled to the bioclim raster cell size (less than 1km)
+```{r}
 # coplus50int.tif
 coElev_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled_bioclim.tif")
 # aspect50int.tif
@@ -238,37 +272,41 @@ forhistofsd <- function(whichones = atleast12, pathstart, patternmatch){
 # load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_noEORgrid.Rda")
 # distXspall <- do.call(rbind, distXsp_noEORgrid)
 #The over 400 km is clearly wrong; so are any above 300km is out of the state (if point is in the middle) so need to cutoff below 300,000
+```
 
-whichnull <- lapply(1:68, function(i){
-  gc()
-  g1g2now <- coloradosps.g1g2_168[coloradosps.g1g2_168$scientificName %in%
-                                c(g1g2namesall68$Taxon[i],g1g2namesall68$AcceptedName[i])&
-                                !is.na(coloradosps.g1g2_168$decimalLatitude),]
-  if(nrow(g1g2now)>0){
-    g1g2namesall68$AcceptedName[i]
-  }
-})
-
-notnull1_68 <- which(!unlist(lapply(distXsp_noEORgrid1_68, is.null)))
-  
-notnulls68 <- which(!unlist(lapply(whichnull, is.null)))
-which(unlist(lapply(whichnull, is.null))) # 39
-
-distXspall52 <- do.call(rbind, Map(cbind, SpNum = notnulls68[notnull1_68],
-                                   distXsp_noEORgrid1_68[notnull1_68]))
+```{r}
+# whichnull <- lapply(1:68, function(i){
+#   gc()
+#   g1g2now <- coloradosps.g1g2_168[coloradosps.g1g2_168$scientificName %in%
+#                                 c(g1g2namesall68$Taxon[i],g1g2namesall68$AcceptedName[i])&
+#                                 !is.na(coloradosps.g1g2_168$decimalLatitude),]
+#   if(nrow(g1g2now)>0){
+#     g1g2namesall68$AcceptedName[i]
+#   }
+# })
+# 
+# notnull1_68 <- which(!unlist(lapply(distXsp_noEORgrid1_68, is.null)))
+#   
+# notnulls68 <- which(!unlist(lapply(whichnull, is.null)))
+# which(unlist(lapply(whichnull, is.null))) # 39
+# 
+# distXspall52 <- do.call(rbind, Map(cbind, SpNum = notnulls68[notnull1_68],
+#                                    distXsp_noEORgrid1_68[notnull1_68]))
 ```
 
 
 # Allow for variation in the background points scale after understanding the scale of predictor variables
 ```{r}
-maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10, 
+maxentrun <- function(whichones, spatialpointsdataframe_herb, 
+                      Whichproj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"),
+                      numberofReps = 10, 
                       maxentarguments = FALSE, predictorvariables = rasterstack, 
                       pathstart, filenames, kfoldnum = 4, 
                       error = FALSE, distdistribution = NULL, backgroundscale = 5000){
         for(x in whichones){
             pointsspdf <- SpatialPointsDataFrame(coords = spatialpointsdataframe_herb[[x]][,c("decimalLongitude","decimalLatitude")],
                                                  data = spatialpointsdataframe_herb[[x]],
-                                                 proj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
+                                                 proj4string = Whichproj4string)
           if(error == TRUE){
                # for each point I will draw a circle of size (drawn from the distribution of error seen distXspall$Dist) and then pick a random point along the circle.
               errorpointsout <- do.call(rbind,lapply(1:nrow(pointsspdf), function(r){
@@ -291,19 +329,19 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10,
                 bgpnts <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
                 
                 convertxy <- spTransform(df, CRS("+proj=longlat +datum=WGS84"))
-                proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+                proj4string(bgpnts) <- Whichproj4string
                 bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
           } else {
                 convertxy <- spTransform(pointsspdf, CRS("+proj=longlat +datum=WGS84"))
                 circlesout <- circles(pointsspdf, d = backgroundscale)
                 polygns <- polygons(circlesout)
                 bgpnts <- spsample(polygns, 300, "stratified")
-                proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+                proj4string(bgpnts) <- Whichproj4string
                 bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
             
           }
-                
-          for(rep in 1:numberofReps){
+            
+             for(rep in 1:numberofReps){
                 convertxy$kfold <- kfold(convertxy, k=kfoldnum) # to have 75:25%
                 if(maxentarguments == TRUE){
                   xm <- maxent(x = predictorvariables,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords,
@@ -341,26 +379,115 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10,
                 rm(xm)
                 gc()
                 stopCluster(cl)
-          }
+             }
                 e
         }
 }
+```
+
+# Old one without the EOR points, EOR points need to define which projection - they are different than the herbarium specimens
+```{r}
+# maxentrun <- function(whichones, spatialpointsdataframe_herb, numberofReps = 10, 
+#                       maxentarguments = FALSE, predictorvariables = rasterstack, 
+#                       pathstart, filenames, kfoldnum = 4, 
+#                       error = FALSE, distdistribution = NULL, backgroundscale = 5000){
+#         for(x in whichones){
+#             pointsspdf <- SpatialPointsDataFrame(coords = spatialpointsdataframe_herb[[x]][,c("decimalLongitude","decimalLatitude")],
+#                                                  data = spatialpointsdataframe_herb[[x]],
+#                                                  proj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
+#           if(error == TRUE){
+#                # for each point I will draw a circle of size (drawn from the distribution of error seen distXspall$Dist) and then pick a random point along the circle.
+#               errorpointsout <- do.call(rbind,lapply(1:nrow(pointsspdf), function(r){
+#                 errordist <- sample(distdistribution, 1)
+#                 if(errordist>0){
+#                   erroraround <- gBuffer(pointsspdf[r,], width=errordist)
+#                   newpoint <- erroraround@polygons[[1]]@Polygons[[1]]@coords
+#                   out <- newpoint[sample(1:nrow(newpoint),1),]
+#                 } else {
+#                   out <- pointsspdf@coords[r,]
+#                   }
+#                 out
+#                 }))
+#                 
+#                 df <- SpatialPointsDataFrame(coords = errorpointsout,
+#                                              data = pointsspdf@data,
+#                                              proj4string = CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
+#                 circlesout <- circles(df, d = backgroundscale) #Should be 5km around
+#                 polygns <- polygons(circlesout)
+#                 bgpnts <- spsample(polygns, 300, "stratified") # one single random location in each 'cell' 
+#                 
+#                 convertxy <- spTransform(df, CRS("+proj=longlat +datum=WGS84"))
+#                 proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+#                 bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
+#           } else {
+#                 convertxy <- spTransform(pointsspdf, CRS("+proj=longlat +datum=WGS84"))
+#                 circlesout <- circles(pointsspdf, d = backgroundscale)
+#                 polygns <- polygons(circlesout)
+#                 bgpnts <- spsample(polygns, 300, "stratified")
+#                 proj4string(bgpnts) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84")
+#                 bgpnts <- spTransform(bgpnts, CRS("+init=epsg:4326") )
+#             
+#           }
+#                 
+#           for(rep in 1:numberofReps){
+#                 convertxy$kfold <- kfold(convertxy, k=kfoldnum) # to have 75:25%
+#                 if(maxentarguments == TRUE){
+#                   xm <- maxent(x = predictorvariables,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords,
+#                            args=c("noautofeature","noproduct","nothreshold"))
+#                 } else {
+#                   xm <- maxent(x = predictorvariables,p = convertxy[convertxy$kfold!=1,], a = bgpnts@coords)
+#                 }
+#                 
+#                 write.csv(data.frame(convertxy@coords,convertxy@data),
+#                           paste(pathstart,"presenceHerb",filenames,"Sp",x,"kfold",rep,".csv", sep=""))
+#                 # write.csv(data.frame(bgpnts@coords, convertxy@data[1,c("Species","Area")]),
+#                 #           paste(pathstart,"presenceHerb",filenames,"Sp",x,"kfold",rep,".csv", sep=""))
+#                 save(xm, file= paste(pathstart,"maxentHerb",filenames,"Sp",x,"kfold",rep,".Rda", sep=""))        
+#         
+#                 gc()
+#                 #register parallel computing backend
+#                 ncores <- detectCores()-1
+#                 cl = parallel::makeCluster(ncores)
+#                 doParallel::registerDoParallel(cl,ncores)
+#                 #compute indices for data splitting
+#                 rows = 1:nrow(predictorvariables)
+#                 split = sort(rows%%ncores)+1
+#                 outname = paste(pathstart,"PredictHerb",filenames,"Sp", x,"kfold",rep, sep="")
+#                 #perform the prediction on subsets of the predictor dataset
+#                 foreach(i=unique(split), .combine=c)%dopar%{
+#                   rows_sub = rows[split==i]
+#                   sub = raster::crop(predictorvariables,raster::extent(predictorvariables, min(rows_sub), max(rows_sub), 
+#                                                                 1, ncol(predictorvariables)))
+#                   raster::predict(sub, xm, filename=paste(outname, i, sep="_"), overwrite=TRUE)
+#                 }
+#         
+#                 e <- evaluate(convertxy[convertxy$kfold==1,], bgpnts, xm, predictorvariables)
+#                 save(e, file= paste(pathstart,"evaluateHerb",filenames,"Sp",x,"kfold",rep,".Rda", sep=""))
+#         
+#                 rm(xm)
+#                 gc()
+#                 stopCluster(cl)
+#           }
+#                 e
+#         }
+# }
 
 ```
 
 ```{r}
-atleast12168 <- c()
-for(l in notnull1_68){ 
-  atleast12168[match(l,notnull1_68)] <- 
-    if(nrow(distXsp_noEORgrid1_68[[l]][distXsp_noEORgrid1_68[[l]]$year>1980,])>11){
-      l } else {
-        NA
-        }
-}
-atleast12168 <- atleast12168[!is.na(atleast12168)] 
+# atleast12168 <- c()
+# for(l in notnull1_68){ 
+#   atleast12168[match(l,notnull1_68)] <- 
+#     if(nrow(distXsp_noEORgrid1_68[[l]][distXsp_noEORgrid1_68[[l]]$year>1980,])>11){
+#       l } else {
+#         NA
+#         }
+# }
+# atleast12168 <- atleast12168[!is.na(atleast12168)] 
 
 
-pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_backgroundanderror/")
+# pathstart <- ("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_backgroundanderror/")
+
 
 maxentrun(whichones = atleast12168, numberofReps = 10, spatialpointsdataframe_herb = distXsp_noEORgrid1_68,
           maxentarguments = FALSE, filenames = "asis_bg500000", pathstart = pathstart, backgroundscale = 500000)
@@ -904,14 +1031,18 @@ Get the years of the herbarium specimens and the years of the EORs mapped from d
 Run this for some lists
 ```{r}
 # All are fine, should work. 
-EORpolys <- lapply(1:68, function(i){
-  polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[i],
-                                        g1g2namesall68$Taxon[i]),]
-  polys
-})
+# EORpolys <- lapply(1:68, function(i){
+#   polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[i],
+#                                         g1g2namesall68$Taxon[i]),]
+#   polys
+# })
 
-notnull1_68 <- which(!unlist(lapply(distXsp_noEORgrid1_68, is.null)))
+# notnull1_68 <- which(!unlist(lapply(distXsp_noEORgrid1_68, is.null)))
+# length(notnull1_68) # 52 have data
+
+notnull1_68 <- which(!unlist(lapply(distXsp_EOR, is.null)))
 length(notnull1_68) # 52 have data
+
 
 whichnull <- lapply(1:68, function(i){
   gc()
@@ -925,7 +1056,7 @@ whichnull <- lapply(1:68, function(i){
   
 notnulls68 <- which(!unlist(lapply(whichnull, is.null)))
 which(unlist(lapply(whichnull, is.null))) # 39
-EORpolys[[39]] # Oonopsis sp. 1, hasn't been published yet!
+# EORpolys[[39]] # Oonopsis sp. 1, hasn't been published yet!
 
 
 # See Herb to EORs_v4 for notnulls68
@@ -955,14 +1086,20 @@ abline(lm(log(Dist+1)~log(Area+1), data=df_dist))
 length(unique(df_dist$SpNum))
 max(df_dist$Dist) # 411023.6 meters
 
-atleast12168 <- c()
-for(l in notnull1_68){  # notnull1_68
-  atleast12168[match(l,notnull1_68)] <- if(nrow(distXsp_noEORgrid1_68[[l]])>11){   # match(l,notnull1_68)
-    l } else {
-      NA
-    }
-}
-atleast12168 <- atleast12168[!is.na(atleast12168)] 
+# atleast12168 <- c()
+# for(l in notnull1_68){  # notnull1_68
+#   atleast12168[match(l,notnull1_68)] <- if(nrow(distXsp_noEORgrid1_68[[l]])>11){   # match(l,notnull1_68)
+#     l } else {
+#       NA
+#     }
+# }
+# atleast12168 <- atleast12168[!is.na(atleast12168)] 
+notnull <- which(!unlist(lapply(distXsp_EOR, is.null)))
+length(notnull)
+match(1:68,notnull)
+atleast12 <- unlist(lapply(notnull, function(l){
+  if(nrow(distXsp_EOR[[l]][[2]])>11) l
+  }))
 
 
 reallistofTiffs <- atleast12168[!atleast12168 %in% c(29,40)]
@@ -972,7 +1109,56 @@ reallistofTiffs <- atleast12168[!atleast12168 %in% c(29,40)]
 Table 1 - species in niche models, put a column indiciating which are SDM
 ```{r}
 
-out <- Rmisc::summarySE(df_dist, "Dist", "SpNum")
+# Differences in creating distXsp_EOR in Chapter1_EOR_AsIs_Error.Rmd compared to making other distXsp in Chapter1_SDM resulted in some errors in capturing EOR polygons, likely due to unknown mapped years, those should be thrown out. Got rid of 9999 in the  Herb to EORs_v4.Rmd. Need to fix that in distXsp_EOR
+
+# 2019-08-01 after running Chapter1_SDM1_EOR_AsIs_Error.RMD
+df_dist <- do.call(rbind,Map(cbind, mapply('[[', distXsp_EOR, 1)[notnull], SpNum = notnull))
+head(df_dist)
+
+# Thelypodiopsis juniperorum has no years for the EORs
+l1G1G2and[l1G1G2and$GNAME == "Thelypodiopsis juniperorum",]@data$LASTOBS # many after 1980 but one 9999
+l1G1G2and[l1G1G2and$GNAME == "Thelypodiopsis juniperorum",]@data$FIRSTOBS # some after 1980 and one 9999
+
+plot(colocounties.UTM)
+plot(l1G1G2and[l1G1G2and$GNAME == "Thelypodiopsis juniperorum",], add=TRUE, border="blue") 
+
+# smallest range by polygons from CNHP
+plot(colocounties.UTM)
+plot(l1G1G2and[l1G1G2and$GNAME == "Packera mancosana",], add=TRUE, border="blue", lwd=10) 
+
+# largest range by polygons from CNHP
+plot(colocounties.UTM)
+plot(l1G1G2and[l1G1G2and$GNAME == "Eriogonum coloradense",], add=TRUE, border="blue", lwd=10) 
+
+
+# plot the scale of raster layers and plants and colorado
+plot(rasterstack[[1]]) #Elevation
+plot(colocounties, add=TRUE)
+
+ErCoUTM <- l1G1G2and[l1G1G2and$GNAME == "Eriogonum coloradense",]
+proj4string(ErCoUTM) <- CRS("+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
+ErCoLatLon <- spTransform(ErCoUTM,CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
+
+
+# plot the scale of raster layers and plants and colorado
+plot(rasterstack[[4]], xlim = c(ErCoLatLon@bbox[1,1]-.5,ErCoLatLon@bbox[1,2]+.5),
+     ylim = c(ErCoLatLon@bbox[2,1]-.5,ErCoLatLon@bbox[2,2]+.5)) #Bio1
+plot(colocounties, add=TRUE)
+plot(ErCoLatLon, add=TRUE, border="blue")
+
+```
+
+
+
+```{r}
+table(as.numeric(substring(l1G1G2and$LASTOBS, 1,4))) # 4 are 9999
+
+df_dist$EORYear <- as.numeric(substring(df_dist$EORdate,1,4))
+table(df_dist$EORYear) 
+df_dist$EORYear[df_dist$EORYear == 9999] <- NA
+
+# SpNum added when distXspall was created
+out <- Rmisc::summarySE(df_dist, "Dist", "SpNum", na.rm=TRUE)
 
 tab1 <- do.call(rbind, lapply(split(df_dist, df_dist$SpNum), function(x){
   data.frame(SpNum1 = unique(x$SpNum), Species = x$Species[1], DistAvg = summarySE(x, "Dist"), 
@@ -984,9 +1170,10 @@ tab1 <- do.call(rbind, lapply(split(df_dist, df_dist$SpNum), function(x){
 
 
 
-tab1$SDM[tab1$SpNum %in% atleast12168] <- "x"
+# tab1$SDM[tab1$SpNum %in% atleast12168] <- "x"
+tab1$SDM[tab1$SpNum %in% atleast12] <- "x"
 
-# write.csv(tab1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/table1.csv")
+# write.csv(tab1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/table1_20190801.csv")
 
 
 # TPLtbl1 <- TPL(tab1$Species)
@@ -994,6 +1181,26 @@ tab1$SDM[tab1$SpNum %in% atleast12168] <- "x"
 
 ```
 
+How does the year span (MinEORyear and MaxEORyear) compare to MinYear and MaxYear of the herbarium specimens?   
+If I use tidyr then need to call raster::extract and RCurl::complete. Don't know the RCurl one but for sure use the raster::extract    
+```{r}
+library(tidyr)
+yearrangediff <- gather(tab1, YearMeasurment, Year, MinEORyear:MaxYear, factor_key = TRUE)
+ # to treat new key column as a factor, not character
+
+ggplot(yearrangediff, aes(Year, Species, colour = as.factor(SpNum1)))+
+  geom_point()+
+  theme_bw()+
+  facet_wrap(~YearMeasurment, nrow=2)+ 
+  theme(legend.position="none")
+
+ggplot(tab1, aes(YearDiffAvg.Yeardiff, Area, colour = as.factor(SpNum1)))+
+  geom_point()+
+  theme_bw()+
+  theme(legend.position="none")
+
+
+```
 
 
 ```{r}
@@ -1570,7 +1777,8 @@ lapply(grep("value",names(noerrorhistsofavg_withclimate[[i]]))[-1], function(col
     witherrnow <- witherrorhistsofavg_withclimate[[i]][,c(1,col)]
     names(witherrnow) <- c("value","now")
     plot <- ggplot()+
-      geom_boxplot(data=noerrnow, aes(now,value))+
+      geom_point(data=noerrnow, aes(now,value), colour = "blue", pch=21)+
+      # geom_boxplot(data=noerrnow, aes(now,value))+
       stat_smooth(data=noerrnow, method = lm, formula = y ~ splines::bs(x, 3), se = FALSE,
                   aes(now,value),colour = "black")+
       
@@ -1590,48 +1798,46 @@ lapply(grep("value",names(noerrorhistsofavg_withclimate[[i]]))[-1], function(col
 ```
 
 
-# Regardless of how the suitability changes with the climatic variables, how much does the suitability vary in the two surfaces where the species is known to be found. 
+# Regardless of how the suitability changes with the climatic variables, how much does the suitability vary in the two surfaces where the species is known to be found.   
+Look for linear relationship and the slope, is there a difference in slope of two lines or are lines flat so there's no discerning if there are differences across an environmental variable? 
 ```{r}
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/habspEORandNoandWith.Rda")
+
+head(distXspall52)
+(habspEORandNoandWith)
+
 
 suittoplot <- do.call(rbind,lapply(1:length(witherrorhistsofavg_withclimate), function(i){
   noout <- data.frame(Species = g1g2namesall68$AcceptedName[reallistofTiffs[i]],
                     Error = "as-is", noerrorhistsofavg_withclimate[[i]])
   # bind the species specificity and area to this table.
   noout <- cbind(noout, 
-                 distXspall52[distXspall52$Species == g1g2namesall68$AcceptedName[reallistofTiffs[i]],])
-                              # &distXspall52$year > 1980,])
+                 unique(distXspall52[distXspall52$Species == g1g2namesall68$AcceptedName[reallistofTiffs[i]],c("SpNum","Species","Area")]))
+  noout <- merge(noout, habspEORandNoandWith[habspEORandNoandWith$HerbType == "NoError",],
+                 by.x = "SpNum", by.y = "SpeciesNum")
+                 
   
   addedout <- data.frame(Species = g1g2namesall68$AcceptedName[reallistofTiffs[i]],
                     Error = "additional", witherrorhistsofavg_withclimate[[i]])
   addedout <- cbind(addedout, 
-                    distXspall52[distXspall52$Species == g1g2namesall68$AcceptedName[reallistofTiffs[i]],])
-                                 # &distXspall52$year > 1980,])
+                 unique(distXspall52[distXspall52$Species == g1g2namesall68$AcceptedName[reallistofTiffs[i]],c("SpNum","Species","Area")]))
+  addedout <- merge(addedout,habspEORandNoandWith[habspEORandNoandWith$HerbType == "WithError",],
+                    by.x = "SpNum",by.y = "SpeciesNum")
+  
   out <- rbind(noout, addedout)
   out
 }))
 
-# unlist(lapply(distXsp_noEORgrid68, function(x){
-#   print(nrow(x))
-# }))
-
-distXsp_noEORgrid68[[1]] # There are way fewer... 
-distXsp_noEORgrid1_68[[1]] 
-
-unlist(lapply(distXsp_noEORgrid1_68, function(x){
-  print(nrow(x))
-}))
-```
-
-```{r}
-lapply(noerrorhistsofavg_withclimate, function(x){
-  print(nrow(x))
-})
 
 ```
 
 
+
 ```{r}
-ggplot(suittoplot, aes(x = Error, y=value, colour=Species))+
+
+
+
+ggplot(suittoplot, aes(x = Error, y=value, colour=Area))+
   geom_boxplot()+
   # geom_jitter(position=position_jitter(0.2))+
   ylab("Suitability")+
