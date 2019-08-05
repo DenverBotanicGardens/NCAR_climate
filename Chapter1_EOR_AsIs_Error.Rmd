@@ -262,20 +262,6 @@ write.csv(tab1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche mode
 
 ```
 
-Habitat Specificity   
-```{r}
-
-
-```
-
-
-
-AIC
-```{r}
-
-
-```
-
 
 #Maxent function
 ```{r}
@@ -639,7 +625,103 @@ save(habsp_bigbg, file= paste(pathstart,"habsp_bigbg.Rda", sep=""))
 
 
 
+# (4) Habitat Specificity      
+        a) add to table 1 for AIC with habitat specificity
+      
+      
+```{r}
+# notnull are ones that have a few points but don't have a maxent file. Could pull from presence points instead??  Looks like will run into the same problem that 29 and 40 won't work like before. Not sure how I figured that out
 
+# how many points are there for each?
+# collect all the presence points used in the SDM
+howmany <- do.call(rbind,lapply(atleast12, function(x){
+  out <- do.call(rbind,lapply(filenames, function(nams){
+    outno <- do.call(rbind,lapply(1:10, function(rep){
+      load(paste(pathstart,"maxentHerb", nams, "Sp", x,"kfold",rep, ".Rda",sep=""))
+      outinner <- data.frame(SpeciesNum = x, kfold = rep, HerbType = nams, xm@presence)
+      outinner
+      }))
+    outno      
+    }))
+  out
+  }))
+table(howmany$SpeciesNum, howmany$HerbType, howmany$kfold)
+
+
+habSp_EOR_uncleaned_error <- habitatSpecificity(whichones = atleast12[atleast12 != 8], 
+                                                pathstart = pathstart,
+                                                filenames = filenames, rasterstack = rasterstack)
+save(habSp_EOR_uncleaned_error, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/habSp_EOR_uncleaned_error.Rda")
+```
+
+Animated PCAs of all species    
+```{r}
+
+
+```
+
+
+```{r}
+habspe <- merge(habSp_EOR_uncleaned_error, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
+
+ggplot(habspe, aes(as.factor(round(Area/(1000^2),0)), habspec, colour=HerbType))+
+  geom_jitter()+
+  geom_boxplot(position=position_dodge(width=-0.5))+
+  theme_bw()+
+  theme(legend.position = "none")+
+  xlab(expression("Area km"^2))+
+  geom_boxplot()
+
+# ?????
+ggplot(habspe, aes(habspec, DistAvg.Dist, colour=HerbType))+
+  geom_point()+
+  theme_bw()+
+  theme(legend.position = "none")+
+  xlab("Habitat Specificity")+
+  stat_smooth(method = "lm")
+
+g <- ggplotGrob(ggplot(habspe[habspe$Area<max(habspe$Area),], 
+          aes(Area/(1000^2), habspec/1000, shape=HerbType, colour=HerbType))+
+      geom_point(position = position_dodge(width=.25), size = 0.25)+
+      stat_smooth(method="lm", se=FALSE, lwd = 0.5)+
+      theme_bw()+
+      scale_colour_manual(values = c("black","grey50","goldenrod"))+ #  "EOR"  "NoError"   "WithError"==grey80
+      theme(legend.position = "none")+
+        xlab("")+
+        ylab(""))
+      
+ggplot(habspe, aes(Area/(1000^2), habspec/1000, shape=HerbType, colour=HerbType))+
+            geom_point(position = position_dodge(width=2))+
+            stat_smooth(method="lm", se=FALSE)+
+            theme_bw()+
+            scale_colour_manual(values = c("black","grey50","goldenrod"))+ #  "EOR"   "NoError"   "WithError"
+            theme(legend.position = "none")+
+            xlab(expression("Area km"^2))+
+            ylab("Habitat specificity (size of 95% CI)")+
+  annotation_custom(
+    grob = g,
+    xmin = 42,
+    xmax = 90,
+    ymin = 1000,
+    ymax = 2310
+  )
+
+
+```
+
+
+# With habitat specificity (another measure of range, niche size as opposed to space covered/range size)
+AIC
+```{r}
+
+
+```
+
+# (5) Accuracy and Precision    
+        i. forhistofavg()     
+        ii. forhistofsd()     
+        iii. accuracyhists??
+        iv.    
 ```{r}
 lapply(filenames, function(x){
   forhistofaverage(whichones = atleast12, pathstart = pathstart, patternmatch = paste("Herb", x, sep=""))
@@ -661,6 +743,9 @@ lapply(filenamesbig, function(x){
   })
 ```
 
+
+#  (6) Niche Overlap (and correlation)    
+      
 How correlated within EOR and how correlated across entire range  
 Or really how similar are the niches derived from the different data?
 ```{r}
@@ -723,6 +808,16 @@ correlations <- function(pathstart, filenames, rasterstack, whichones){
       
 ```
 
+# (6) Niche overlap    
+      ii. AIC     
+      
+```{r}
+
+
+
+```
+
+
 
 # to test 
 whichones <- atleast12[1]
@@ -745,6 +840,8 @@ colnames(OverlapSmall.df) <- dimnames(OverlapSmall)[[1]]
 ggplot()
 ```
 
+
+# Niche Equivalency - need parallelization first! Took three days to run one!
 ```{r}
 cl <- makeCluster(10)
 
