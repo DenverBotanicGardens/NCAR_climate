@@ -561,7 +561,7 @@ sapply(1:length(lmresults$Delta_AICc), function(i){
 
 Figure 2    
 ```{r}
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure2_v3_20190805☺.jpg",
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure2_v3_20190805.jpg",
      width=225, height=105,units='mm', res=300)
 layout(matrix(c(1,2,3), 1,3))
 plot(df_dist$Area,
@@ -691,21 +691,32 @@ save(habsp_bigbg, file= paste(pathstart,"habsp_bigbg.Rda", sep=""))
 
 
 # (4) Habitat Specificity      
-        a) add to table 1 for AIC with habitat specificity
-      
+        a) add to table 1 for AIC with habitat specificity   
+        
+        
+load habitat specificiy from file 
 ```{r}
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/habSp_EOR_uncleaned_error.Rda") #is this what i want?
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/habSp_EOR_uncleaned_error.Rda") 
 
-# load(paste(pathstart,"habsp_bigbg.Rda", sep="")) # These don't matter, the error isn't different when the background points are different
-# 
-# load(paste(pathstart,"habsp_smallbg.Rda", sep=""))
+# to merge with table 1
+summaryHabSp <- summarySE(habSp_EOR_uncleaned_error[habSp_EOR_uncleaned_error$HerbType == "As-Is_bg5000",],
+                          "habspec", "SpeciesNum")
 
 ```
-      
-```{r}
-# notnull are ones that have a few points but don't have a maxent file. Could pull from presence points instead??  Looks like will run into the same problem that 29 and 40 won't work like before. Not sure how I figured that out
 
-# how many points are there for each?
+or make new    
+```{r}
+
+habSp_EOR_uncleaned_error <- habitatSpecificity(whichones = atleast12[atleast12 != 8], 
+                                                pathstart = pathstart,
+                                                filenames = filenames, rasterstack = rasterstack)
+save(habSp_EOR_uncleaned_error, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/habSp_EOR_uncleaned_error.Rda")
+
+```
+
+```{r}
+
+# how many points are there for each? Need enough points to make ellipse
 # collect all the presence points used in the SDM
 howmany <- do.call(rbind,lapply(atleast12, function(x){
   out <- do.call(rbind,lapply(filenames, function(nams){
@@ -720,11 +731,6 @@ howmany <- do.call(rbind,lapply(atleast12, function(x){
   }))
 table(howmany$SpeciesNum, howmany$HerbType, howmany$kfold)
 
-
-habSp_EOR_uncleaned_error <- habitatSpecificity(whichones = atleast12[atleast12 != 8], 
-                                                pathstart = pathstart,
-                                                filenames = filenames, rasterstack = rasterstack)
-save(habSp_EOR_uncleaned_error, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/habSp_EOR_uncleaned_error.Rda")
 ```
 
 Animated PCAs of all species    
@@ -759,62 +765,93 @@ Merge habitat specificity and tab 1 to look at the impact of actual habitt speci
 ```{r}
 habspe <- merge(habSp_EOR_uncleaned_error, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
 
-ggplot(habspe, aes(as.factor(round(Area/(1000^2),0)), habspec, colour=HerbType))+
+
+ggplot(habspe_aic, aes(as.factor(round(Area/(1000^2),0)), habspec, colour=HerbType))+
   geom_jitter()+
   geom_boxplot(position=position_dodge(width=-0.5))+
   theme_bw()+
   theme(legend.position = "none")+
   xlab(expression("Area km"^2))+
   geom_boxplot()
+```
 
-# ?????
-ggplot(habspe, aes(habspec, DistAvg.Dist, colour=HerbType))+
-  geom_point()+
-  theme_bw()+
-  theme(legend.position = "none")+
-  xlab("Habitat Specificity")+
-  stat_smooth(method = "lm")
-
+```{r}
 g <- ggplotGrob(ggplot(habspe[habspe$Area<max(habspe$Area),], 
           aes(Area/(1000^2), habspec/1000, shape=HerbType, colour=HerbType))+
       geom_point(position = position_dodge(width=.25), size = 0.25)+
       stat_smooth(method="lm", se=FALSE, lwd = 0.5)+
       theme_bw()+
-      scale_colour_manual(values = c("black","grey50","goldenrod"))+ #  "EOR"  "NoError"   "WithError"==grey80
+      scale_colour_manual(values = c("green","red","blue"))+ #  "EOR"  "NoError"   "WithError"==grey80
+      # scale_colour_manual(values = c("black","grey50","goldenrod"))+ #  "EOR"  "NoError"   "WithError"==grey80
       theme(legend.position = "none")+
-        xlab("")+
-        ylab(""))
-      
+      xlab("")+
+      ylab(""))
+
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure3_v3_20190805.jpg",
+     width=225, height=150,units='mm', res=300)   
 ggplot(habspe, aes(Area/(1000^2), habspec/1000, shape=HerbType, colour=HerbType))+
-            geom_point(position = position_dodge(width=2))+
+            geom_point(position = position_dodge(width=.25))+
             stat_smooth(method="lm", se=FALSE)+
             theme_bw()+
-            scale_colour_manual(values = c("black","grey50","goldenrod"))+ #  "EOR"   "NoError"   "WithError"
+            scale_colour_manual(values = c("green","red","blue"))+ #  "EOR"   "NoError"   "WithError"
+            # scale_colour_manual(values = c("black","grey50","goldenrod"))+ #  "EOR"   "NoError"   "WithError"
             theme(legend.position = "none")+
             xlab(expression("Area km"^2))+
             ylab("Habitat specificity (size of 95% CI)")+
   annotation_custom(
     grob = g,
     xmin = 42,
-    xmax = 90,
-    ymin = 1000,
-    ymax = 2310
+    xmax = 99,
+    ymin = 900,
+    ymax = 2510
   )
-
+dev.off()
 
 ```
 
 
 # With habitat specificity (another measure of range, niche size as opposed to space covered/range size)
 AIC
+```{r} 
+
+habspe_aic <- merge(summaryHabSp, df_dist, by.x = "SpeciesNum", by.y = "SpNum")
+
+# Area is the best measure of how much distance error will be, is this because of environmental 'area'??
+lm1 <- lm(Dist ~ year + Area, data=habspe_aic) # range and collection year
+lm2 <- lm(Dist ~ year, data= habspe_aic) # when herbarium collected
+lm3 <- lm(Dist ~ Area, data= habspe_aic) #x is the area of the species known range
+lm4 <- lm(Dist ~ 1, data= habspe_aic) # null model
+lm5 <- lm(Dist ~ year*Area, data= habspe_aic) #year given the range
+lm6 <- lm(Dist ~ Yeardiff, data= habspe_aic) # range shift as years between herbarium and field mapped
+lm7 <- lm(Dist ~ Yeardiff*Area, data= habspe_aic) # range shift as years between herbarium and field mapped given species range size
+
+lm8 <- lm(Dist ~ year + habspec, data=habspe_aic) # range and collection year
+lm9 <- lm(Dist ~ habspec, data= habspe_aic) #x is the area of the species known range
+lm10 <- lm(Dist ~ year*habspec, data= habspe_aic) #year given the range
+lm11 <- lm(Dist ~ habspec, data= habspe_aic) # range shift as years between herbarium and field mapped
+lm12 <- lm(Dist ~ Yeardiff*habspec, data= habspe_aic) # range shift as years between herbarium and field mapped 
+lm13 <- lm(Dist ~ habspec + Area, data= habspe_aic) # range shift as years between herbarium and field mapped
+lm14 <- lm(Dist ~ habspec*Area, data= habspe_aic) # range shift as years between herbarium and field mapped 
+
+formulas <- list(lm1,lm2,lm3,lm4,lm5,lm6,lm7,lm8,lm9,lm10,lm11,lm12,lm13,lm14)
+(lmresults <- aictab(formulas,
+       modnames=as.character(unlist(lapply(formulas,formula)))))
+evidence(aictab(cand.set = formulas,
+                modnames = as.character(unlist(lapply(formulas,formula)))))
+
+# Should be the evidence ratio, but it's something else
+sapply(1:length(lmresults$Delta_AICc), function(i){
+  exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
+})
+```
+Best model is habitat specificty given area
 ```{r}
-# have the habitat specificty as a measure of the ellispe around the 95% CI of points for each kfold replicate for each of the datasets - EOR, uncleaned, and error 
-# Merged the summary information about avearge distance, min and max years with the habitat specificity, only some rows are interesting/meaningful
-habspe
+ggplot(habspe_aic, aes(habspec, Dist))+
+  geom_point()+
+  theme_bw()+
+  stat_smooth(method="lm")
 
 
-
-lm1 <- lm()
 ```
 
 # (5) Accuracy and Precision    
@@ -881,48 +918,9 @@ correlations <- function(pathstart, filenames, rasterstack, whichones){
   lrhist
 }
 
-    # # Sample from the kfolds and repeat a few times        
-      # sp1 <- read.csv(paste(pathstart, "presenceHerb",filenames[1],"Sp", i, "kfold", 
-      #                       sample(1:10, 1),".csv", sep=""))
-      # sp2 <- read.csv(paste(pathstart, "presenceHerb",filenames[2],"Sp", i, "kfold", 
-      #                       sample(1:10, 1), ".csv",sep=""))
-      # sp3 <- read.csv(paste(pathstart, "presenceHerb",filenames[3],"Sp", i, "kfold", 
-      #                       sample(1:10, 1),".csv", sep=""))
-      # Sp1 <- SpatialPoints(sp1[,c("decimalLongitude","decimalLatitude")],
-      #                      proj4string = 
-      #                        CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
-      # Sp2 <- SpatialPoints(sp2[,c("decimalLongitude","decimalLatitude")],
-      #                      proj4string = 
-      #                        CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
-      # Sp3 <- SpatialPoints(sp3[,c("decimalLongitude","decimalLatitude")],
-      #                      proj4string = 
-      #                        CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
-      
-      # equivalency_overlap <- replicate(100, function(x){
-      #   equiv1_2 <- nicheEquivalency(Sp1, Sp2, rasterstack, n=10)
-      #   equiv1_3 <- nicheEquivalency(Sp1, Sp3, rasterstack, n=10)
-      #   equiv2_3 <- nicheEquivalency(Sp2, Sp3, rasterstack, n=10)
-      #   })
-  
-      # overlap <- nicheOverlap(r1,r2)
-      
-```
-
-# (6) Niche overlap    
-      ii. AIC     
-      
-```{r}
-
-
 
 ```
 
-
-
-# to test 
-whichones <- atleast12[1]
-filenames # small
-pathstart # "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_EOR_asis_error/"
 
 ```{r}
 smallbackgroundcor <- correlations(pathstart = pathstart, filenames = filenames,
@@ -932,13 +930,54 @@ smallbackgroundcor[[1]]
 bigbackgroundcor <- correlations(pathstart = pathstart, filenames = filenamesbig, 
                                  whichones = atleast12)
 
-OverlapSmall <- mapply('[[', smallbackgroundcor, 3)
-dimnames(OverlapSmall)
+OverlapSmall <- mapply('[[', smallbackgroundcor, 3)  
 OverlapSmall.df <- data.frame(t(matrix(unlist(OverlapSmall),3,22)))
 colnames(OverlapSmall.df) <- dimnames(OverlapSmall)[[1]]
+OverlapSmall.df$SpNum <- atleast12
 
-ggplot()
+OverlapBig <- mapply('[[', bigbackgroundcor, 3)
+OverlapBig.df <- data.frame(t(matrix(unlist(OverlapBig),3,22)))
+colnames(OverlapBig.df) <- dimnames(OverlapBig)[[1]]
+OverlapBig.df$SpNum <- atleast12
+
+OverlapSmall.df$Background <- "Small"
+OverlapBig.df$Background <- "Big"
+
+library(reshape2)
+overlap_values <- melt(rbind(OverlapBig.df,OverlapSmall.df), id.vars = list("Background","SpNum"))
+
+ggplot(overlap_values, aes(variable, value, colour = Background))+
+  geom_boxplot()+
+  theme_bw()+
+  ylab("Niche Overlap")+
+  xlab("")+
+  scale_x_discrete(labels=c("EOR - Uncleaned","EOR - Error","Uncleaned - Error"))
 ```
+
+
+# (6) Niche overlap    
+      ii. AIC     
+      
+```{r}
+overvals <- merge(overlap_values, tab1, by.x = "SpNum", by.y = "SpNum1")
+
+lm(value ~ Area )
+
+```
+
+
+
+
+# (6) Overlap
+      iii. Accuracy and Precision
+
+
+
+
+
+
+
+
 
 
 # Niche Equivalency - need parallelization first! Took three days to run one!
@@ -1036,9 +1075,5 @@ lapply(1:3, function(x) stitchtogether(atleast12, pathstart=pathstart30m, patter
 habsp_smallbg <- habitatSpecificity(atleast12, pathstart, replicates = 10, filenames = filenames)
 save(habsp_smallbg, file= paste(pathstart,"habsp_smallbg.Rda", sep=""))
 
-
-```
-
-```{r}
 
 ```
