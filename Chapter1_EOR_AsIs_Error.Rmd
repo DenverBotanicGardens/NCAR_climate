@@ -244,6 +244,13 @@ save(distXsp_EOR, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in ni
         ii. AIC to compare habitt specificity, range, year, difference in years EOR to herbarium on distance from nearest EOR     
         
 ```{r}
+notnull <- which(!unlist(lapply(distXsp_EOR, is.null)))
+length(notnull)
+match(1:68,notnull)
+atleast12 <- unlist(lapply(notnull, function(l){
+  if(nrow(distXsp_EOR[[l]][[2]])>11) l
+  }))
+
 df_dist <- do.call(rbind,Map(cbind, mapply('[[', distXsp_EOR, 1)[notnull], SpNum = notnull))
 df_dist$EORYear <- as.numeric(substring(df_dist$EORdate,1,4))
 
@@ -257,7 +264,7 @@ tab1 <- do.call(rbind, lapply(split(df_dist, df_dist$SpNum), function(x){
 })) 
 tab1$SDM[tab1$SpNum %in% atleast12] <- "x"
 
-write.csv(tab1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/table1_20190804.csv")
+# write.csv(tab1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/table1_20190804.csv")
 
 
 ```
@@ -504,13 +511,6 @@ accuracyhists <- function(pathstart, probmapnames, whichones, reps = 1:10){
 2. Select background points from larger area   
 3. Select background points ramdomly from entire possible area    
 ```{r}
-notnull <- which(!unlist(lapply(distXsp_EOR, is.null)))
-length(notnull)
-match(1:68,notnull)
-atleast12 <- unlist(lapply(notnull, function(l){
-  if(nrow(distXsp_EOR[[l]][[2]])>11) l
-  }))
-
 # Selected polygons mapped after 1980, found overlapping raster cells for points; thinned to matching number of points from herbarium specimens (the number of raster cells covered by herbarium specimens collected after 1980). May lead to repeated points from EOR records. 
 distXsp_justEOR_forspdf <- mapply('[[', distXsp_EOR, 2)
 distXsp_justEOR_spdf <- lapply(1:68, function(x) NA)
@@ -521,7 +521,10 @@ for(i in atleast12){
 }
 
 distdistribution <- do.call(rbind, mapply('[[', distXsp_EOR, 1))
-hist(distdistribution$Dist/1000, breaks=50,main="Error distribution (km)") 
+hist(distdistribution$Dist/1000, breaks=50,
+     # main="Error distribution (km)",
+     main = "",
+     xlab = "km") 
 
 
 # Herbarium specimens after 1980
@@ -532,6 +535,68 @@ distXsp_justHerb <- lapply(distXsp_justHerb, function(x){
 })
 
 ```
+
+# (1) AIC for distance distribution   
+```{r}
+f1 <- lm(Dist ~ year + Area, data=df_dist) # range and collection year
+f2 <- lm(Dist ~ year, data= df_dist) # when herbarium collected
+f3 <- lm(Dist ~ Area, data= df_dist) #x is the area of the species known range
+f4 <- lm(Dist ~ 1, data= df_dist) # null model
+f5 <- lm(Dist ~ year*Area, data= df_dist) #year given the range
+f6 <- lm(Dist ~ Yeardiff, data= df_dist) # range shift as years between herbarium and field mapped
+f7 <- lm(Dist ~ Yeardiff*Area, data= df_dist) # range shift as years between herbarium and field mapped given species range size
+
+aictab(list(f1))
+
+formulas <- list(f1,f2,f3,f4,f5,f6,f7)
+
+(lmresults <- aictab(formulas,
+       modnames=as.character(unlist(lapply(formulas,formula)))))
+evidence(aictab(cand.set = formulas,
+                modnames = as.character(unlist(lapply(formulas,formula)))))
+sapply(1:length(lmresults$Delta_AICc), function(i){
+  exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
+})
+```
+
+Figure 2    
+```{r}
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure2_v3_20190805☺.jpg",
+     width=225, height=105,units='mm', res=300)
+layout(matrix(c(1,2,3), 1,3))
+plot(df_dist$Area,
+     log(df_dist$Dist+1),
+     xlab=expression(paste("Species Range km" ^2)),
+     ylab=expression(paste(km["log"])),
+     pch=16, cex= .5, xaxt="n") # , yaxt="n"
+     # axis(2, at=c(0,100,200,300,400)*1000, labels=c(0,100,200,300,400))
+     axis(1, at=c(0,10,20,30,40,50,60,70,80,90)*(1000^2), labels=c(0,10,20,30,40,50,60,70,80,90))
+abline(lm(log(Dist+1)~Area, data=df_dist))
+mtext("a)", side=3, line=0, adj=0)
+plot(jitter(df_dist$year ),
+     log(df_dist$Dist+1),
+     xlab="Year",
+     ylab="",
+     pch=16, cex= .25) # , yaxt="n")
+     # axis(2, at=c(0,100,200,300,400)*1000, labels=c(0,100,200,300,400))
+abline(lm(log(Dist+1)~year, data=df_dist))
+mtext("b)", side=3, line=0, adj=0)
+plot(jitter(abs(df_dist$Yeardiff) ),
+     log(df_dist$Dist),
+     xlab="Difference in collection year and mapped year",
+     ylab="",
+     pch=16, cex= .25) # , yaxt="n")
+     # axis(2, at=c(0,100,200,300,400)*1000, labels=c(0,100,200,300,400))
+abline(lm(log(Dist+1)~abs(Yeardiff), data=df_dist))
+mtext("c)", side=3, line=0, adj=0)
+dev.off()
+
+
+```
+
+
+
+# (2) Maxent (with stitchtogether(), should be able to delete all the partial files (i.e. "PredictHerbAs-Is_bg5000Sp30kfold4_7.gri" and "PredictHerbAs-Is_bg5000Sp30kfold4_7.grd"))
 
 Run maxent for the three datasets - EOR, As-IS, and Error; all with background of 5000 meters
 ```{r}
@@ -628,6 +693,14 @@ save(habsp_bigbg, file= paste(pathstart,"habsp_bigbg.Rda", sep=""))
 # (4) Habitat Specificity      
         a) add to table 1 for AIC with habitat specificity
       
+```{r}
+load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/habSp_EOR_uncleaned_error.Rda") #is this what i want?
+
+# load(paste(pathstart,"habsp_bigbg.Rda", sep="")) # These don't matter, the error isn't different when the background points are different
+# 
+# load(paste(pathstart,"habsp_smallbg.Rda", sep=""))
+
+```
       
 ```{r}
 # notnull are ones that have a few points but don't have a maxent file. Could pull from presence points instead??  Looks like will run into the same problem that 29 and 40 won't work like before. Not sure how I figured that out
@@ -656,11 +729,33 @@ save(habSp_EOR_uncleaned_error, file= "Q:/Research/Projects/alpine-phenology/Unc
 
 Animated PCAs of all species    
 ```{r}
+prPCA <- princomp(howmany[,-c(1:3)])
+allsphabsp <- data.frame(howmany[,1:3],prPCA$scores)
+allsphabsp$HerbType <- as.character(allsphabsp$HerbType)
+x.Pov <- prPCA$sdev/sum(prPCA$sdev^2) # Percent of variance explained by the components
+  
+  plots <- lapply(split(allsphabsp,
+               list(allsphabsp$SpeciesNum), #,allsphabsp$kfold), 
+               drop=TRUE), function(x){
+                      outplot <- ggplot(x, aes(Comp.1,Comp.2, colour=HerbType))+
+                        geom_point()+
+                        stat_ellipse()+
+                        theme_bw()
+                      outplot
+                      })
 
+length(plots)
+length(unique(howmany$SpeciesNum))
+plots[[1]]
 
+library(animation)
+saveGIF(
+  {lapply(plots, print)}
+  , "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/PCA_animate_20190805.gif"
+)
 ```
 
-
+Merge habitat specificity and tab 1 to look at the impact of actual habitt specificity, not just the range of the polygons.
 ```{r}
 habspe <- merge(habSp_EOR_uncleaned_error, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
 
@@ -713,13 +808,18 @@ ggplot(habspe, aes(Area/(1000^2), habspec/1000, shape=HerbType, colour=HerbType)
 # With habitat specificity (another measure of range, niche size as opposed to space covered/range size)
 AIC
 ```{r}
+# have the habitat specificty as a measure of the ellispe around the 95% CI of points for each kfold replicate for each of the datasets - EOR, uncleaned, and error 
+# Merged the summary information about avearge distance, min and max years with the habitat specificity, only some rows are interesting/meaningful
+habspe
 
 
+
+lm1 <- lm()
 ```
 
 # (5) Accuracy and Precision    
         i. forhistofavg()     
-        ii. forhistofsd()     
+        ii. forhistofsd() {This is just the SD of the kfolds, not the same as a MESS map, should just make that instead, ignore sd among kfolds for now}     
         iii. accuracyhists??
         iv.    
 ```{r}
