@@ -509,11 +509,12 @@ accuracyhists <- function(pathstart, probmapnames, whichones, reps = 1:10){
   })
 }
 
+# Need to label type 
 accuracyhistsOneperSp <- function(pathstart, whichones = atleast12, SDorAVG = "Avg", filenames){
   lapply(whichones, function(i){
-    datatype <- do.call(rbind,lapply(filenames, function(f){
+    datatype <- do.call(rbind,lapply(filenames, function(file){
     resultpath <- list.files(path = pathstart, 
-                         pattern = paste(SDorAVG,"TiffSp",i,"Herb",f,
+                         pattern = paste(SDorAVG,"TiffSp",i,"Herb",file,
                                          g1g2namesall68$AcceptedName[i], sep=""), 
                          full.names=TRUE)
     
@@ -538,6 +539,10 @@ accuracyhistsOneperSp <- function(pathstart, whichones = atleast12, SDorAVG = "A
     fr <- extract(r, f, small = TRUE, weights = TRUE)
     # Want the value [,1] for each polygon but use the weight [,2] to get the pro-rated cells 
     out <- do.call(rbind,fr)
+    out <- as.data.frame(out)
+    out$DataType <- file
+    out$SpNum <- i
+    out$AcceptedName <- g1g2namesall68$AcceptedName[i]
     out
     }))
     datatype
@@ -802,9 +807,9 @@ saveGIF(
 Merge habitat specificity and tab 1 to look at the impact of actual habitt specificity, not just the range of the polygons.
 ```{r}
 habspe <- merge(habSp_EOR_uncleaned_error, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
+habspe_aic <- merge(summaryHabSp, df_dist, by.x = "SpeciesNum", by.y = "SpNum")
 
-
-ggplot(habspe_aic, aes(as.factor(round(Area/(1000^2),0)), habspec, colour=HerbType))+
+ggplot(habspe, aes(as.factor(round(Area/(1000^2),0)), habspec, colour=HerbType))+
   geom_jitter()+
   geom_boxplot(position=position_dodge(width=-0.5))+
   theme_bw()+
@@ -959,7 +964,7 @@ correlations <- function(pathstart, filenames, rasterstack, whichones){
 
 ```
 
-
+# Create correlations and overlap values or
 ```{r}
 smallbackgroundcor <- correlations(pathstart = pathstart, filenames = filenames,
                                   whichones = atleast12)
@@ -967,6 +972,15 @@ smallbackgroundcor[[1]]
 
 bigbackgroundcor <- correlations(pathstart = pathstart, filenames = filenamesbig, 
                                  whichones = atleast12)
+
+save(smallbackgroundcor, file= paste(pathstart,"smallbackgroundcor.Rda", sep=""))
+save(bigbackgroundcor, file= paste(pathstart,"bigbackgroundcor.Rda", sep=""))
+```
+
+# load
+```{r}
+load(paste(pathstart,"smallbackgroundcor.Rda", sep=""))
+load(paste(pathstart,"bigbackgroundcor.Rda", sep=""))
 
 OverlapSmall <- mapply('[[', smallbackgroundcor, 3)  
 OverlapSmall.df <- data.frame(t(matrix(unlist(OverlapSmall),3,22)))
@@ -1035,12 +1049,16 @@ sapply(1:length(lmresults$Delta_AICc), function(i){
 # (6) Overlap
       iii. Accuracy and Precision 
       
-deal with overlap of polygons and over whole range, probably need to make changes to the function
-Poop, i think I wanted ofaverage
+Make new or 
 ```{r}
 smallbg_accuracyoneper <- accuracyhistsOneperSp(pathstart = pathstart, whichones = atleast12,
-                                                )
+                                                filenames = filenames)
 
+bigbg_accuracyoneper <- accuracyhistsOneperSp(pathstart = pathstart, whichones = atleast12,
+                                                filenames = filenamesbig)
+
+save(smallbg_accuracyoneper, file=paste(pathstart,"smallbg_accuracyoneper_accuracy.Rda", sep=""))
+save(bigbg_accuracyoneper, file=paste(pathstart,"bigbg_accuracyoneper_accuracy.Rda", sep=""))
 
 # smallbg_acc <- accuracyhists(pathstart = pathstart, probmapnames = rasternames, whichones = atleast12)
 # bigbg_acc <- accuracyhists(pathstart = pathstart, probmapnames = rasternamesbig, whichones = atleast12)
@@ -1048,8 +1066,103 @@ smallbg_accuracyoneper <- accuracyhistsOneperSp(pathstart = pathstart, whichones
 # save(smallbg_acc, file=paste(pathstart,"smallbackground_accuracy.Rda", sep=""))
 # save(bigbg_acc, file=paste(pathstart,"bigbackground_accuracy.Rda", sep=""))
 
+smallbg_accuracyoneper[[1]]
 ```
 
+
+load 
+```{r}
+load(paste(pathstart,"smallbg_accuracyoneper_accuracy.Rda", sep=""))
+load(paste(pathstart,"bigbg_accuracyoneper_accuracy.Rda", sep=""))
+
+smallbg_accuracyoneper[[1]]
+
+ks.outs_sm <- 
+  # for each species
+  lapply(1:length(smallbg_accuracyoneper), function(i){
+    # Compare each datatype (i.e. filenames or filenamesbig)
+    # Compare filenames[1] (EOR) to filenames[2] (uncleaned)
+    EOR_Uncleaned <- ks.test(log(data.frame(smallbg_accuracyoneper[[i]])$value[smallbg_accuracyoneper[[i]]$DataType == filenames[1]])+
+             log(data.frame(smallbg_accuracyoneper[[i]])$weight[smallbg_accuracyoneper[[i]]$DataType == filenames[1]]),
+          log(data.frame(smallbg_accuracyoneper[[i]])$value[smallbg_accuracyoneper[[i]]$DataType == filenames[2]])+
+             log(data.frame(smallbg_accuracyoneper[[i]])$weight[smallbg_accuracyoneper[[i]]$DataType == filenames[2]]))
+    
+    EOR_Error <- ks.test(log(data.frame(smallbg_accuracyoneper[[i]])$value[smallbg_accuracyoneper[[i]]$DataType == filenames[1]])+
+             log(data.frame(smallbg_accuracyoneper[[i]])$weight[smallbg_accuracyoneper[[i]]$DataType == filenames[1]]),
+          log(data.frame(smallbg_accuracyoneper[[i]])$value[smallbg_accuracyoneper[[i]]$DataType == filenames[3]])+
+             log(data.frame(smallbg_accuracyoneper[[i]])$weight[smallbg_accuracyoneper[[i]]$DataType == filenames[3]]))
+    
+    Uncleaned_Error <- ks.test(log(data.frame(smallbg_accuracyoneper[[i]])$value[smallbg_accuracyoneper[[i]]$DataType == filenames[2]])+
+             log(data.frame(smallbg_accuracyoneper[[i]])$weight[smallbg_accuracyoneper[[i]]$DataType == filenames[2]]),
+          log(data.frame(smallbg_accuracyoneper[[i]])$value[smallbg_accuracyoneper[[i]]$DataType == filenames[3]])+
+             log(data.frame(smallbg_accuracyoneper[[i]])$weight[smallbg_accuracyoneper[[i]]$DataType == filenames[3]]))
+    
+    list(EOR_Uncleaned,EOR_Error,Uncleaned_Error)
+    })
+
+# different distributions?
+whichdiff_EOR2Uncleaned <- sapply(1:22, function(s){
+  if(ks.outs_sm[[s]][[1]]$p.value < 0.05){
+    1
+  } else {
+    NA
+  }
+})
+
+which(!unlist(lapply(whichdiff_EOR2Uncleaned, is.na))) #  [1]  4  5  6  7  8  9 10 14 15 17 20 21
+length(which(!unlist(lapply(whichdiff_EOR2Uncleaned, is.na)))) # 12
+
+
+whichdiff_EOR2Error <- sapply(1:22, function(s){
+  if(ks.outs_sm[[s]][[2]]$p.value < 0.05){
+    1
+  } else {
+    NA
+  }
+})
+
+which(!unlist(lapply(whichdiff_EOR2Error, is.na))) # [1]  2  4  5  6  7  8  9 10 14 15 20 21
+length(which(!unlist(lapply(whichdiff_EOR2Error, is.na)))) # 12
+
+
+whichdiff_Uncleaned2Error <- sapply(1:22, function(s){
+  if(ks.outs_sm[[s]][[3]]$p.value < 0.05){
+    1
+  } else {
+    NA
+  }
+})
+
+which(!unlist(lapply(whichdiff_Uncleaned2Error, is.na))) #  [1]  4  5  6  7  8  9 10 14 15 17 21
+length(which(!unlist(lapply(whichdiff_Uncleaned2Error, is.na)))) # 11
+
+```
+
+```{r}
+# Plot the Cummulative distriubtion curves
+
+layout(matrix(c(1:12),nrow=4, byrow = TRUE))
+par(mar=c(5.1,4.1,4.1,0.1))
+for(i in which(!unlist(lapply(whichdiff_EOR2Uncleaned, is.na)))){
+  noerr <- data.frame(noerrorhistsofavg)
+  # noerr <- noerr[sample(1:nrow(noerr),1000),]
+  witherr <- data.frame(witherrorhistsofavg[[areasortaccuracy[i]]])
+  # witherr <- witherr[sample(1:nrow(witherr),1000)]
+  as_is <- ecdf(log(noerr$value)+log(noerr$weight))
+  additional <- ecdf(log(witherr$value)+log(witherr$weight))
+  # as_is <- ecdf(log(data.frame(noerrorhistsofavg[[i]])$value)+
+  #            log(data.frame(noerrorhistsofavg[[i]])$weight))
+  # additional  <- ecdf(log(data.frame(witherrorhistsofavg[[i]])$value)+
+  #            log(data.frame(witherrorhistsofavg[[i]])$weight))
+  plot(as_is, col = "blue", 
+       main=bquote(.(g1g2namesall68$AcceptedName[accuracyspeciesordered[i]]) ~
+                     .(round(unique(df_dist$Area[df_dist$SpNum==accuracyspeciesordered[i]])/(1000^2),0)) ~
+                     km^2),
+       cex.main=2)  
+  lines(additional, col = rgb(0,1,0,0.5))
+}
+
+```
 
 
 
