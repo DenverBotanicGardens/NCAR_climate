@@ -1298,18 +1298,101 @@ precisionsmall <- do.call(rbind,lapply(atleast12, function(i){
 
 head(precisionsmall)
 
+plots_precision_sm <- lapply(split(precisionsmall, precisionsmall$SpNum), function(x){
+  p <- ggplot(x, aes(Precision, fill = DataType))+
+    geom_histogram(position = "dodge2", bins = 10)+
+    theme_bw()
+  p
+})
 
-ggplot(precisionsmall, aes(Precision, fill = DataType))+
-  geom_histogram(position = "dodge2", bins = 10)+
-  theme_bw()+
-  facet_wrap(~SpNum)
+saveGIF(
+  {lapply(plots_precision_sm, print)}
+  , "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/PrecisionSmallbackground_animate_20190809.gif"
+)
+
+
+
+precisionbig <- do.call(rbind,lapply(atleast12, function(i){
+  datatypeprec <- do.call(rbind,lapply(filenamesbig, function(f){
+      resultpath <- list.files(path = pathstart,
+                               pattern = paste("AvgTiffSp",i,"Herb",f,
+                                             g1g2namesall68$AcceptedName[i], sep=""), 
+                             full.names=TRUE)
+      rastout <- raster(resultpath)
+      out <- sample(values(rastout), 1000000) # a sample of the larger set of rasters: 1,000,000
+      dfout <- data.frame(Precision = out, DataType = f, SpNum = i)
+      }))
+  datatypeprec
+  }))
+
+plots_precision_big <- lapply(split(precisionbig, precisionbig$SpNum), function(x){
+  p <- ggplot(x, aes(Precision, fill = DataType))+
+    geom_histogram(position = "dodge2", bins = 10)+
+    theme_bw()
+  p
+})
+
+saveGIF(
+  {lapply(plots_precision_big, print)}
+  , "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/PrecisionBigbackground_animate_20190809.gif"
+)
+
+
 
 ```
 
 
 
+# Check how much different is within themapped occurrences, how much within a distance of the mapped occurences and how much is over the whole study area and how this differs by sample size, area range, by background... all that
+```{r}
+mapdifferences <- function(pathstart, filenames, whichones){
+ lapply(whichones, function(i){
+   
+     # How correlated are the averages? 
+     r1 <- raster(paste(pathstart,"AvgTiffSp",i,"Herb",filenames[1],
+                        g1g2namesall68$AcceptedName[i],".tif", sep=""))
+     r2 <- raster(paste(pathstart,"AvgTiffSp",i,"Herb",filenames[2],
+                        g1g2namesall68$AcceptedName[i],".tif", sep=""))
+     r3 <- raster(paste(pathstart,"AvgTiffSp",i,"Herb",filenames[3],
+                        g1g2namesall68$AcceptedName[i],".tif", sep=""))
+     
+    # Map the differences between the rasters
+     # 1) EOR - As Is
+     # 2) EOR - Error
+     # 3) As Is - Error
+     
+     eor_asis <- r1-r2
+     eor_error <- r1-r3
+     asis_error <- r2-r3
+     writeRaster(eor_asis, paste(pathstart,
+                               "EOR_AsIsSp",i,
+                               strsplit(filenames[1],split='_', fixed=TRUE)[[1]][2],  # The background size
+                               g1g2namesall68$AcceptedName[i],
+                               ".tif", sep=""),overwrite=TRUE)
+     writeRaster(eor_error, paste(pathstart,
+                                  "EOR_ErrorSp",i,
+                                 strsplit(filenames[1],split='_', fixed=TRUE)[[1]][2],  # The background size
+                                 g1g2namesall68$AcceptedName[i],
+                                 ".tif", sep=""),overwrite=TRUE)
+     writeRaster(asis_error, paste(pathstart,
+                           "AsIs_ErrorSp",i,
+                           strsplit(filenames[1],split='_', fixed=TRUE)[[1]][2],  # The background size
+                           g1g2namesall68$AcceptedName[i],
+                           ".tif", sep=""),overwrite=TRUE)
+
+ })
+}
+
+mapdifferences(pathstart = pathstart, filenames = filenames, whichones = atleast12)
+mapdifferences(pathstart = pathstart, filenames = filenamesbig, whichones = atleast12)
 
 
+# Plot them
+AsIsErrorLyGrbig <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_EOR_asis_error/AsIs_ErrorSp66bg500000Lygodesmia grandiflora.tif")
+
+plot(AsIsErrorLyGrbig)
+plot(polySp2)
+```
 
 
 
