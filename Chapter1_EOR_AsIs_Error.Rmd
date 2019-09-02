@@ -820,7 +820,7 @@ table(howmany$SpeciesNum, howmany$HerbType, howmany$kfold)
 # Average sample size per species
 samplesize <- apply(table(howmany$SpeciesNum, howmany$HerbType, howmany$kfold), c(1,2), mean)
 samplesize <- data.frame(samplesize)
-names(samplesize) <- c()
+samplesize$SpNum <- row.names(samplesize)
 ```
 
 Animated PCAs of all species    
@@ -1122,7 +1122,12 @@ library(reshape2)
 habspediff <- melt(habspedifferences, id.vars = c("SpNum"))
 names(habspediff) <- c("SpNum","variable","HabSpeDiff")
 
-overvals <- merge(habspediff, overlap_values, by = "SpNum")
+overvals <- merge(habspediff, overlap_values, by = c("SpNum","variable"))
+overvals <- merge(overvals, samplesize, by = c("SpNum"))         
+# EOR sample size an indiciation of how many raster cells covered by polygons
+
+overvals <- merge(overvals, tab1, by.x = "SpNum", by.y = "SpNum1")
+
 
 ```
 
@@ -1133,12 +1138,21 @@ overvals <- merge(habspediff, overlap_values, by = "SpNum")
 
 # overvals <- overvals[!duplicated(overvals[,c("DistAvg.N","DistAvg.Dist","Area","habspec")]),]
 
-o1 <- lm(value ~ DistAvg.N, data = overvals) # sample size
+o1 <- lm(value ~ DistAvg.N, data = overvals) # sample size of herbarium specimens
 o2 <- lm(value ~ DistAvg.Dist, data = overvals) # the average distance herb to eor
 o3 <- lm(value ~ Area, data= overvals)
-o4 <- lm(value ~ habspec, data= overvals)
+o4 <- lm(value ~ HabSpeDiff, data= overvals)
+o5 <- lm(value ~ Area * Background, data=overvals)
+o6 <- lm(value ~ EOR_bg5000, data = overvals)
 
-formulas <- list(o1,o2,o3,o4)
+o7 <- lm(value ~ DistAvg.N* Background, data = overvals) # sample size of herbarium specimens
+o8 <- lm(value ~ DistAvg.Dist* Background, data = overvals) # the average distance herb to eor
+o9 <- lm(value ~ DistAvg.N*DistAvg.Dist , data= overvals)
+o10 <- lm(value ~ HabSpeDiff* Background, data= overvals)
+o11 <- lm(value ~ EOR_bg5000* Background, data = overvals)
+o12 <- lm(value ~ 1, data=overvals)
+
+formulas <- list(o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12)
 (lmresults <- aictab(formulas,
        modnames=as.character(unlist(lapply(formulas,formula)))))
 evidence(aictab(cand.set = formulas,
@@ -1148,10 +1162,15 @@ sapply(1:length(lmresults$Delta_AICc), function(i){
   exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
 })
 
+```
+
+
+```{r}
+
 ggplot(overvals, aes(DistAvg.N, value, colour=variable))+
   geom_point()+
   theme_bw()+
-  stat_smooth()
+  stat_smooth(method = "lm")
 
 ```
 
