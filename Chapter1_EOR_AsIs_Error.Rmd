@@ -630,6 +630,16 @@ formulas <- list(f1,f2,f3,f4,f5,f6,f7)
        modnames=as.character(unlist(lapply(formulas,formula)))))
 evidence(aictab(cand.set = formulas,
                 modnames = as.character(unlist(lapply(formulas,formula)))))
+
+evidence(aictab(cand.set = formulas,
+                modnames = as.character(unlist(lapply(formulas,formula)))),
+         model.low = as.character(unlist(lapply(formulas,formula)))[1])
+
+
+evidence(aictab(cand.set = formulas,
+                modnames = as.character(unlist(lapply(formulas,formula)))),
+         model.low = as.character(unlist(lapply(formulas,formula)))[3])
+
 sapply(1:length(lmresults$Delta_AICc), function(i){
   exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
 })
@@ -1279,24 +1289,118 @@ ggplot(dfaccuracy, aes(value, weight = weight, colour = DataType))+
 
 ```{r}
 jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure4_accuracy_histograms_20190901.jpg",
-     width=300, height=400,units='mm', res=300)
+     width=300, height=200,units='mm', res=300)
 
   dfaccuracy <- do.call(rbind,lapply(which(!unlist(lapply(whichdiff_Uncleaned2Error, is.na))), function(i){
     out <- data.frame(smallbg_accuracyoneper[[i]])
     out
   }))
 
-p <- ggplot(dfaccuracy, aes(value, weight = weight, colour = DataType))+
+p <- ggplot(dfaccuracy, aes(value, weight = weight, colour = DataType, linetype = DataType))+
   geom_freqpoly(binwidth=0.1)+
   # geom_histogram(position = "dodge2")+
   theme_bw()+
   facet_wrap(~AcceptedName, scales = "free")+
-  scale_color_discrete()
+  scale_color_manual(values = c("red","gray30","black"),
+                    name = "Dataset / background",
+                    breaks = paste(filenames),
+                    labels = c("EOR / small",
+                               "uncleaned / small",
+                               "error / small"))+
+  scale_linetype_manual(values = c("twodash","dotted","solid"),
+                        name = "Dataset / background",
+                        breaks = paste(filenames),
+                        labels = c("EOR / small",
+                               "uncleaned / small",
+                               "error / small"))
 
 p
 dev.off()
 
 ```
+
+
+Which are signficantly different when the background is big   
+```{r}
+
+
+ks.outs_big <- 
+  # for each species
+  lapply(1:length(bigbg_accuracyoneper), function(i){
+    # Compare each datatype (i.e. filenames or filenamesbig)
+    # Compare filenames[1] (EOR) to filenames[2] (uncleaned)
+    EOR_Uncleaned <- ks.test(log(data.frame(bigbg_accuracyoneper[[i]])$value[bigbg_accuracyoneper[[i]]$DataType == filenamesbig[1]])+
+             log(data.frame(bigbg_accuracyoneper[[i]])$weight[bigbg_accuracyoneper[[i]]$DataType == filenamesbig[1]]),
+          log(data.frame(bigbg_accuracyoneper[[i]])$value[bigbg_accuracyoneper[[i]]$DataType == filenamesbig[2]])+
+             log(data.frame(bigbg_accuracyoneper[[i]])$weight[bigbg_accuracyoneper[[i]]$DataType == filenamesbig[2]]))
+    
+    EOR_Error <- ks.test(log(data.frame(bigbg_accuracyoneper[[i]])$value[bigbg_accuracyoneper[[i]]$DataType == filenamesbig[1]])+
+             log(data.frame(bigbg_accuracyoneper[[i]])$weight[bigbg_accuracyoneper[[i]]$DataType == filenamesbig[1]]),
+          log(data.frame(bigbg_accuracyoneper[[i]])$value[bigbg_accuracyoneper[[i]]$DataType == filenamesbig[3]])+
+             log(data.frame(bigbg_accuracyoneper[[i]])$weight[bigbg_accuracyoneper[[i]]$DataType == filenamesbig[3]]))
+    
+    Uncleaned_Error <- ks.test(log(data.frame(bigbg_accuracyoneper[[i]])$value[bigbg_accuracyoneper[[i]]$DataType == filenamesbig[2]])+
+             log(data.frame(bigbg_accuracyoneper[[i]])$weight[bigbg_accuracyoneper[[i]]$DataType == filenamesbig[2]]),
+          log(data.frame(bigbg_accuracyoneper[[i]])$value[bigbg_accuracyoneper[[i]]$DataType == filenamesbig[3]])+
+             log(data.frame(bigbg_accuracyoneper[[i]])$weight[bigbg_accuracyoneper[[i]]$DataType == filenamesbig[3]]))
+    
+    list(EOR_Uncleaned,EOR_Error,Uncleaned_Error)
+    })
+# different distributions?
+
+whichdiff_Uncleaned2Errorbig <- sapply(1:22, function(s){
+  if(ks.outs_big[[s]][[3]]$p.value < 0.05){
+    1
+  } else {
+    NA
+  }
+})
+which(!unlist(lapply(whichdiff_Uncleaned2Errorbig, is.na))) #  [1]  4  5  6  7  8  9 10 14 15 17 20 21
+length(which(!unlist(lapply(whichdiff_Uncleaned2Errorbig, is.na)))) # 12
+
+
+```
+
+
+```{r}
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure4_accuracy_histograms_BIG20190901.jpg",
+     width=300, height=200,units='mm', res=300)
+
+  dfaccuracy <- do.call(rbind,lapply(which(!unlist(lapply(whichdiff_Uncleaned2Errorbig, is.na))), function(i){
+    out <- data.frame(smallbg_accuracyoneper[[i]])
+    out
+  }))
+
+p <- ggplot(dfaccuracy, aes(value, weight = weight, colour = DataType, linetype = DataType))+
+  geom_freqpoly(binwidth=0.1)+
+  # geom_histogram(position = "dodge2")+
+  theme_bw()+
+  facet_wrap(~AcceptedName, scales = "free")+
+  scale_color_manual(values = c("red","gray30","black"),
+                    name = "Dataset / background",
+                    breaks = paste(filenames),
+                    labels = c("EOR / big",
+                               "uncleaned / big",
+                               "error / big"))+
+  scale_linetype_manual(values = c("twodash","dotted","solid"),
+                        name = "Dataset / background",
+                        breaks = paste(filenames),
+                        labels = c("EOR / big",
+                               "uncleaned / big",
+                               "error / big"))
+
+p
+dev.off()
+
+```
+
+
+```{r}
+
+
+```
+
+
 
 ```{r}
 
