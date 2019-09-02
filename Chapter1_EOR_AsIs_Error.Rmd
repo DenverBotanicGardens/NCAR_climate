@@ -817,6 +817,10 @@ howmany <- do.call(rbind,lapply(atleast12, function(x){
   }))
 table(howmany$SpeciesNum, howmany$HerbType, howmany$kfold)
 
+# Average sample size per species
+samplesize <- apply(table(howmany$SpeciesNum, howmany$HerbType, howmany$kfold), c(1,2), mean)
+samplesize <- data.frame(samplesize)
+names(samplesize) <- c()
 ```
 
 Animated PCAs of all species    
@@ -914,7 +918,7 @@ lm7 <- lm(Dist ~ Yeardiff*Area, data= habspe_aic) # range shift as years between
 lm8 <- lm(Dist ~ year + habspec, data=habspe_aic) # range and collection year
 lm9 <- lm(Dist ~ habspec, data= habspe_aic) #x is the area of the species known range
 lm10 <- lm(Dist ~ year*habspec, data= habspe_aic) #year given the range
-lm11 <- lm(Dist ~ habspec, data= habspe_aic) # range shift as years between herbarium and field mapped
+lm11 <- lm(Dist ~ habspec+Yeardiff, data= habspe_aic) # range shift as years between herbarium and field mapped
 lm12 <- lm(Dist ~ Yeardiff*habspec, data= habspe_aic) # range shift as years between herbarium and field mapped 
 lm13 <- lm(Dist ~ habspec + Area, data= habspe_aic) # range shift as years between herbarium and field mapped
 lm14 <- lm(Dist ~ habspec*Area, data= habspe_aic) # range shift as years between herbarium and field mapped 
@@ -1086,6 +1090,7 @@ ggplot(overlap_values, aes(variable, value, colour = Background))+
 # (6) Niche overlap    
       ii. AIC     
 
+Match with the difference in habitat specificity, area doesn't make as much sence since it will change with error, points would mean it covers a bigger area. 
 Sample size? then want the summary one, habspe not habspe_aic   
 summary(lm(value ~ Area*habspec, data = overvals_aic))    
 summary(lm(value ~ habspec*variable, data = overvals_aic))    
@@ -1098,16 +1103,42 @@ o4 <- lm()
 
 # want to merge with habitat specificity, in overlap Background is "Big" or "Small" while habitat specificity changes with each data type and the overlap is the overlap so two of them... so depending on the starting specificity? 
 ```{r}
-overvals_aic <- merge(overlap_values, habspe_aic, by.x = "SpNum", by.y = "SpeciesNum")
-overvals <- merge(overlap_values, tab1, by.x = "SpNum", by.y = "SpNum1")
-overvals <- merge(overvals, habspe)
+
+# difference in habspec by dataset and species, averaged
+avghabspec <- aggregate(habspec~SpeciesNum + HerbType, mean, data = habSp_EOR_uncleaned_error)
+
+habspedifferences <- do.call(rbind,lapply(split(avghabspec, avghabspec$SpeciesNum), function(num){
+  out <- data.frame(SpNum = unique(num$SpeciesNum),
+                    OverlapEOR_AsIs = num$habspec[num$HerbType == paste(filenames)[2]]-
+                      num$habspec[num$HerbType == paste(filenames)[1]],
+                    OverlapAsIs_Error = num$habspec[num$HerbType == paste(filenames)[2]]-
+                      num$habspec[num$HerbType == paste(filenames)[3]],
+                    OverlapEOR_Error = num$habspec[num$HerbType == paste(filenames)[1]]-
+                      num$habspec[num$HerbType == paste(filenames)[3]])
+  out
+  }))
+
+library(reshape2)
+habspediff <- melt(habspedifferences, id.vars = c("SpNum"))
+names(habspediff) <- c("SpNum","variable","HabSpeDiff")
+
+overvals <- merge(habspediff, overlap_values, by = "SpNum")
+
+```
+
+```{r}
+# overvals_aic <- merge(overlap_values, habspe_aic, by.x = "SpNum", by.y = "SpeciesNum")
+# overvals <- merge(overlap_values, tab1, by.x = "SpNum", by.y = "SpNum1")
+# overvals <- merge(overvals, habspe)
+
+# overvals <- overvals[!duplicated(overvals[,c("DistAvg.N","DistAvg.Dist","Area","habspec")]),]
 
 o1 <- lm(value ~ DistAvg.N, data = overvals) # sample size
 o2 <- lm(value ~ DistAvg.Dist, data = overvals) # the average distance herb to eor
 o3 <- lm(value ~ Area, data= overvals)
-o4 <- lm(value ~ Area, data= overvals)
+o4 <- lm(value ~ habspec, data= overvals)
 
-formulas <- list(o1,o2,o3)
+formulas <- list(o1,o2,o3,o4)
 (lmresults <- aictab(formulas,
        modnames=as.character(unlist(lapply(formulas,formula)))))
 evidence(aictab(cand.set = formulas,
@@ -1116,6 +1147,11 @@ evidence(aictab(cand.set = formulas,
 sapply(1:length(lmresults$Delta_AICc), function(i){
   exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
 })
+
+ggplot(overvals, aes(DistAvg.N, value, colour=variable))+
+  geom_point()+
+  theme_bw()+
+  stat_smooth()
 
 ```
 
