@@ -25,7 +25,8 @@ require(lme4)
 require(AICcmodavg)
 library(splancs)
 library(Rmisc)
-library(rgdal)
+library(rgdal) # errors with readOGR
+library(sf)
 library(ENMeval)
 # devtools::install_github("ropensci/prism")
 library(prism)
@@ -112,9 +113,13 @@ thin.max <- function(x, cols, npoints){
 
 Raw data
 ```{r}
-
-colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
+# This shapefile got corrupted
+# colocounties <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties_wgs84")
 colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
+colocounties <- spTransform(colocounties.UTM,CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+# colocounties <- st_read("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties/counties_wgs84.shp")
+# colocounties.UTM <- st_read("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties/counties.shp")
 
 
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/g1g2namesall68.Rda")
@@ -157,13 +162,119 @@ length(table(coloradosps.g1g2_168$decimalLongitude)) # 870
 Points for SDMs    
        1. EOs sample size matching Herbarium specimens sample size, use thin.max
        2. Herbarium specimens as-is
-       3. Herbarium specimens with additional error (to be created from distance distribution)
+       3. Herbarium specimens with additional error (to be created from distance distribution) 
+       4. Combined EOR and herbarium records of same sample size
 ```{r}
 load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_EOR.Rda")
 ```
 or make new: 
 ```{r}
 distXsp_EOR <- lapply(1:nrow(g1g2namesall68), function(i){
+  gc()
+  g1g2now <- coloradosps.g1g2_168[coloradosps.g1g2_168$scientificName %in%
+                                c(g1g2namesall68$Taxon[i],g1g2namesall68$AcceptedName[i])&
+                                !is.na(coloradosps.g1g2_168$decimalLatitude),]
+  g1g2now$year <- as.numeric(as.character(substring(g1g2now$year,1,4)))
+   # remove points with errors in the year field
+  g1g2now <- g1g2now[g1g2now$year>1800,]
+  
+  g1g2now$decimalLatitude <- as.numeric(as.character(g1g2now$decimalLatitude))
+  g1g2now$decimalLongitude <- as.numeric(as.character(g1g2now$decimalLongitude))
+  # remove points not in Colorado
+  g1g2now <- g1g2now[g1g2now$decimalLatitude>35,]
+  g1g2now <- g1g2now[g1g2now$decimalLongitude>(-113),]
+  # discard observations that lack specimens
+  g1g2now <- g1g2now[grepl("Specimen",g1g2now$basisOfRecord),]
+  g1g2now <- g1g2now[,c("scientificName","scientificNameAuthorship","institutionCode", 
+                        "recordedBy","year","decimalLatitude","decimalLongitude")] # ,"lat2","lon2"
+  # remove duplicate locations
+  g1g2now$lonRounded <- round(g1g2now$decimalLongitude,4) # from stackexchange "The fourth decimal place is worth up to 11 m: it can identify a parcel of land. It is comparable to the typical accuracy of an uncorrected GPS unit with no interference."
+  g1g2now$latRounded <- round(g1g2now$decimalLatitude,4)
+  # reverse sort so the newest is kept when duplicates, not dinged for one duplicate being before 1980
+  g1g2now <- g1g2now[order(g1g2now$year, decreasing = TRUE),]
+  g1g2now <- g1g2now[!duplicated(g1g2now[c("latRounded","lonRounded")]),]
+  gc()
+  
+  
+  if(nrow(g1g2now)>0){
+  # put grid points across colorado, sample from it for each polygons
+    polys <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[i],
+                                        g1g2namesall68$Taxon[i]),] 
+    proj4string(polys) <- CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84") # CRS("+init=epsg:26913")
+    
+    totalarea <- sum(area(disaggregate(polys)))
+  # area of each polygon
+    # areanow <- sapply(slot(polys,"polygons"), slot, "area")
+  
+
+  # Convert polys to match rasterstack; only those mapped after 1980
+    polys@data$LASTOBS <- as.numeric(substring(polys@data$LASTOBS,1,4))
+    polys <- polys[polys@data$LASTOBS < 2020,] # when keeping all polys, need to remove unknown year
+    polys_after1980 <- polys[polys$LASTOBS > 1980 & polys$LASTOBS < 2020,] # and not unknown 9999
+    polys_latlon <- spTransform(polys, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+    # Get cell number of where the herbarium specimens fall; for records after 1980; sample size reduced if fall within same raster cell based on the ca. 1 km size of the climate variables
+      Herbcell <- cellFromXY(rasterstack, g1g2now[g1g2now$year>1980
+                                                  ,c("decimalLongitude","decimalLatitude")])
+
+    # Get cell number
+      cell <- cellFromPolygon(rasterstack, polys_latlon, weights =TRUE)
+      EORpnts <- rasterToPoints(rasterstack[[1]])[unique(as.vector(do.call(rbind,cell)[,1])),c(1:2)]
+    # Thin to same number of points available in Herbarium specimens
+      EORpnts <- thin.max(EORpnts,c("x","y"),length(unique(Herbcell)))
+        
+    gc()
+    
+    
+    # Combine the two and thin to Herbcell, make sure no duplicate points
+    combined <- rbind(EORpnts, data.frame(x = g1g2now$lonRounded, y = g1g2now$latRounded))
+    combined <- combined[!duplicated(combined[,c("x","y")]),]
+    combined <- thin.max(combined, c("x","y"),length(unique(Herbcell)))
+        
+    
+  #turn into spatialpointsdataframe for individual species
+    coordinates(g1g2now) <- ~decimalLongitude+decimalLatitude
+    proj4string(g1g2now) <- CRS("+init=epsg:4326")  # CRS("+proj=longlat +datum=WGS84")
+    g1g2now <- spTransform(g1g2now, CRS("+proj=utm +zone=13 ellps=NAD83 +ellps=WGS84"))
+  # The minimum distance from each point to the nearest polygon
+    distnow <- apply(gDistance(g1g2now,polys, byid=TRUE),2,min)
+    gc()
+    
+    g1g2distarea <- data.frame(Species = g1g2namesall68$AcceptedName[i], 
+                               g1g2now,Dist = distnow, Area = totalarea,
+                               EORdate = polys$LASTOBS[apply(gDistance(g1g2now,polys,
+                                                                       byid=TRUE),2,which.min)],
+                               Yeardiff = g1g2now$year- as.numeric(substring(as.character(polys$LASTOBS[apply(gDistance(g1g2now,polys, byid=TRUE),2,which.min)]),1,4)))
+    gc()
+    
+    out <- list(g1g2distarea, EORpnts, combined)
+    gc()
+    out
+    }
+  })
+save(distXsp_EOR, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_EOR.Rda") 
+
+
+# Have now made a list of species each has a list of (1) the herbarium specimens for that species 
+head(distXsp_EOR[[1]][[1]])
+
+#  distXsp_EOR[[1]][[1]]$decimalLongitude,
+checkyears <- colSums(data.frame(matrix(table(distXsp_EOR[[1]][[1]]$decimalLatitude, distXsp_EOR[[1]][[1]]$year), 
+                          ncol = length(unique(distXsp_EOR[[1]][[1]]$year)) ), check.names = FALSE) )   # 
+names(checkyears) <-  sort(unique(distXsp_EOR[[1]][[1]]$year))
+
+# and (2) a list of points within the EORs that approximatly matches the number of herbarium records after 1980. or matches after get rid of duplicates, and only has one per raster cell
+head(distXsp_EOR[[1]][[2]])
+nrow(distXsp_EOR[[1]][[2]])
+
+
+head(distXsp_EOR[[1]][[3]])
+nrow(distXsp_EOR[[1]][[3]])
+```
+
+Make EOR with as many datapoints as you can, all that fit in a separate cell? Or make the combination of all the Herbarium and all the EORs? That first, lots of data points later, compare same number of datapoints/sample size, then compare more. Combine all points and then spatially thin to make it even? Or compare keeping all to keeping only the limiting number? 
+```{r}
+distXsp_EORmaxpoints <- lapply(1:nrow(g1g2namesall68), function(i){
   gc()
   g1g2now <- coloradosps.g1g2_168[coloradosps.g1g2_168$scientificName %in%
                                 c(g1g2namesall68$Taxon[i],g1g2namesall68$AcceptedName[i])&
@@ -233,9 +344,10 @@ distXsp_EOR <- lapply(1:nrow(g1g2namesall68), function(i){
     out
     }
   })
-save(distXsp_EOR, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_EOR.Rda") 
+save(distXsp_EORmaxpoints, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/distXsp_EOR.Rda") 
 
 ```
+
 
 #Distribution of error in herbarium specimens 
     
@@ -1078,12 +1190,26 @@ OverlapBig.df$Background <- "Big"
 library(reshape2)
 overlap_values <- melt(rbind(OverlapBig.df,OverlapSmall.df), id.vars = list("Background","SpNum"))
 
-ggplot(overlap_values, aes(variable, value, colour = Background))+
+```
+
+```{r}
+
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure5_nicheOverlap.jpg",
+     width=130, height=80,units='mm', res=300)
+
+
+ggplot(overlap_values, aes(variable, value, fill = Background))+
   geom_boxplot()+
   theme_bw()+
   ylab("Niche Overlap")+
   xlab("")+
-  scale_x_discrete(labels=c("EOR - Uncleaned","EOR - Error","Uncleaned - Error"))
+  scale_fill_manual(values = c("white","black"),
+                  name = "Background",
+                  breaks = c("Big","Small"),
+                  labels = c("Big","Small"))+
+  scale_x_discrete(breaks =c("OverlapEOR_AsIs","OverlapEOR_Error","OverlapAsIs_Error"),
+                   labels =c("EOR - Uncleaned", "EOR - Error", "Uncleaned - Error"))
+dev.off()
 ```
 
 
@@ -1157,6 +1283,11 @@ formulas <- list(o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12)
        modnames=as.character(unlist(lapply(formulas,formula)))))
 evidence(aictab(cand.set = formulas,
                 modnames = as.character(unlist(lapply(formulas,formula)))))
+
+evidence(aictab(cand.set = formulas,
+                modnames = as.character(unlist(lapply(formulas,formula)))),
+         model.low = as.character(unlist(lapply(formulas,formula)))[9])
+
 # Should be the evidence ratio, but it's something else
 sapply(1:length(lmresults$Delta_AICc), function(i){
   exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
@@ -1275,27 +1406,27 @@ main=bquote(.(g1g2namesall68$AcceptedName[i]) ~
 
 ```{r}
 # Plot the Cummulative distriubtion curves
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure4_accuracy_20190809.jpg",
-     width=300, height=400,units='mm', res=300)
-
-
-layout(matrix(c(1:12),nrow=4, byrow = TRUE))
-par(mar=c(2.1,3.1,1.1,0.1))
-for(i in which(!unlist(lapply(whichdiff_Uncleaned2Error, is.na)))){
-  dfaccuracy <- data.frame(smallbg_accuracyoneper[[i]])
-
-  EOR <- ecdf(log(dfaccuracy$value[dfaccuracy$DataType == filenames[1]])+
-                  log(dfaccuracy$weight[dfaccuracy$DataType == filenames[1]]))
-  Uncleaned <- ecdf(log(dfaccuracy$value[dfaccuracy$DataType == filenames[2]])+
-                  log(dfaccuracy$weight[dfaccuracy$DataType == filenames[2]]))
-  Error <- ecdf(log(dfaccuracy$value[dfaccuracy$DataType == filenames[3]])+
-                  log(dfaccuracy$weight[dfaccuracy$DataType == filenames[3]]))
-  plot(EOR, col = rgb(0,0,1,1),main = g1g2namesall68$AcceptedName[i],cex.main=2)  
-  lines(Uncleaned, col = rgb(0,1,0,0.5))
-  lines(Error, col = rgb(1,0,0,0.5))
-}
-
-dev.off()
+# jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure4_accuracy_20190809.jpg",
+#      width=300, height=400,units='mm', res=300)
+# 
+# 
+# layout(matrix(c(1:12),nrow=4, byrow = TRUE))
+# par(mar=c(2.1,3.1,1.1,0.1))
+# for(i in which(!unlist(lapply(whichdiff_Uncleaned2Error, is.na)))){
+#   dfaccuracy <- data.frame(smallbg_accuracyoneper[[i]])
+# 
+#   EOR <- ecdf(log(dfaccuracy$value[dfaccuracy$DataType == filenames[1]])+
+#                   log(dfaccuracy$weight[dfaccuracy$DataType == filenames[1]]))
+#   Uncleaned <- ecdf(log(dfaccuracy$value[dfaccuracy$DataType == filenames[2]])+
+#                   log(dfaccuracy$weight[dfaccuracy$DataType == filenames[2]]))
+#   Error <- ecdf(log(dfaccuracy$value[dfaccuracy$DataType == filenames[3]])+
+#                   log(dfaccuracy$weight[dfaccuracy$DataType == filenames[3]]))
+#   plot(EOR, col = rgb(0,0,1,1),main = g1g2namesall68$AcceptedName[i],cex.main=2)  
+#   lines(Uncleaned, col = rgb(0,1,0,0.5))
+#   lines(Error, col = rgb(1,0,0,0.5))
+# }
+# 
+# dev.off()
 
 # Plot the Cummulative distriubtion curves for the ones where EOR differs from Error
 # jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure4_accuracy_20190809_EOR2Error.jpg",
@@ -1422,7 +1553,7 @@ jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images
      width=300, height=200,units='mm', res=300)
 
   dfaccuracy <- do.call(rbind,lapply(which(!unlist(lapply(whichdiff_Uncleaned2Errorbig, is.na))), function(i){
-    out <- data.frame(smallbg_accuracyoneper[[i]])
+    out <- data.frame(bigbg_accuracyoneper[[i]])
     out
   }))
 
@@ -1433,13 +1564,13 @@ p <- ggplot(dfaccuracy, aes(value, weight = weight, colour = DataType, linetype 
   facet_wrap(~AcceptedName, scales = "free")+
   scale_color_manual(values = c("red","gray30","black"),
                     name = "Dataset / background",
-                    breaks = paste(filenames),
+                    breaks = paste(filenamesbig),
                     labels = c("EOR / big",
                                "uncleaned / big",
                                "error / big"))+
-  scale_linetype_manual(values = c("twodash","dotted","solid"),
+  scale_linetype_manual(values = c("twodash","dotted","solid"),
                         name = "Dataset / background",
-                        breaks = paste(filenames),
+                        breaks = paste(filenamesbig),
                         labels = c("EOR / big",
                                "uncleaned / big",
                                "error / big"))
