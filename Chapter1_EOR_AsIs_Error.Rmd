@@ -451,6 +451,7 @@ forhistofaverage <- function(whichones = atleast12, pathstart, patternmatch){
   stacktoaverage
 }
 
+
 forhistofsd <- function(whichones = atleast12, pathstart, patternmatch){
   stacktoaverage <- lapply(whichones, function(i){
     rasterstoavg <- list.files(path = pathstart, 
@@ -800,7 +801,8 @@ for(i in atleast12){
     }
 }
 
-# habitat specificity with combined instead of error
+# habitat specificity with combined instead of error 
+# Did have "habSp_EOR_uncleaned_error" but now have habsp_smallbg for the small background and habsp_bigbg for big
 habsp_smallbg <- habitatSpecificity(whichones = atleast12[atleast12 != 8], pathstart = pathstart, 
                                     replicates = 10, filenames = filenames[-3])
 save(habsp_smallbg, file= paste(pathstart,"habsp_smallbg.Rda", sep=""))
@@ -854,11 +856,11 @@ rasternamesbig <- paste("Herb", filenamesbig, "kfold", sep="")
 
 lapply(1:3, function(x) stitchtogether(atleast12, pathstart=pathstart, patternmatch = patternmatchbig[x], rasternames = rasternames[x]))
 
-stitchtogether(atleast12, pathstart=pathstart, patternmatch = patternmatchbig[x], rasternames = rasternames[4])
+stitchtogether(atleast12, pathstart=pathstart, patternmatch = patternmatchbig[4], rasternames = rasternamesbig[4])
 
 # habitat specificity
 
-habsp_bigbg <- habitatSpecificity(atleast12, pathstart, replicates = 10, filenames = filenamesbig)
+habsp_bigbg <- habitatSpecificity(atleast12[atleast12 != 8], pathstart, replicates = 10, filenames = filenamesbig[-3])
 save(habsp_bigbg, file= paste(pathstart,"habsp_bigbg.Rda", sep=""))
 
 
@@ -870,25 +872,16 @@ save(habsp_bigbg, file= paste(pathstart,"habsp_bigbg.Rda", sep=""))
         a) add to table 1 for AIC with habitat specificity   
         
         
-load habitat specificiy from file 
+Merge habitat specificity and tab 1 to look at the impact of actual habitt specificity, not just the range of the polygons.
 ```{r}
-load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/habSp_EOR_uncleaned_error.Rda") 
+habspebig <- merge(habsp_bigbg, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
 
-# to merge with table 1
-summaryHabSp <- summarySE(habSp_EOR_uncleaned_error[habSp_EOR_uncleaned_error$HerbType == "As-Is_bg5000",],
-                          "habspec", "SpeciesNum")
-
+ggplot(habspebig, aes(habspec, (Area/(1000^2)), colour = HerbType))+
+  geom_point()+
+  stat_smooth(method="lm")+
+  theme_bw()
 ```
 
-or make new    
-```{r}
-
-habSp_EOR_uncleaned_error <- habitatSpecificity(whichones = atleast12[atleast12 != 8], 
-                                                pathstart = pathstart,
-                                                filenames = filenames, rasterstack = rasterstack)
-save(habSp_EOR_uncleaned_error, file= "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_herb_herbpluserror/habSp_EOR_uncleaned_error.Rda")
-
-```
 
 ```{r}
 
@@ -1044,9 +1037,13 @@ lapply(filenames, function(x){
   forhistofaverage(whichones = atleast12, pathstart = pathstart, patternmatch = paste("Herb", x, sep=""))
   })
 
+forhistofaverage(whichones = atleast12, pathstart = pathstart, patternmatch = paste("Herb", filenames[4], sep=""))
+
 lapply(filenames, function(x){
   forhistofsd(whichones = atleast12, pathstart = pathstart, patternmatch = paste("Herb", x, sep=""))
   })
+
+forhistofsd(whichones = atleast12, pathstart = pathstart, patternmatch = paste("Herb", filenames, sep=""))
 ```
 
 Also average and SD for the larger background area ones
@@ -1055,15 +1052,21 @@ lapply(filenamesbig, function(x){
   forhistofaverage(whichones = atleast12, pathstart = pathstart, patternmatch = paste("Herb", x, sep=""))
   })
 
+forhistofaverage(whichones = atleast12, pathstart = pathstart, patternmatch = paste("Herb", filenamesbig[4], sep=""))
+
+
 lapply(filenamesbig, function(x){
   forhistofsd(whichones = atleast12, pathstart = pathstart, patternmatch = paste("Herb", x, sep=""))
   })
+
+forhistofsd(whichones = atleast12, pathstart = pathstart, patternmatch = paste("Herb", filenamesbig, sep=""))
 ```
 
 Compare to AUC and how AUC changes with differences and someway look at precision again  
+Herb, EOR, and combined
 ```{r}
 maxevaluates <- do.call(rbind,lapply(atleast12, function(x){
-  outnow <- do.call(rbind,lapply(c(filenames,filenamesbig), function(filenames){
+  outnow <- do.call(rbind,lapply(c(filenames[-3],filenamesbig[-3]), function(filenames){
     aucs <- do.call(rbind,lapply(1:10, function(rep){
     load(paste(pathstart,"evaluateHerb", filenames, "Sp", x, "kfold", rep, ".Rda", sep=""))
       out <- data.frame(filename = filenames, SpNum = x, AUC = e@auc)
@@ -1074,20 +1077,21 @@ maxevaluates <- do.call(rbind,lapply(atleast12, function(x){
   outnow
   }))
 
-
+levels(maxevaluates$filename)
 aggregate(AUC ~ filename, mean, data=maxevaluates)
 aggregate(AUC ~ filename, sd, data=maxevaluates)
 
-ggplot(maxevaluates, aes(y = AUC, fill = filename))+
+fig3 <- ggplot(maxevaluates, aes(y = AUC, fill = filename))+
   geom_boxplot()+
   theme_bw()+
-  scale_fill_manual(values = c("grey","white","black","grey","white","black"),
+  scale_fill_manual(values = c("grey","white","grey30","grey","white","grey30"),
                     name = "Dataset / background",
-                    breaks = c(paste(filenames), paste(filenamesbig)),
-                    labels = c("EOR / small",
-                               "uncleaned / small",
-                               "error / small","EOR / big","uncleaned / big","error / big"))
+                    breaks = c(paste(filenames[-3]), paste(filenamesbig[-3])),
+                    labels = c("EOR / 5 km",
+                               "herbarium / 5 km",
+                               "combined / 5 km","EOR / 500 km","herbarium / 500 km","combined / 500 km"))
 
+ggsave(filename = "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Uncertainty data source Chapter XX/fig3_AUC.png", fig3, width = 8, height = 6, dpi = 300, units = "in", device='png')
   
 ```
 
@@ -1125,8 +1129,8 @@ correlations <- function(pathstart, filenames, rasterstack, whichones){
       overlaps2_3 <- nicheOverlap(r2,r3, mask=FALSE, checkNegatives=FALSE)
       
       list(cor_1, out_cor, data.frame(OverlapEOR_AsIs = overlaps1_2, 
-                                      OverlapEOR_Error = overlaps1_3, 
-                                      OverlapAsIs_Error = overlaps2_3))
+                                      OverlapEOR_comb = overlaps1_3, 
+                                      OverlapAsIs_comb = overlaps2_3))
   })
   lrhist
 }
@@ -1134,13 +1138,14 @@ correlations <- function(pathstart, filenames, rasterstack, whichones){
 
 ```
 
-# Create correlations and overlap values or
+# Create correlations and overlap values or   
+Three so swap out error for combined
 ```{r}
-smallbackgroundcor <- correlations(pathstart = pathstart, filenames = filenames,
+smallbackgroundcor <- correlations(pathstart = pathstart, filenames = filenames[-3],
                                   whichones = atleast12)
 smallbackgroundcor[[1]]
 
-bigbackgroundcor <- correlations(pathstart = pathstart, filenames = filenamesbig, 
+bigbackgroundcor <- correlations(pathstart = pathstart, filenames = filenamesbig[-3], 
                                  whichones = atleast12)
 
 save(smallbackgroundcor, file= paste(pathstart,"smallbackgroundcor.Rda", sep=""))
