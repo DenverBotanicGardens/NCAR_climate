@@ -155,6 +155,9 @@ coloradosps.g1g2_168$lat2 <- round(coloradosps.g1g2_168$decimalLatitude, 2)
 
 length(table(coloradosps.g1g2_168$lon2)) # 325 
 length(table(coloradosps.g1g2_168$decimalLongitude)) # 870
+
+# Number of herbaria
+length(unique(coloradosps.g1g2_168$institutionCode))
 ```
 
 
@@ -888,7 +891,7 @@ ggplot(habspebig, aes(habspec, (Area/(1000^2)), colour = HerbType))+
 # how many points are there for each? Need enough points to make ellipse
 # collect all the presence points used in the SDM
 howmany <- do.call(rbind,lapply(atleast12, function(x){
-  out <- do.call(rbind,lapply(filenames, function(nams){
+  out <- do.call(rbind,lapply(filenames[-3], function(nams){
     outno <- do.call(rbind,lapply(1:10, function(rep){
       load(paste(pathstart,"maxentHerb", nams, "Sp", x,"kfold",rep, ".Rda",sep=""))
       outinner <- data.frame(SpeciesNum = x, kfold = rep, HerbType = nams, xm@presence)
@@ -1184,8 +1187,8 @@ overlap_values <- melt(rbind(OverlapBig.df,OverlapSmall.df), id.vars = list("Bac
 
 ```{r}
 
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure5_nicheOverlap.jpg",
-     width=130, height=80,units='mm', res=300)
+png("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure5_nicheOverlap.jpg",
+     width=150, height=80,units='mm', res=300)
 
 
 ggplot(overlap_values, aes(variable, value, fill = Background))+
@@ -1195,10 +1198,10 @@ ggplot(overlap_values, aes(variable, value, fill = Background))+
   xlab("")+
   scale_fill_manual(values = c("white","grey30"),
                   name = "Background",
-                  breaks = c("Large","Small"),
+                  breaks = c("Big","Small"),
                   labels = c("Large","Small"))+
-  scale_x_discrete(breaks =c("OverlapEOR_AsIs","OverlapEOR_Combin","OverlapAsIs_Error"),
-                   labels =c("EOR - Uncleaned", "EOR - Error", "Uncleaned - Error"))
+  scale_x_discrete(breaks =c("OverlapEOR_AsIs","OverlapEOR_comb","OverlapAsIs_comb"),
+                   labels =c("EOR - herbarium", "EOR - Combined", "herbarium - Combined"))
 dev.off()
 ```
 
@@ -1219,18 +1222,23 @@ o4 <- lm()
 
 # want to merge with habitat specificity, in overlap Background is "Big" or "Small" while habitat specificity changes with each data type and the overlap is the overlap so two of them... so depending on the starting specificity? 
 ```{r}
-
+# Doesn't matter the background for this, can use only small
 # difference in habspec by dataset and species, averaged
-avghabspec <- aggregate(habspec~SpeciesNum + HerbType, mean, data = habSp_EOR_uncleaned_error)
+# avghabspec <- aggregate(habspec~SpeciesNum + HerbType, mean, data = habSp_EOR_uncleaned_error)
+# habsp_allbg <- rbind(habsp_smallbg, habsp_bigbg)
+avghabspec <- aggregate(habspec~SpeciesNum + HerbType, mean, data = habsp_smallbg)
 
+# herbtypes <- levels(habsp_allbg$HerbType)
+
+# took out filenames[3] that was error and swapped with filenames[4] that is combined
 habspedifferences <- do.call(rbind,lapply(split(avghabspec, avghabspec$SpeciesNum), function(num){
   out <- data.frame(SpNum = unique(num$SpeciesNum),
                     OverlapEOR_AsIs = num$habspec[num$HerbType == paste(filenames)[2]]-
                       num$habspec[num$HerbType == paste(filenames)[1]],
-                    OverlapAsIs_Error = num$habspec[num$HerbType == paste(filenames)[2]]-
-                      num$habspec[num$HerbType == paste(filenames)[3]],
-                    OverlapEOR_Error = num$habspec[num$HerbType == paste(filenames)[1]]-
-                      num$habspec[num$HerbType == paste(filenames)[3]])
+                    OverlapAsIs_comb = num$habspec[num$HerbType == paste(filenames)[2]]-
+                      num$habspec[num$HerbType == paste(filenames)[4]],
+                    OverlapEOR_comb = num$habspec[num$HerbType == paste(filenames)[1]]-
+                      num$habspec[num$HerbType == paste(filenames)[4]])
   out
   }))
 
@@ -1254,21 +1262,21 @@ overvals <- merge(overvals, tab1, by.x = "SpNum", by.y = "SpNum1")
 
 # overvals <- overvals[!duplicated(overvals[,c("DistAvg.N","DistAvg.Dist","Area","habspec")]),]
 
-o1 <- lm(value ~ DistAvg.N, data = overvals) # sample size of herbarium specimens
+o1 <- lm(value ~ EOR_bg5000, data = overvals) # sample size of herbarium specimens was DistAvg.N, not what was used in the SDM; that is EOR_bg5000
 o2 <- lm(value ~ DistAvg.Dist, data = overvals) # the average distance herb to eor
 o3 <- lm(value ~ Area, data= overvals)
 o4 <- lm(value ~ HabSpeDiff, data= overvals)
 o5 <- lm(value ~ Area * Background, data=overvals)
-o6 <- lm(value ~ EOR_bg5000, data = overvals)
+# o6 <- lm(value ~ EOR_bg5000, data = overvals)
 
-o7 <- lm(value ~ DistAvg.N* Background, data = overvals) # sample size of herbarium specimens
+o7 <- lm(value ~ EOR_bg5000* Background, data = overvals) # sample size of herbarium specimens
 o8 <- lm(value ~ DistAvg.Dist* Background, data = overvals) # the average distance herb to eor
-o9 <- lm(value ~ DistAvg.N*DistAvg.Dist , data= overvals)
+o9 <- lm(value ~ EOR_bg5000*DistAvg.Dist , data= overvals)
 o10 <- lm(value ~ HabSpeDiff* Background, data= overvals)
-o11 <- lm(value ~ EOR_bg5000* Background, data = overvals)
+# o11 <- lm(value ~ EOR_bg5000* Background, data = overvals)
 o12 <- lm(value ~ 1, data=overvals)
 
-formulas <- list(o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12)
+formulas <- list(o1,o2,o3,o4,o5,o7,o8,o9,o10,o12) # o6, o11,
 (lmresults <- aictab(formulas,
        modnames=as.character(unlist(lapply(formulas,formula)))))
 evidence(aictab(cand.set = formulas,
@@ -1278,20 +1286,34 @@ evidence(aictab(cand.set = formulas,
                 modnames = as.character(unlist(lapply(formulas,formula)))),
          model.low = as.character(unlist(lapply(formulas,formula)))[9])
 
+
+evidence(aictab(cand.set = formulas,
+                modnames = as.character(unlist(lapply(formulas,formula)))),
+         model.low = as.character(unlist(lapply(formulas,formula)))[6])
+
+
+# no species #8 becuase too small for EOR
+
 # Should be the evidence ratio, but it's something else
-sapply(1:length(lmresults$Delta_AICc), function(i){
-  exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
-})
+# sapply(1:length(lmresults$Delta_AICc), function(i){
+#   exp(-0.5*lmresults$Delta_AICc[i])/sum(exp(-0.5*lmresults$Delta_AICc))
+# })
 
 ```
 
 
 ```{r}
+levels(overvals$variable)
+overvals$HabSpeDiff
 
-ggplot(overvals, aes(DistAvg.N, value, colour=variable))+
+ggplot(overvals, aes(HabSpeDiff, value))+
   geom_point()+
   theme_bw()+
   stat_smooth(method = "lm")
+
+table(overvals$variable, overvals$value)
+
+overvals
 
 ```
 
