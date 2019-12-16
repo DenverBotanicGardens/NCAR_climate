@@ -1038,6 +1038,7 @@ lapply(filenames, function(x){
   })
 
 forhistofaverage(whichones = atleast12, pathstart = pathstart, patternmatch = paste("Herb", filenames[4], sep=""))
+forhistofaverage(whichones = 1, pathstart = pathstart, patternmatch = paste("Herb", filenamesbig[1], sep=""))
 
 lapply(filenames, function(x){
   forhistofsd(whichones = atleast12, pathstart = pathstart, patternmatch = paste("Herb", x, sep=""))
@@ -1048,11 +1049,11 @@ forhistofsd(whichones = atleast12, pathstart = pathstart, patternmatch = paste("
 
 Also average and SD for the larger background area ones
 ```{r}
-lapply(filenamesbig, function(x){
+lapply(filenamesbig[-3], function(x){
   forhistofaverage(whichones = atleast12, pathstart = pathstart, patternmatch = paste("Herb", x, sep=""))
   })
 
-forhistofaverage(whichones = atleast12, pathstart = pathstart, patternmatch = paste("Herb", filenamesbig[4], sep=""))
+# forhistofaverage(whichones = atleast12, pathstart = pathstart, patternmatch = paste("Herb", filenamesbig[4], sep=""))
 
 
 lapply(filenamesbig, function(x){
@@ -1109,14 +1110,20 @@ Or really how similar are the niches derived from the different data?
 
 correlations <- function(pathstart, filenames, rasterstack, whichones){
   lrhist <- lapply(whichones, function(i){
-    
-      # How correlated are the averages? 
+
+    for(i in atleast12){
+          # How correlated are the averages? 
       r1 <- raster(paste(pathstart,"AvgTiffSp",i,"Herb",filenames[1],
                          g1g2namesall68$AcceptedName[i],".tif", sep=""))
       r2 <- raster(paste(pathstart,"AvgTiffSp",i,"Herb",filenames[2],
                          g1g2namesall68$AcceptedName[i],".tif", sep=""))
       r3 <- raster(paste(pathstart,"AvgTiffSp",i,"Herb",filenames[3],
                          g1g2namesall68$AcceptedName[i],".tif", sep=""))
+      
+      plot(r1)
+      plot(r2)
+      plot(r3)
+  }
       
       # Pearson correlation measures the strength of the linear relationship between normally distriubted variables
       # Spearman rank correlation for variables not normally distributed or when the relationship is not linear. 
@@ -1186,11 +1193,11 @@ ggplot(overlap_values, aes(variable, value, fill = Background))+
   theme_bw()+
   ylab("Niche Overlap")+
   xlab("")+
-  scale_fill_manual(values = c("white","black"),
+  scale_fill_manual(values = c("white","grey30"),
                   name = "Background",
-                  breaks = c("Big","Small"),
-                  labels = c("Big","Small"))+
-  scale_x_discrete(breaks =c("OverlapEOR_AsIs","OverlapEOR_Error","OverlapAsIs_Error"),
+                  breaks = c("Large","Small"),
+                  labels = c("Large","Small"))+
+  scale_x_discrete(breaks =c("OverlapEOR_AsIs","OverlapEOR_Combin","OverlapAsIs_Error"),
                    labels =c("EOR - Uncleaned", "EOR - Error", "Uncleaned - Error"))
 dev.off()
 ```
