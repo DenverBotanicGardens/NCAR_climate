@@ -1085,7 +1085,8 @@ levels(maxevaluates$filename)
 aggregate(AUC ~ filename, mean, data=maxevaluates)
 aggregate(AUC ~ filename, sd, data=maxevaluates)
 
-fig3 <- ggplot(maxevaluates, aes(y = AUC, fill = filename))+
+fig3 <- 
+  ggplot(maxevaluates, aes(y = AUC, fill = filename))+
   geom_boxplot()+
   theme_bw()+
   scale_fill_manual(values = c("grey","white","grey30","grey","white","grey30"),
@@ -1093,14 +1094,26 @@ fig3 <- ggplot(maxevaluates, aes(y = AUC, fill = filename))+
                     breaks = c(paste(filenames[-3]), paste(filenamesbig[-3])),
                     labels = c("EOR / 5 km",
                                "herbarium / 5 km",
-                               "combined / 5 km","EOR / 500 km","herbarium / 500 km","combined / 500 km"))
+                               "combined / 5 km","EOR / 500 km","herbarium / 500 km","combined / 500 km"))+
+  scale_x_discrete(limits = levels(maxevaluates$filename), breaks = NULL, labels =c("","small","","","large",""))
+# 
+#  c(paste(filenames[-3]), paste(filenamesbig[-3])), # limits= c("grey","white","grey30","grey","white","grey30"),
+#                    labels =
 
-ggsave(filename = "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Uncertainty data source Chapter XX/fig3_AUC.png", fig3, width = 8, height = 6, dpi = 300, units = "in", device='png')
+ggsave(filename = "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Uncertainty data source Chapter XX/fig3_AUC.png", fig3, width = 150, height = 80, dpi = 300, units = "mm", device='png')
   
 ```
 
+```{r}
+AUC_habsp <- merge(maxevaluates, habsp_allbg, by.x = c("filename", "SpNum"), by.y = c("HerbType","SpeciesNum"))
+
+ggplot(AUC_habsp, aes(habspec, AUC))+
+  geom_point()+
+  theme_bw()+
+  stat_smooth(method = "lm")
 
 
+```
 
 #  (6) Niche Overlap (and correlation)    
       
