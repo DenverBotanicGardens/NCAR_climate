@@ -172,6 +172,7 @@ load("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Data/d
 ```
 or make new: 
 ```{r}
+
 distXsp_EOR <- lapply(1:nrow(g1g2namesall68), function(i){
   gc()
   g1g2now <- coloradosps.g1g2_168[coloradosps.g1g2_168$scientificName %in%
@@ -305,6 +306,7 @@ tab1 <- do.call(rbind, lapply(split(df_dist, df_dist$SpNum), function(x){
 tab1$SDM[tab1$SpNum %in% atleast12] <- "x"
 
 # write.csv(tab1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/table1_20190804.csv")
+write.csv(tab1, "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Uncertainty data source Chapter XX/table1_20190216.csv")
 
 
 ```
@@ -1085,20 +1087,25 @@ levels(maxevaluates$filename)
 aggregate(AUC ~ filename, mean, data=maxevaluates)
 aggregate(AUC ~ filename, sd, data=maxevaluates)
 
+maxevaluates$background <- as.character("small (5 km)")
+maxevaluates$background[grep("bg500000",maxevaluates$filename)] <- as.character("large (500 km)")
+
+
 fig3 <- 
-  ggplot(maxevaluates, aes(y = AUC, fill = filename))+
+  ggplot(maxevaluates, aes(y = AUC, x = background, fill = filename))+
   geom_boxplot()+
   theme_bw()+
+  xlab("Background extent")+
   scale_fill_manual(values = c("grey","white","grey30","grey","white","grey30"),
                     name = "Dataset / background",
                     breaks = c(paste(filenames[-3]), paste(filenamesbig[-3])),
-                    labels = c("EOR / 5 km",
-                               "herbarium / 5 km",
-                               "combined / 5 km","EOR / 500 km","herbarium / 500 km","combined / 500 km"))+
-  scale_x_discrete(limits = levels(maxevaluates$filename), breaks = NULL, labels =c("","small","","","large",""))
-# 
-#  c(paste(filenames[-3]), paste(filenamesbig[-3])), # limits= c("grey","white","grey30","grey","white","grey30"),
-#                    labels =
+                    labels = c("EOR / 500 km","herbarium / 500 km","combined / 500 km",
+                               "EOR / 5 km",  "herbarium / 5 km",  "combined / 5 km"))
+# +
+#   scale_x_discrete(breaks = c(paste(filenames[-3]), paste(filenamesbig[-3])), 
+#                    labels =c("","small (5 km)","","","large (500 km)",""))
+#  limits = c(paste(filenames[-3]), paste(filenamesbig[-3])), 
+
 
 ggsave(filename = "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Uncertainty data source Chapter XX/fig3_AUC.png", fig3, width = 150, height = 80, dpi = 300, units = "mm", device='png')
   
@@ -1199,6 +1206,7 @@ overlap_values <- melt(rbind(OverlapBig.df,OverlapSmall.df), id.vars = list("Bac
 ```
 
 ```{r}
+levels(overlap_values$Background)
 
 png("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure5_nicheOverlap.jpg",
      width=150, height=80,units='mm', res=300)
@@ -1280,7 +1288,7 @@ o2 <- lm(value ~ DistAvg.Dist, data = overvals) # the average distance herb to e
 o3 <- lm(value ~ Area, data= overvals)
 o4 <- lm(value ~ HabSpeDiff, data= overvals)
 o5 <- lm(value ~ Area * Background, data=overvals)
-# o6 <- lm(value ~ EOR_bg5000, data = overvals)
+o6 <- lm(value ~ Background, data = overvals)
 
 o7 <- lm(value ~ EOR_bg5000* Background, data = overvals) # sample size of herbarium specimens
 o8 <- lm(value ~ DistAvg.Dist* Background, data = overvals) # the average distance herb to eor
@@ -1289,7 +1297,7 @@ o10 <- lm(value ~ HabSpeDiff* Background, data= overvals)
 # o11 <- lm(value ~ EOR_bg5000* Background, data = overvals)
 o12 <- lm(value ~ 1, data=overvals)
 
-formulas <- list(o1,o2,o3,o4,o5,o7,o8,o9,o10,o12) # o6, o11,
+formulas <- list(o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o12) #  o11,
 (lmresults <- aictab(formulas,
        modnames=as.character(unlist(lapply(formulas,formula)))))
 evidence(aictab(cand.set = formulas,
@@ -1297,12 +1305,20 @@ evidence(aictab(cand.set = formulas,
 
 evidence(aictab(cand.set = formulas,
                 modnames = as.character(unlist(lapply(formulas,formula)))),
-         model.low = as.character(unlist(lapply(formulas,formula)))[9])
+         model.low = as.character(unlist(lapply(formulas,formula)))[5])
+
+evidence(aictab(cand.set = formulas,
+                modnames = as.character(unlist(lapply(formulas,formula)))),
+         model.low = as.character(unlist(lapply(formulas,formula)))[8])
+
+evidence(aictab(cand.set = formulas,
+                modnames = as.character(unlist(lapply(formulas,formula)))),
+         model.low = as.character(unlist(lapply(formulas,formula)))[10])
 
 
 evidence(aictab(cand.set = formulas,
                 modnames = as.character(unlist(lapply(formulas,formula)))),
-         model.low = as.character(unlist(lapply(formulas,formula)))[6])
+         model.low = as.character(unlist(lapply(formulas,formula)))[7])
 
 
 # no species #8 becuase too small for EOR
@@ -1328,6 +1344,9 @@ table(overvals$variable, overvals$value)
 
 overvals
 
+ggplot(overvals, aes(Background, value, fill=variable))+
+  geom_boxplot()+
+  theme_bw()
 ```
 
 
