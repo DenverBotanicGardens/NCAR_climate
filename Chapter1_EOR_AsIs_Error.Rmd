@@ -50,6 +50,21 @@ library(Taxonstand)
 
 ```
 
+How many SEINet records collected?, how this was reduced to get to only colorado G1/G2
+```{r}
+seinet <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/seinet_colorado_with_coordinates_ALLG1G2.csv") #I must have made this one sometime, need to check again that matched all names
+
+coloradosps <- read.csv("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_ArcMap_Projects/Link_EO_Herbarium_Records/SEINET G1 G2 Vouchers/occurrences.csv")
+
+nrow(coloradosps)
+length(unique(coloradosps$scientificName))
+
+nrow(seinet)
+min(seinet$year, na.rm = TRUE)
+
+```
+
+
 Functions
 ```{r}
 
@@ -313,6 +328,15 @@ write.csv(tab1, "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My 
 
 Test maxentrun function for EOR and combined
 ```{r}
+distXsp_justEOR_forspdf <- mapply('[[', distXsp_EOR, 2)
+distXsp_justEOR_spdf <- lapply(1:68, function(x) NA)
+for(i in atleast12){
+  out <- data.frame(distXsp_justEOR_forspdf[[i]])
+  colnames(out) <- c("decimalLongitude","decimalLatitude")
+  distXsp_justEOR_spdf[[i]] <- out
+}
+
+
 spatialpointsdataframe_herb <- distXsp_justEOR_forspdf
 x <- atleast12[1]
 
@@ -739,7 +763,11 @@ abline(lm(log(Dist+1)~abs(Yeardiff), data=df_dist))
 mtext("c)", side=3, line=0, adj=0)
 dev.off()
 
+summary(lm(df_dist$Dist ~ df_dist$Area))
 
+summary(lm(df_dist$Dist ~ df_dist$year))
+
+summary(lm(df_dist$Dist ~ abs(df_dist$Yeardiff)))
 ```
 
 
@@ -812,7 +840,9 @@ habsp_smallbg <- habitatSpecificity(whichones = atleast12[atleast12 != 8], paths
                                     replicates = 10, filenames = filenames[-3])
 save(habsp_smallbg, file= paste(pathstart,"habsp_smallbg.Rda", sep=""))
 
-
+ggplot(data = habsp_smallbg, aes(HerbType, habspec))+
+  geom_boxplot()+
+  theme_bw()
 
 
 ```
@@ -868,7 +898,7 @@ stitchtogether(atleast12, pathstart=pathstart, patternmatch = patternmatchbig[4]
 habsp_bigbg <- habitatSpecificity(atleast12[atleast12 != 8], pathstart, replicates = 10, filenames = filenamesbig[-3])
 save(habsp_bigbg, file= paste(pathstart,"habsp_bigbg.Rda", sep=""))
 
-
+load(paste(pathstart, "habsp_bigbg.Rda", sep=""))
 ```
 
 
@@ -880,11 +910,18 @@ save(habsp_bigbg, file= paste(pathstart,"habsp_bigbg.Rda", sep=""))
 Merge habitat specificity and tab 1 to look at the impact of actual habitt specificity, not just the range of the polygons.
 ```{r}
 habspebig <- merge(habsp_bigbg, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
+# habspesmall <- merge(habsp_smallbg, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
 
-ggplot(habspebig, aes(habspec, (Area/(1000^2)), colour = HerbType))+
+# Not fair since area is based on EOR, of course it will better reflect 
+ggplot(habspebig, aes(y = habspec, x =(Area/(1000^2)), colour = HerbType))+
   geom_point()+
   stat_smooth(method="lm")+
   theme_bw()
+
+ggplot(habspebig, aes(y = habspec, x = HerbType, colour=HerbType))+
+  geom_boxplot()
+
+summary(lm(habspec ~ Area*HerbType, data=habspebig))
 ```
 
 
@@ -941,8 +978,11 @@ saveGIF(
 
 Merge habitat specificity and tab 1 to look at the impact of actual habitt specificity, not just the range of the polygons.
 ```{r}
-habspe <- merge(habSp_EOR_uncleaned_error, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
-habspe_aic <- merge(summaryHabSp, df_dist, by.x = "SpeciesNum", by.y = "SpNum")
+# habspe <- merge(habSp_EOR_uncleaned_error, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
+
+habspe <- merge(habsp_smallbg, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
+
+# habspe_aic <- merge(summaryHabSp, df_dist, by.x = "SpeciesNum", by.y = "SpNum")
 
 ggplot(habspe, aes(as.factor(round(Area/(1000^2),0)), habspec, colour=HerbType))+
   geom_jitter()+
@@ -951,6 +991,8 @@ ggplot(habspe, aes(as.factor(round(Area/(1000^2),0)), habspec, colour=HerbType))
   theme(legend.position = "none")+
   xlab(expression("Area km"^2))+
   geom_boxplot()
+
+
 ```
 
 ```{r}
@@ -1091,6 +1133,8 @@ maxevaluates$background <- as.character("small (5 km)")
 maxevaluates$background[grep("bg500000",maxevaluates$filename)] <- as.character("large (500 km)")
 
 
+
+
 fig3 <- 
   ggplot(maxevaluates, aes(y = AUC, x = background, fill = filename))+
   geom_boxplot()+
@@ -1108,17 +1152,62 @@ fig3 <-
 
 
 ggsave(filename = "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Uncertainty data source Chapter XX/fig3_AUC.png", fig3, width = 150, height = 80, dpi = 300, units = "mm", device='png')
-  
+
+# effect size as the estimate and standard error? 
+summary(lm(AUC~filename, data=maxevaluates))
+
+# effect size as bootstrap difference and 95% CI
+reps <- 5000
+n <- nrow(maxevaluates)
+set.seed(100)
+boot.diff <- unlist(lapply(1:reps, function(i){
+  idx <- sample(1:n, n, T) # with replacement
+  boot.diff <- c(dist(tapply(maxevaluates$AUC[idx], maxevaluates$filename[idx], mean))) # difference of one before it; I need all combinations differences
+  c(boot.diff)
+}))
+
+# the differences
+dist(tapply(maxevaluates$AUC, maxevaluates$filename, mean))
+
+boot.diff <- data.frame(matrix(boot.diff, ncol = 15, byrow = TRUE)) # fill by row
+names(boot.diff) <- sapply(1:15, function(x){
+  paste(matrix(combn(unique(maxevaluates$filename),2),nrow = 2)[,x], collapse="-")
+  })
+
+# quantiles
+boot.95hdi <- apply(boot.diff, 2, function(x) quantile(x, p=c(0.025,0.95)))
+
+# the differences
+dist(tapply(maxevaluates$AUC, maxevaluates$filename, mean))
+boot.95hdi
+
+
+# Eta-squared effect size 
+# sum of squares between/sum of squares total
+summary(aov(AUC~filename, data=maxevaluates))
+
+# distribution normal?
+boot.diff.long <- melt(boot.diff)
+ggplot(boot.diff.long, aes(value, colour=variable))+
+  geom_density(stat="density")
+
+ggplot(maxevaluates, aes(AUC, colour=filename))+
+  geom_density(stat="density")
 ```
 
 ```{r}
-AUC_habsp <- merge(maxevaluates, habsp_allbg, by.x = c("filename", "SpNum"), by.y = c("HerbType","SpeciesNum"))
+# habsp_allbg is just repeated, all gives is the ellipse size around the points for the kfold rep, not dependant on background size
+
+AUC_habsp <- merge(maxevaluates, habsp_smallbg, by.x = c("filename", "SpNum"), by.y = c("HerbType","SpeciesNum"))
 
 ggplot(AUC_habsp, aes(habspec, AUC))+
   geom_point()+
   theme_bw()+
   stat_smooth(method = "lm")
 
+ggplot(AUC_habsp, aes(x=filename, y=habspec))+
+  geom_boxplot()+
+  geom_jitter()
 
 ```
 
@@ -1225,6 +1314,36 @@ ggplot(overlap_values, aes(variable, value, fill = Background))+
                    labels =c("EOR - herbarium", "EOR - Combined", "herbarium - Combined"))
 dev.off()
 ```
+
+Niche overlap and correlations - 22 speices, only 21 got ellipses!  8 got dropped!
+```{r}
+str(smallbackgroundcor)
+
+CorrelationSmall <- mapply('[[', smallbackgroundcor, 2) # the pearson correlation coefficients  
+# pearsonSmall <- mapply('[[', mapply('[[', smallbackgroundcor, 1), 1)
+
+CorrelationSmall # stacked the columns of the pearson correlations for each species
+
+smallbackgroundcor[[1]][[1]]
+# reconstructs them, but want the correlation by comparison
+# lapply(1:22, function(x){
+#   matrix(CorrelationSmall[,x], nrow=3, byrow = FALSE) # break into 3x3 matrix, fill by column
+#   })
+
+correfilenames <- unlist(lapply(filenames[-3], function(x){
+  paste(x,filenames[-3])
+}))
+
+CorrelationSmall <- data.frame(CorrelationSmall)
+colnames(CorrelationSmall) <- paste("spNum", atleast12)
+CorrelationSmall$PearsonComparison <- correfilenames
+
+CorrelSmallMelt <- melt(CorrelationSmall)
+ggplot(CorrelSmallMelt, aes(value, colour=PearsonComparison))+
+  geom_density(stat="")
+
+```
+
 
 
 # (6) Niche overlap    
@@ -1901,10 +2020,56 @@ rasternames <- paste("Herb", filenames30mrasters, "kfold", sep="")
 
 lapply(1:3, function(x) stitchtogether(atleast12, pathstart=pathstart30m, patternmatch = patternmatch[x], rasternames = rasternames[x]))
 
-# habitat specificity
+# habitat specificity, there are 21 that work, 8 does not
+habsp_22species <- habitatSpecificity(whichones=atleast12[atleast12 != 8], pathstart = pathstart, 
+                                      replicates = 10, filenames = filenames[-3])
+save(habsp_22species, file= paste(pathstart,"habsp_21species.Rda", sep=""))
 
-habsp_smallbg <- habitatSpecificity(atleast12, pathstart, replicates = 10, filenames = filenames)
-save(habsp_smallbg, file= paste(pathstart,"habsp_smallbg.Rda", sep=""))
 
+# habsp_smallbg <- habitatSpecificity(atleast12, pathstart, replicates = 10, filenames = filenames)
+# save(habsp_smallbg, file= paste(pathstart,"habsp_smallbg.Rda", sep=""))
+# load(paste(pathstart, "habsp_smallbg.Rda", sep=""))  
+# habsp_smallbg
 
+load(paste(pathstart, "habsp_21species.Rda", sep=""))
+
+habsp_21species <- aggregate(habspec~SpeciesNum + HerbType, mean, data=habsp_22species)
+
+ggplot(habsp_21species, aes(HerbType, habspec, group=SpeciesNum, colour=as.factor(SpeciesNum)))+
+  geom_point()+
+  geom_line()
+
+summary(lm(habspec~HerbType,data=habsp_21species))
+
+# differences
+hapsp_differences <- do.call(rbind,lapply(unique(hapsp_21species$SpeciesNum), function(num){
+  types <-unique(hapsp_21species$HerbType)
+  setNames(data.frame(num,
+                      hapsp_21species$habspec[hapsp_21species$HerbType==types[1] & 
+                                                hapsp_21species$SpeciesNum==num]-
+                        hapsp_21species$habspec[hapsp_21species$HerbType==types[2] & 
+                                                  hapsp_21species$SpeciesNum==num],
+                      
+                      hapsp_21species$habspec[hapsp_21species$HerbType==types[1] & 
+                                                hapsp_21species$SpeciesNum==num]-
+                        hapsp_21species$habspec[hapsp_21species$HerbType==types[3] & 
+                                                  hapsp_21species$SpeciesNum==num],
+                      
+                      hapsp_21species$habspec[hapsp_21species$HerbType==types[2] & 
+                                                hapsp_21species$SpeciesNum==num]-
+                        hapsp_21species$habspec[hapsp_21species$HerbType==types[3] & 
+                                         hapsp_21species$SpeciesNum==num]),
+           c("SpeciesNum", 
+             paste0(types[1], "-", types[2]),
+             paste0(types[1], "-", types[3]),
+             paste0(types[2], "-", types[3])))
+}))
+
+habsp_long <- melt(hapsp_differences, id.vars = "SpeciesNum")
+ggplot(habsp_long, aes(variable, value, colour= as.factor(SpeciesNum), group=SpeciesNum))+
+  geom_point()+
+  geom_line()+
+  theme(axis.text.x=element_text(angle=90, hjust=1))
+  
+summary(lm(value~variable, data = habsp_long))
 ```
