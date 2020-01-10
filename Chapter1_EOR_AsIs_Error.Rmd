@@ -1339,9 +1339,19 @@ colnames(CorrelationSmall) <- paste("spNum", atleast12)
 CorrelationSmall$PearsonComparison <- correfilenames
 
 CorrelSmallMelt <- melt(CorrelationSmall)
-ggplot(CorrelSmallMelt, aes(value, colour=PearsonComparison))+
-  geom_density(stat="")
+ggplot(CorrelSmallMelt[CorrelSmallMelt$value != 1,], aes(value, colour=PearsonComparison))+
+  geom_density(stat="density")
 
+
+# This is three of them the upper and lower triangle of the comparions
+ggplot(CorrelSmallMelt[CorrelSmallMelt$PearsonComparison %in% correfilenames[c(2,3,6)],], aes(PearsonComparison,value))+
+  geom_boxplot()+
+  theme_bw()+
+  # theme(axis.text.x=element_text(angle=90, hjust=1))+
+  scale_x_discrete(labels =c("Herbarium - Combined","EOR - Herbarium","EOR - Combined"))
+  
+tapply( CorrelSmallMelt$value,CorrelSmallMelt$PearsonComparison, mean)
+tapply( CorrelSmallMelt$value,CorrelSmallMelt$PearsonComparison, sd)
 ```
 
 
