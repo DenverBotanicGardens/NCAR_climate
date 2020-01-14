@@ -320,6 +320,8 @@ tab1 <- do.call(rbind, lapply(split(df_dist, df_dist$SpNum), function(x){
 })) 
 tab1$SDM[tab1$SpNum %in% atleast12] <- "x"
 
+tab1[!is.na(tab1$SDM), c("SpNum1","Species","SDM")]
+
 # write.csv(tab1, "Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/table1_20190804.csv")
 write.csv(tab1, "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Uncertainty data source Chapter XX/table1_20190216.csv")
 
@@ -666,7 +668,7 @@ distXsp_justHerb <- lapply(distXsp_justHerb, function(x){
 
 
 ```{r}
-# Sp <- 15
+ Sp <- 8
 # Make a plot for the presentation
 polySp2 <- l1G1G2and[l1G1G2and$GNAME %in% c(g1g2namesall68$AcceptedName[Sp],
                                         g1g2namesall68$Taxon[Sp]),]
@@ -690,11 +692,24 @@ g1g2now <- g1g2now[g1g2now$decimalLongitude>(-113),]
 g1g2now <- g1g2now[grepl("Specimen",g1g2now$basisOfRecord),]
 g1g2now <- g1g2now[,c("scientificName","scientificNameAuthorship","institutionCode", 
                         "recordedBy","year","decimalLatitude","decimalLongitude")] # ,"lat2","lon2"
+
+Sp <- 8
+coloradosps.g1g2_168[coloradosps.g1g2_168$scientificName %in%
+                                c(g1g2namesall68$Taxon[Sp],g1g2namesall68$AcceptedName[Sp])&
+                                !is.na(coloradosps.g1g2_168$decimalLatitude),]
 ```
+
 5, 7,8, 11 8 is good but none outside
 ```{r}
 plot(toplot[c(7),], border="red", lwd=2)
 points(g1g2now$decimalLongitude, g1g2now$decimalLatitude, pch=16, cex = 0.5)
+
+
+plot(toplot, border="red", lwd=2)
+points(g1g2now$decimalLongitude, g1g2now$decimalLatitude, pch=16, cex = 0.5)
+
+
+plot(g1g2now$decimalLongitude, g1g2now$decimalLatitude, pch=16, cex = 0.5)
 
 ```
 
@@ -982,7 +997,8 @@ Merge habitat specificity and tab 1 to look at the impact of actual habitt speci
 
 habspe <- merge(habsp_smallbg, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
 
-# habspe_aic <- merge(summaryHabSp, df_dist, by.x = "SpeciesNum", by.y = "SpNum")
+summaryHabSp <- summarySE(habsp_smallbg, "habspec", "SpeciesNum")
+habspe_aic <- merge(summaryHabSp, df_dist, by.x = "SpeciesNum", by.y = "SpNum")
 
 ggplot(habspe, aes(as.factor(round(Area/(1000^2),0)), habspec, colour=HerbType))+
   geom_jitter()+
@@ -992,7 +1008,10 @@ ggplot(habspe, aes(as.factor(round(Area/(1000^2),0)), habspec, colour=HerbType))
   xlab(expression("Area km"^2))+
   geom_boxplot()
 
-
+summarySE(habsp_smallbg, "habspec", "HerbType")
+# Upper and lower CI
+rowSums(summarySE(habsp_smallbg, "habspec", "HerbType")[,c(3,5)])
+summarySE(habsp_smallbg, "habspec", "HerbType")[,3]-summarySE(habsp_smallbg, "habspec", "HerbType")[,5]
 ```
 
 ```{r}
@@ -1204,6 +1223,15 @@ ggplot(AUC_habsp, aes(habspec, AUC))+
   geom_point()+
   theme_bw()+
   stat_smooth(method = "lm")
+
+ggplot(AUC_habsp, aes(habspec, AUC, colour=filename))+
+  geom_point()+
+  theme_bw()+
+  stat_smooth(method = "lm")
+
+summary(lm(AUC~habspec*SpNum, data = AUC_habsp))
+
+summary(lm(AUC~habspec*filename, data = AUC_habsp))
 
 ggplot(AUC_habsp, aes(x=filename, y=habspec))+
   geom_boxplot()+
