@@ -127,20 +127,16 @@ grViz("digraph flowchart {
       
       # edge definitions with the node IDs
       tab1 -> tab3 -> tab4;
-      tab4 -> tab8;
-      tab4 -> tab9;
-      tab4 -> tab10;
-      tab4 -> tab11;
-      tab2 -> tab3;
-      tab5 -> tab6;
       tab8 -> tab5;
       tab9 -> tab5;
       tab10 -> tab5;
       tab11 -> tab5;
+      tab2 -> tab3;
       tab5 -> tab6;
-      tab5 -> tab6;
-      tab5 -> tab6;
-      tab5 -> tab6;
+      tab4 -> tab8;
+      tab4 -> tab9;
+      tab4 -> tab10;
+      tab4 -> tab11;
       tab7 -> tab2;
       }
 
@@ -150,8 +146,8 @@ grViz("digraph flowchart {
       [4]: 'sample'
       [5]: 'SDM'
       [6]: 'Compare with True'
-      [7]: 'snow melt, min and max temp, soil moisture, dummy'
-      [8]: c('Ad Hoc','Adaptive cluster sampling','Neutral sampling','Random')
+      [7]: 'Bio&#x2081; Bio&#x2082; Bio&#x2083; Bio&#x2084; Elevation, dummy'
+      [8]: c('Systematic','Adaptive cluster sampling','Neutral sampling','Simple random')
       ")
 
 
@@ -164,7 +160,7 @@ Bayesian model to treat amount of the niche sampled as a latent vairable
 # tab2 -> tab11;
 
 grViz("digraph flowchart {
-      graph [layout = dot]
+      graph [layout = dot, overlap = FALSE]
       # node definitions with substituted label text
       node [fontname = Helvetica, shape = plain]        
       tab1 [label = '@@1']
@@ -188,7 +184,8 @@ grViz("digraph flowchart {
       tab14
       
        subgraph cluster_accepted {
-       graph [layout = neato];
+
+       graph [layout = neato, overlap = FALSE];
     node [shape=plain];
     
       tab3 [label = '@@3']
@@ -219,8 +216,8 @@ grViz("digraph flowchart {
       tab2 -> tab11;
       }
 
-      [1]: 'Herbarium specimens (Observed data)'
-      [2]: 'SDM (Process)'
+      [1]: 'Herbarium specimens (Observed data) &gamma;&#x2081;'
+      [2]: 'SDM (Process) &eta;'
       [3]: 'Sampling design'
       [4]: c('Annual Precipition','Annual Temperature','Precip of coldest quarter','Mean temp of coldest quarter','Elevation')
       ")
@@ -605,6 +602,7 @@ mu_clru2 <- colMeans(climate_clru2, na.rm = TRUE)
 sd_clru2 <- apply(climate_clru2, 2, function(x) sd(x, na.rm = TRUE))
 hist(climate_clru2[,1])
 
+
 # bio19 precip of coldest quarter to represent snow accumulation
 # bio11 mean temp of coldest quarter
 # BIO12 = Annual Precipitation
@@ -651,6 +649,7 @@ mu_clru3 <- colMeans(climate_clru3, na.rm = TRUE)
 sd_clru3 <- apply(climate_clru3, 2, function(x) sd(x, na.rm = TRUE))
 hist(climate_clru3[,1])
 
+# Need to be beta? if I've scaled? But these aren't 0-1 like it does somehow, when I don't rescale, maybe fine? 
 # bio19 precip of coldest quarter to represent snow accumulation
 # bio11 mean temp of coldest quarter
 # BIO12 = Annual Precipitation
@@ -895,5 +894,31 @@ maxent_sampling(rasterstack = rasterstack2, true.dist = clru1[[3]], sampling_typ
 ```{r}
 
 ```
+
+
+# JAGS or make a gibbs sampler?   
+Just raster stack glm with the enviornmental variable relationships. 
+```{r}
+# The distribution of suitable values by layer
+ana_rast <- stack(rasterstack3_z, clru1_z[[3]])
+# x <- calc(ana_rast, function(x) if(ana_rast[[7]]>0.3) lm(x~time))
+
+# Distribution in suitable 
+for(i in names(ana_rast)[-7]){
+  hist(ana_rast[[i]][ana_rast[[7]]>0.3], main=paste(i))
+}
+for(i in names(ana_rast)[-7]){
+  hist(ana_rast[[i]][ana_rast[[7]]>0.5], main=paste(i))
+}
+# Take the central tendancy as alpha and the SD as var? those are the first step to estimate those parameters from the random sample? Then take the output from those as the input 
+
+# if beta then dbeta(ElevationResampled_bioclim, $alpha, $beta, ncp = based on derivation as a Poisson mixture of betas Johnson et al 1995)
+model1 <- ElevationResampled_bioclim[]*x
+
+r_suitability <- stackApply(rasterstack3_z, indices = 1:6, function(x) )
+
+```
+
+
 
 
