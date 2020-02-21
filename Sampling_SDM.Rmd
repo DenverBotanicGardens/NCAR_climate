@@ -752,13 +752,13 @@ Sampling methods
 ```{r}
 
 ### systematic and thinning
-systematic_sampling_thinning <- function(suitability.raster, stepsize = 1000, samplesize){
+systematic_sampling_thinning <- function(suitability.raster,  samplesize){
   evenstep <- length(suitability.raster)/stepsize
   i <- evenstep
   
   sampleout <- c()
   while(i < length(suitability.raster)){
-    if(getValues(suitability.raster)[i] > 0.5 &
+    if(getValues(suitability.raster)[i] > 0.3 &
        rbinom(1, 1, getValues(suitability.raster)[i]) == 1){
       sampleout <- rbind(sampleout,xyFromCell(suitability.raster, i))
     }
