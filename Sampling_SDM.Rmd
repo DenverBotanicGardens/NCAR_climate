@@ -27,6 +27,7 @@ require(DiagrammeR)
 library(virtualspecies)
 
 # SDM
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre7') # for 64-bit version
 library(rJava)
 library(dismo)
 
@@ -124,30 +125,31 @@ grViz("digraph flowchart {
       tab9 [label = '@@8-2']
       tab10 [label = '@@8-3']
       tab11 [label = '@@8-4']
-      
+     
       # edge definitions with the node IDs
-      tab1 -> tab3 -> tab4;
-      tab8 -> tab5;
-      tab9 -> tab5;
-      tab10 -> tab5;
-      tab11 -> tab5;
+      tab1 -> tab3;
+      tab4 -> tab5;
       tab2 -> tab3;
       tab5 -> tab6;
-      tab4 -> tab8;
-      tab4 -> tab9;
-      tab4 -> tab10;
-      tab4 -> tab11;
+      tab3 -> tab8;
+      tab3 -> tab9;
+      tab3 -> tab10;
+      tab3 -> tab11;
       tab7 -> tab2;
+      tab8 -> tab4;
+      tab9 -> tab4;
+      tab10 -> tab4;
+      tab11 -> tab4;
       }
 
       [1]: 'Model organism (Claytonia rubra)'
       [2]: 'Climate Drivers'
-      [3]: 'Build true distribution'
+      [3]: 'Build true distribution (SDM)'
       [4]: 'sample'
-      [5]: 'SDM'
-      [6]: 'Compare with True'
+      [5]: 'Build SDM'
+      [6]: 'Compare with true'
       [7]: 'Bio&#x2081; Bio&#x2082; Bio&#x2083; Bio&#x2084; Elevation, dummy'
-      [8]: c('Systematic','Adaptive cluster sampling','Neutral sampling','Simple random')
+      [8]: c('Systematic','Adaptive cluster','Convenience','Simple random')
       ")
 
 
@@ -155,11 +157,19 @@ grViz("digraph flowchart {
 
 
 Bayesian model to treat amount of the niche sampled as a latent vairable  
+      
+       
+      {
+        rank=source;tab 3;
+      }
+    
 ```{r}
 # tab3 -> tab4 [style=dotted];
 # tab2 -> tab11;
 
 grViz("digraph flowchart {
+
+        
       graph [layout = dot, overlap = FALSE]
       # node definitions with substituted label text
       node [fontname = Helvetica, shape = plain]        
@@ -181,11 +191,12 @@ grViz("digraph flowchart {
        node [label = '&alpha;&#x2083;&beta;&#x2083;']
       tab13
        node [label = '&alpha;&#x2084;&beta;&#x2084;']
-      tab14
-      
-       subgraph cluster_accepted {
+      tab14;
 
-       graph [layout = neato, overlap = FALSE];
+       subgraph cluster_accepted {
+    graph [layout = neato, overlap = FALSE];
+      
+       
     node [shape=plain];
     
       tab3 [label = '@@3']
@@ -223,6 +234,71 @@ grViz("digraph flowchart {
       ")
 
 ```
+
+```{r}
+
+grViz("digraph flowchart {
+
+        
+      graph [layout = dot, overlap = FALSE]
+        
+      # node definitions with substituted label text
+      node [fontname = Helvetica, shape = plain, rankdir = LR]        
+      tab1 [label = '@@1']
+      tab2 [label = '@@2']
+      tab4 [label = '@@4-1']
+      tab5 [label = '@@4-2']
+      tab6 [label = '@@4-3']
+      tab7 [label = '@@4-4']
+      tab8 [label = '@@4-5']
+       node [label = '&alpha;&#x2080;&beta;&#x2080;']
+      tab9 
+       node [label = '&alpha;&#x2081;&beta;&#x2081;']
+      tab10
+       node [label = '&alpha;&#x2084;&beta;&#x2082;']
+      tab11 
+       node [label = '&alpha;&#x2082;&beta;&#x2083;']
+      tab12 
+       node [label = '&alpha;&#x2083;&beta;&#x2084;']
+      tab13
+       node [label = '&sigma;&#x00B2;']
+      tab14
+      tab3 [label = '@@3']
+      
+      # edge
+      edge[ dir = forw];
+      tab3 -> tab9 [style=dotted]; {rank = same tab1 tab3};
+      tab3 -> tab10 [style=dotted];
+      tab3 -> tab12 [style=dotted];
+      tab3 -> tab13 [style=dotted];
+      tab3 -> tab11 [style=dotted];
+      
+
+      
+      # edge definitions with the node IDs
+      edge[ dir = back];
+      tab1 -> tab2; 
+      tab2 -> tab4;
+      tab2 -> tab5;
+      tab2 -> tab6;
+      tab2 -> tab7;
+      tab2 -> tab8;
+      tab4 -> tab9;
+      tab5 -> tab10;
+      tab6 -> tab12;
+      tab7 -> tab13;
+      tab8 -> tab11;
+      tab2 -> tab14;{rank = same tab11 tab14};
+      }
+
+      [1]: 'Herbarium specimens (Observed data) &gamma;&#x2081;'
+      [2]: 'SDM (Process) &eta;'
+      [3]: 'Sampling design'
+      [4]: c('Annual Precipition','Annual Temperature','Precip of coldest quarter','Mean temp of coldest quarter','Elevation')
+      ")
+```
+
+
 ```{r}
 
 grViz("digraph flowchart {
@@ -436,6 +512,7 @@ library(SDMtune)
 <http://borisleroy.com/files/virtualspecies-tutorial.html>
 virtual species based on Claytonia rubra   
 ```{r}
+rasterstack1 <- stack(bioclim.colorado[[c(1,11,12,19)]]) # Does this need to be rotated? And turned into Z scores? subtract mean and divide by SD? 
 
 names(rasterstack)
 
@@ -557,21 +634,6 @@ pa2 <- convertToPA(clru.species1, plot = TRUE, species.prevalence = 0.2)
 ## add a dummy predictor variable
 
 ```{r}
-
-xy <- expand.grid( 1:ncol(rasterstack2),1:nrow(rasterstack2))
-names(xy) <-  c('x','y')
-# where formula defines the dependent variable (z) as a linear model of independent variables. For ordinary and simple kriging we can use the formula z~1; for simple kriging it is necessary to define a beta parameter too (see below); for universal kriging, if z is linearly dependent on x and y use the formula z~x+y. We are using simple kriging here.
-# locations define the data coordinates, e.g. ~x+y in our case here. 
-# dummy is a logical value, and it needs to be TRUE for unconditional simulation. 
-# beta is used only for simple kriging, and is a vector with the trend coefficients (including an intercept); 
-# if no independent variables are defined the model only contains an intercept, i.e. the simple kriging mean. model defines the variogram model, as defined by a call to vgm. vgm allows defining the (partial) sill, range and nugget paramaters, as well as the variogram model type (e.g. exponential, gaussian, spherical, etc). Anisotropy can also be used. 
-# nmax defines the number of nearest observations that should be used for a kriging prediction or simulation.
-
-g.dummy <- gstat(formula=z~1, locations=~x+y, dummy=T, beta=1, model=vgm(psill=0.025, range=5, model='Exp'), nmax=20)
-
-yy <- predict(g.dummy, newdata=xy, nsim=1)
-gridded(yy) = ~x+y
-spplot(obj=yy[1])
 
 sim_layer <- raster(yy) 
 extent(sim_layer) <- extent(bioclim.stack)
@@ -721,6 +783,25 @@ ncol(colorado.clru) # 844
 # use xyFromCell() to get coordinates from row, column, or cell number
 xyFromCell(colorado.clru, ceiling(runif(1, min = 1, max = length(colorado.clru))))
 
+### systematic and thinning
+systematic_sampling_thinning <- function(suitability.raster,  samplesize){
+  evenstep <- length(suitability.raster)/stepsize
+  i <- evenstep
+  
+  sampleout <- c()
+  while(i < length(suitability.raster)){
+    if(getValues(suitability.raster)[i] > 0.3 &
+       rbinom(1, 1, getValues(suitability.raster)[i]) == 1){
+      sampleout <- rbind(sampleout,xyFromCell(suitability.raster, i))
+    }
+      i <- i + evenstep
+  }
+
+  sampleout <- thin.max(sampleout, c("x","y"), samplesize)
+  sampleout
+}
+
+
 # use prob argument in sample?
 # select that cell if a runif(1, min = minValue(colorado.clru), max = maxValue(colorado.clru)) is < the cell value; cell number comes from indexing: colorado.clru[cellnumber]
 getValues(colorado.clru)[ceiling(runif(1, min = 1, max = length(colorado.clru)))]
@@ -751,8 +832,8 @@ plot(colorado.clru); points(samplerand1, pch=16, cex=0.5)
 Sampling methods
 ```{r}
 
-### systematic and thinning
-systematic_sampling_thinning <- function(suitability.raster,  samplesize){
+### systematic 
+systematic_sampling <- function(suitability.raster,  samplesize){
   evenstep <- length(suitability.raster)/stepsize
   i <- evenstep
   
