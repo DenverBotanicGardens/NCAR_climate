@@ -30,12 +30,12 @@ require(DiagrammeR)
 library(virtualspecies)
 
 # SDM
-Sys.getenv("JAVA_HOME")
-Sys.setenv(JAVA_HOME="C:/Program Files (x86)/Java/jre1.8.0_241/lib/") # for 64-bit version
+# Sys.getenv("JAVA_HOME")
+# Sys.setenv(JAVA_HOME="C:/Program Files (x86)/Java/jre1.8.0_241/lib/") # for 64-bit version
 # Sys.setenv(JAVA_HOME="C:/Program Files (x86)/Java/") # for 64-bit version
 # Sys.setenv(JAVA_HOME="C:/Program Files (x86)/Common Files/Oracle/Java/") # for 64-bit version
 # Sys.setenv(JAVA_HOME="C:/Users/DePrengm/R/R-3.6.2/library/rJava/libs") # for 64-bit version
-# library(rJava)
+library(rJava)
 
 library(dismo)
 
@@ -94,8 +94,10 @@ thin.max <- function(x, cols, npoints){
 DiagrammeR 
 ```{r}
 grViz("digraph flowchart {
+
+      graph [rankdir = TB, fontsize = 14]
       # node definitions with substituted label text
-      node [fontname = Helvetica, shape = rectangle]        
+      node [fontname = Helvetica, shape = box]        
       tab1 [label = '@@1']
       tab2 [label = '@@2']
       tab3 [label = '@@3']
@@ -136,83 +138,6 @@ grViz("digraph flowchart {
 
 
 Bayesian model to treat amount of the niche sampled as a latent vairable  
-
-      {
-        rank=source;tab 3;
-      }
-    tab3 -> tab4 [style=dotted];
-    tab2 -> tab11;
-    
-```{r}
-
-grViz("digraph flowchart {
-
-        
-      graph [layout = dot, overlap = FALSE]
-      # node definitions with substituted label text
-      node [fontname = Helvetica, shape = plain]        
-      tab1 [label = '@@1']
-      tab2 [label = '@@2']
-      tab4 [label = '@@4-1']
-      tab5 [label = '@@4-2']
-      tab6 [label = '@@4-3']
-      tab7 [label = '@@4-4']
-      tab8 [label = '@@4-5']
-       node [label = '&alpha;&#x2080;&beta;&#x2080;']
-      tab9 
-       node [label = '&alpha;&#x2081;&beta;&#x2081;']
-      tab10
-       node [label = '&sigma;&#x00B2;']
-      tab11 
-       node [label = '&alpha;&#x2082;&beta;&#x2082;']
-      tab12 
-       node [label = '&alpha;&#x2083;&beta;&#x2083;']
-      tab13
-       node [label = '&alpha;&#x2084;&beta;&#x2084;']
-      tab14;
-
-       subgraph cluster_accepted {
-    graph [layout = neato, overlap = FALSE];
-      
-       
-    node [shape=plain];
-    
-      tab3 [label = '@@3']
-      
-      # edge
-      edge[ dir = forw];
-      tab3 -> tab9 [style=dotted];
-      tab3 -> tab10 [style=dotted];
-      tab3 -> tab12 [style=dotted];
-      tab3 -> tab13 [style=dotted];
-      tab3 -> tab14 [style=dotted];
-      
-}
-      
-      # edge definitions with the node IDs
-      edge[ dir = back];
-      tab1 -> tab2; 
-      tab2 -> tab4;
-      tab2 -> tab5;
-      tab2 -> tab6;
-      tab2 -> tab7;
-      tab2 -> tab8;
-      tab4 -> tab9;
-      tab5 -> tab10;
-      tab6 -> tab12;
-      tab7 -> tab13;
-      tab8 -> tab14;
-      tab2 -> tab11;
-      }
-
-      [1]: 'Herbarium specimens (Observed data) &gamma;&#x2081;'
-      [2]: 'SDM (Process) &eta;'
-      [3]: 'Sampling design'
-      [4]: c('Annual Precipition','Annual Temperature','Precip of coldest quarter','Mean temp of coldest quarter','Elevation')
-      ")
-
-```
-
 ```{r}
 
 grViz("digraph flowchart {
@@ -269,120 +194,13 @@ grViz("digraph flowchart {
       tab2 -> tab14;{rank = same tab11 tab14};
       }
 
-      [1]: 'Herbarium specimens (Observed data) &gamma;&#x2081;'
+      [1]: '(Data) &gamma;&#x2081;'
       [2]: 'SDM (Process) &eta;'
       [3]: 'Sampling design'
       [4]: c('Annual Precipition','Annual Temperature','Precip of coldest quarter','Mean temp of coldest quarter','Elevation')
       ")
 ```
 
-
-```{r}
-
-grViz("digraph flowchart {
-      graph [layout = dot]
-      # node definitions with substituted label text
-      node [fontname = Helvetica, shape = plain]        
-      tab1 [label = '@@1']
-      tab2 [label = '@@2']
-      tab3 [label = '@@3']
-      tab4 [label = '@@4-1']
-      tab5 [label = '@@4-2']
-      tab6 [label = '@@4-3']
-      tab7 [label = '@@4-4']
-      tab8 [label = '@@4-5']
-       node [label = '&alpha;&#x2080;&beta;&#x2080;']
-      tab9 
-       node [label = '&alpha;&#x2081;&beta;&#x2081;']
-      tab10
-       node [label = '&sigma;&#x00B2;']
-      tab11 
-       node [label = '&alpha;&#x2082;&beta;&#x2082;']
-      tab12 
-       node [label = '&alpha;&#x2083;&beta;&#x2083;']
-      tab13
-       node [label = '&alpha;&#x2084;&beta;&#x2084;']
-      tab14
-
-      # edge definitions with the node IDs
-      edge[ dir = forw];
-      tab3 -> tab9 [style=dotted];
-      tab3 -> tab10 [style=dotted];
-      tab3 -> tab12 [style=dotted];
-      tab3 -> tab13 [style=dotted];
-      tab3 -> tab14 [style=dotted];
-      edge[ dir = back];
-      tab1 -> tab2; 
-      tab2 -> tab4;
-      tab2 -> tab5;
-      tab2 -> tab6;
-      tab2 -> tab7;
-      tab2 -> tab8;
-      tab4 -> tab9;
-      tab5 -> tab10;
-      tab6 -> tab12;
-      tab7 -> tab13;
-      tab8 -> tab14;
-      tab2 -> tab11;
-      }
-
-      [1]: 'Herbarium specimens (Observed data)'
-      [2]: 'SDM (Process)'
-      [3]: 'Sampling design'
-      [4]: c('Annual Precipition','Annual Temperature','Precip of coldest quarter','Mean temp of coldest quarter','Elevation')
-      ")
-
-```
-
-
-something about the update broke the double digit useage
-```{r}
-
-grViz("digraph flowchart {
-      # node definitions with substituted label text
-      node [fontname = Helvetica, shape = rectangle]        
-      a [label = '@@1']
-      b [label = '@@2']
-      c [label = '@@3']
-      d [label = '@@4']
-      e [label = '@@5']
-      f [label = '@@6']
-      g [label = '@@7']
-      h [label = '@@8-1']
-      i [label = '@@8-2']
-      j [label = '@@8-3']
-      k [label = '@@8-4']
-      
-      # edge definitions with the node IDs
-      a -> c -> d;
-      d -> h;
-      d -> i;
-      d -> j;
-      d -> k;
-      b -> c;
-      e -> f;
-      h -> e;
-      i -> e;
-      j -> e;
-      k -> e;
-      e -> f;
-      e -> f;
-      e -> f;
-      e -> f;
-      g -> b;
-      }
-
-      [1]: 'Model organism (Claytonia rubra)'
-      [2]: 'Climate Drivers'
-      [3]: 'Build true distribution'
-      [4]: 'sample'
-      [5]: 'SDM'
-      [6]: 'Compare with True'
-      [7]: 'snow melt, min and max temp, soil moisture, dummy'
-      [8]: c('Systematic','Adaptive cluster sampling','Neutral sampling','Random')
-      ")
-
-```
 
 
 Snow melt, temperature
@@ -396,18 +214,18 @@ Snow melt, temperature
 # install.packages("RNRCS")
 
 
-grabNRCS.meta()
-snow1 <- grabNRCS.data(network = 'SNTL', site_id = 2229, timescale = "monthly", DayBgn = '2019-01-01', DayEnd = '2020-01-01')
-
-
-load("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/hackathon/Simulations/SNOWHLNDmodelavg_annual.RData") # 1920-2005
-load("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/hackathon/Simulations/SNOWHLNDmodelavg.raster.RData")
-load("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/hackathon/Simulations/SNOWHLNDmodel17_annual.RData") # 5, 17 year blocks averaged 
-load("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/hackathon/Simulations/SNOWHLNDmodel17_raster.RData")
-
-
-str(SNOWHLNDmodel17.raster[[1]])
-plot(SNOWHLNDmodel17.raster[[1]][[1]])
+# grabNRCS.meta()
+# snow1 <- grabNRCS.data(network = 'SNTL', site_id = 2229, timescale = "monthly", DayBgn = '2019-01-01', DayEnd = '2020-01-01')
+# 
+# 
+# load("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/hackathon/Simulations/SNOWHLNDmodelavg_annual.RData") # 1920-2005
+# load("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/hackathon/Simulations/SNOWHLNDmodelavg.raster.RData")
+# load("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/hackathon/Simulations/SNOWHLNDmodel17_annual.RData") # 5, 17 year blocks averaged 
+# load("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/hackathon/Simulations/SNOWHLNDmodel17_raster.RData")
+# 
+# 
+# str(SNOWHLNDmodel17.raster[[1]])
+# plot(SNOWHLNDmodel17.raster[[1]][[1]])
 ```
 
 ```{r}
@@ -426,35 +244,33 @@ rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
 
 Use maxent, and then refine the relatonships of environment and points  
 ```{r}
-hygr <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Hymenoxys grandiflora_SEINet/occurrences.csv")
+# hygr <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Hymenoxys grandiflora_SEINet/occurrences.csv")
+# 
+# plot(hygr$decimalLongitude, hygr$decimalLatitude)
+# 
+# hygr <- hygr[complete.cases(hygr$decimalLatitude),]
+# 
+# pointsspdf <- SpatialPointsDataFrame(coords = hygr[,c("decimalLongitude","decimalLatitude")],
+#                                      data = hygr,
+#                                      proj4string = CRS("+proj=longlat +datum=WGS84"))
+# 
+# plot(bio12_res)
+# # plot(SNOWHLNDmodel17.raster[[1]][[1]], add=TRUE)
+# points(pointsspdf, pch = 16)
+# plot(colocounties, add=TRUE)
 
-plot(hygr$decimalLongitude, hygr$decimalLatitude)
 
-clar <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Claytonia arctica_SEINet/occurrences.csv")
+# clar <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Claytonia arctica_SEINet/occurrences.csv")
 
 clru <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Claytonia rubra_SEINet/occurrences.csv")
 
 plot(colocounties)
 points(clru$decimalLongitude, clru$decimalLatitude, col="blue")
-points(clar$decimalLongitude, clar$decimalLatitude)
+# points(clar$decimalLongitude, clar$decimalLatitude)
 
 
 ```
 
-
-```{r}
-hygr <- hygr[complete.cases(hygr$decimalLatitude),]
-
-pointsspdf <- SpatialPointsDataFrame(coords = hygr[,c("decimalLongitude","decimalLatitude")],
-                                     data = hygr,
-                                     proj4string = CRS("+proj=longlat +datum=WGS84"))
-
-plot(bio12_res)
-# plot(SNOWHLNDmodel17.raster[[1]][[1]], add=TRUE)
-points(pointsspdf, pch = 16)
-plot(colocounties, add=TRUE)
-
-```
 
 ```{r}
 
@@ -463,10 +279,10 @@ clruspdf <- SpatialPointsDataFrame(coords = clru[,c("decimalLongitude","decimalL
                                      data = clru,
                                      proj4string = CRS("+proj=longlat +datum=WGS84"))
 
-
-plot(SNOWHLNDmodel17.raster[[1]][[1]])
-points(clruspdf, pch = 16)
-plot(colocounties, add=TRUE)
+# 
+# plot(SNOWHLNDmodel17.raster[[1]][[1]])
+# points(clruspdf, pch = 16)
+# plot(colocounties, add=TRUE)
 
 # snow11 <- rotate(SNOWHLNDmodel17.raster[[1]][[1]])
 # plot(snow11)
@@ -490,15 +306,13 @@ library(SDMtune)
 <http://borisleroy.com/files/virtualspecies-tutorial.html>
 virtual species based on Claytonia rubra   
 ```{r}
-rasterstack1 <- stack(bioclim.colorado[[c(1,11,12,19)]]) # Does this need to be rotated? And turned into Z scores? subtract mean and divide by SD? 
-
-names(rasterstack)
-
 # or use all worldclim data
 # bioclim.colorado <- getData("worldclim", var="bio", res=0.5, lon=-106, lat = 39)
 # save(bioclim.colorado, file = "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/bioclim.colorado.Rda")
 load("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/bioclim.colorado.Rda")
 bioclim.colorado
+
+rasterstack1 <- stack(bioclim.colorado[[c(1,11,12,19)]]) # Does this need to be rotated? And turned into Z scores? subtract mean and divide by SD? 
 
 coloElev_resam <- resample(coElev_res, bioclim.colorado[[1]], method = 'bilinear')
 coloElev <- crop(coloElev_resam, extent(colocounties), snap="out")
@@ -514,94 +328,94 @@ plot(bioclim.colorado[[c("bio1_12","bio12_12")]])
 Define response functions
 ```{r}
 
-climate_clru <- raster::extract(bioclim.colorado, clru[,c("decimalLongitude","decimalLatitude")])
-
-mu_clru <- colMeans(climate_clru, na.rm = TRUE)
-sd_clru <- apply(climate_clru, 2, function(x) sd(x, na.rm = TRUE))
-
-# gaussian distribution functions 
-dnorm_clru <- mapply(function(x,y) dnorm(x = 150, mean = x, sd = y), mu_clru, sd_clru)
-
-
-# using dnorm to generate vitural species
-# my.parameters <- mapply(function(bio, x, y) formatFunctions(assign(paste(bio), 
-#                                                                    c(fun = 'dnorm', mean = x, sd = y))),
-#                         names(bioclim.colorado), mu_clru, sd_clru)
-mu_clru[11]
-sd_clru[11]
-
-# my.parameters2 <- formatFunctions(bio1_12 = c(fun = 'dnorm', assign('mean', mu_clru[1]), 
-#                                              assign('sd', mu_clru[1])),
-#                                  bio12_12 = c(fun = 'dnorm', assign('mean', mu_clru[12]), 
-#                                               assign('sd', mu_clru[12])))
+# climate_clru <- raster::extract(bioclim.colorado, clru[,c("decimalLongitude","decimalLatitude")])
 # 
-# my.first.species2 <- generateSpFromFun(raster.stack = bioclim.colorado[[c("bio1_12", "bio12_12")]],
-#                                               parameters = my.parameters2,
+# mu_clru <- colMeans(climate_clru, na.rm = TRUE)
+# sd_clru <- apply(climate_clru, 2, function(x) sd(x, na.rm = TRUE))
+# 
+# # gaussian distribution functions 
+# dnorm_clru <- mapply(function(x,y) dnorm(x = 150, mean = x, sd = y), mu_clru, sd_clru)
+# 
+# 
+# # using dnorm to generate vitural species
+# # my.parameters <- mapply(function(bio, x, y) formatFunctions(assign(paste(bio), 
+# #                                                                    c(fun = 'dnorm', mean = x, sd = y))),
+# #                         names(bioclim.colorado), mu_clru, sd_clru)
+# mu_clru[11]
+# sd_clru[11]
+# 
+# # my.parameters2 <- formatFunctions(bio1_12 = c(fun = 'dnorm', assign('mean', mu_clru[1]), 
+# #                                              assign('sd', mu_clru[1])),
+# #                                  bio12_12 = c(fun = 'dnorm', assign('mean', mu_clru[12]), 
+# #                                               assign('sd', mu_clru[12])))
+# # 
+# # my.first.species2 <- generateSpFromFun(raster.stack = bioclim.colorado[[c("bio1_12", "bio12_12")]],
+# #                                               parameters = my.parameters2,
+# #                                               plot = TRUE)
+# 
+# # bio19 precip of coldest quarter to represent snow accumulation
+# # bio11 mean temp of coldest quarter
+# my.parameters <- formatFunctions(bio1_12 = c(fun = 'dnorm', mean = 81.5, sd = 30.4),
+#                                  bio12_12 = c(fun = 'dnorm', mean = 505.9, sd = 182),
+#                                  bio19_12 = c(fun = 'dnorm', mean = 198.1, sd = 117.8),
+#                                  bio11_12 = c(fun = 'dnorm', mean = -1.38, sd = 37.4))
+# 
+# 
+# my.first.species <- generateSpFromFun(raster.stack = 
+#                                         bioclim.colorado[[c("bio1_12", "bio12_12", "bio19_12", "bio11_12")]],
+#                                               parameters = my.parameters,
 #                                               plot = TRUE)
-
-# bio19 precip of coldest quarter to represent snow accumulation
-# bio11 mean temp of coldest quarter
-my.parameters <- formatFunctions(bio1_12 = c(fun = 'dnorm', mean = 81.5, sd = 30.4),
-                                 bio12_12 = c(fun = 'dnorm', mean = 505.9, sd = 182),
-                                 bio19_12 = c(fun = 'dnorm', mean = 198.1, sd = 117.8),
-                                 bio11_12 = c(fun = 'dnorm', mean = -1.38, sd = 37.4))
-
-
-my.first.species <- generateSpFromFun(raster.stack = 
-                                        bioclim.colorado[[c("bio1_12", "bio12_12", "bio19_12", "bio11_12")]],
-                                              parameters = my.parameters,
-                                              plot = TRUE)
-
-plot(colocounties);plot(my.first.species, add=TRUE);plot(colocounties, add=TRUE); points(clruspdf)
+# 
+# plot(colocounties);plot(my.first.species, add=TRUE);plot(colocounties, add=TRUE); points(clruspdf)
 ```
 
 Change the functions to use built in linear, quadratic, logistic, normal, and beta or make your own  
 logisticFun   (alpha=7.42; beta=272.035035035035) has all 1 suitability until the beta and drops fast to 0
 ```{r}
-rasterstack1 <- stack(bioclim.colorado[[c(1,11,12,19)]]) # Does this need to be rotated? And turned into Z scores? subtract mean and divide by SD? 
-
-hist(climate_clru[,12])
-
-clru.parameters1 <- formatFunctions(bio1_12 = c(fun = 'dnorm', mean = 81.5, sd = 20),
-                                 bio12_12 = c(fun = 'custnorm', mean = 505.9, diff = 70, prob = 0.99),
-                                 bio19_12 = c(fun = 'betaFun', p1 = 0, p2 = 198.1, alpha = 0.9, gamma = 0.08), # precip coldest quarter
-                                 # bio11_12 = c(fun = 'logisticFun', beta = -1.38, alpha = 2)) # mean temp of coldest quarter, should be how fast the snow melts
-                                 bio11_12 = c(fun = 'quadraticFun', a = -1, b = 2, c = -1))
-
-clru.species1 <- generateSpFromFun(raster.stack = 
-                                        bioclim.colorado[[c("bio1_12", "bio12_12", "bio19_12", "bio11_12")]],
-                                              parameters = clru.parameters1,
-                                   # species.type = "additive",
-                                   formula = "3 * bio19_12 + sqrt(bio11_12) + bio12_12 * bio1_12",
-                                              plot = TRUE)
-
-plot(colocounties);plot(clru.species1, add=TRUE);plot(colocounties, add=TRUE); points(clruspdf, pch=16, cex=0.5, col='blue')
+# rasterstack1 <- stack(bioclim.colorado[[c(1,11,12,19)]]) # Does this need to be rotated? And turned into Z scores? subtract mean and divide by SD? 
+# 
+# hist(climate_clru[,12])
+# 
+# clru.parameters1 <- formatFunctions(bio1_12 = c(fun = 'dnorm', mean = 81.5, sd = 20),
+#                                  bio12_12 = c(fun = 'custnorm', mean = 505.9, diff = 70, prob = 0.99),
+#                                  bio19_12 = c(fun = 'betaFun', p1 = 0, p2 = 198.1, alpha = 0.9, gamma = 0.08), # precip coldest quarter
+#                                  # bio11_12 = c(fun = 'logisticFun', beta = -1.38, alpha = 2)) # mean temp of coldest quarter, should be how fast the snow melts
+#                                  bio11_12 = c(fun = 'quadraticFun', a = -1, b = 2, c = -1))
+# 
+# clru.species1 <- generateSpFromFun(raster.stack = 
+#                                         bioclim.colorado[[c("bio1_12", "bio12_12", "bio19_12", "bio11_12")]],
+#                                               parameters = clru.parameters1,
+#                                    # species.type = "additive",
+#                                    formula = "3 * bio19_12 + sqrt(bio11_12) + bio12_12 * bio1_12",
+#                                               plot = TRUE)
+# 
+# plot(colocounties);plot(clru.species1, add=TRUE);plot(colocounties, add=TRUE); points(clruspdf, pch=16, cex=0.5, col='blue')
 
 ```
 
 Plot response curves
 ```{r}
 
-plotResponse(clru.species1)
+# plotResponse(clru.species1)
 
 
 ```
 
 
 ```{r}
-class(clru.species1)
-
-# suitability map
-clru.species1[[3]]
-
-colorado.clru <- crop(clru.species1[[3]], extent(colocounties), snap="out")
-plot(colorado.clru); points(clruspdf, pch=16, cex=0.5, col='blue')
-
-# convert to presence absence, use beta to set the inflection and alpha to make stronger switch from suitable to unsuitable
-pa1 <- convertToPA(clru.species1, plot = TRUE, beta = 0.65, alpha = -0.001)
-
-# Can set the species prevalance and let it get there with testing levels of beta that get to the desired prevalence, alpha fixed at default -0.05
-pa2 <- convertToPA(clru.species1, plot = TRUE, species.prevalence = 0.2)  
+# class(clru.species1)
+# 
+# # suitability map
+# clru.species1[[3]]
+# 
+# colorado.clru <- crop(clru.species1[[3]], extent(colocounties), snap="out")
+# plot(colorado.clru); points(clruspdf, pch=16, cex=0.5, col='blue')
+# 
+# # convert to presence absence, use beta to set the inflection and alpha to make stronger switch from suitable to unsuitable
+# pa1 <- convertToPA(clru.species1, plot = TRUE, beta = 0.65, alpha = -0.001)
+# 
+# # Can set the species prevalance and let it get there with testing levels of beta that get to the desired prevalence, alpha fixed at default -0.05
+# pa2 <- convertToPA(clru.species1, plot = TRUE, species.prevalence = 0.2)  
 # - beta = 0.4677734375
 # - alpha = -0.05
 # - species prevalence =0.200104841931879
@@ -680,19 +494,17 @@ plotResponse(clru1_z)
 
 
 ```{r}
-class(clru.species1)
-
 # suitability map
-clru.species1[[3]]
+# clru.species1[[3]]
 
-colorado.clru <- crop(clru.species1[[3]], extent(colocounties), snap="out")
-plot(colorado.clru); points(clruspdf, pch=16, cex=0.5, col='blue')
+# colorado.clru <- crop(clru.species1[[3]], extent(colocounties), snap="out")
+# plot(colorado.clru); points(clruspdf, pch=16, cex=0.5, col='blue')
 
 # convert to presence absence, use beta to set the inflection and alpha to make stronger switch from suitable to unsuitable
-pa1 <- convertToPA(clru.species1, plot = TRUE, beta = 0.65, alpha = -0.001)
+# pa1 <- convertToPA(clru.species1, plot = TRUE, beta = 0.65, alpha = -0.001)
 
 # Can set the species prevalance and let it get there with testing levels of beta that get to the desired prevalence, alpha fixed at default -0.05
-pa2 <- convertToPA(clru.species1, plot = TRUE, species.prevalence = 0.2)  
+# pa2 <- convertToPA(clru.species1, plot = TRUE, species.prevalence = 0.2)  
 # - beta = 0.4677734375
 # - alpha = -0.05
 # - species prevalence =0.200104841931879
@@ -706,11 +518,11 @@ pa2 <- convertToPA(clru.species1, plot = TRUE, species.prevalence = 0.2)
 Sampler testing  
 ```{r}
 
-length(colorado.clru) 
-nrow(colorado.clru) # 482
-ncol(colorado.clru) # 844
+length(clru1_z) 
+nrow(clru1_z) # 482
+ncol(clru1_z) # 844
 # use xyFromCell() to get coordinates from row, column, or cell number
-xyFromCell(colorado.clru, ceiling(runif(1, min = 1, max = length(colorado.clru))))
+xyFromCell(clru1_z[[3]], ceiling(runif(1, min = 1, max = length(clru1_z[[3]]))))
 
 ### systematic and thinning
 systematic_sampling_thinning <- function(suitability.raster,  samplesize){
@@ -760,28 +572,35 @@ plot(colorado.clru); points(samplerand1, pch=16, cex=0.5)
 # Sampling functions
 Sampling methods
 ```{r}
+# test
+suitability.raster <- clru1_z[[3]]
+samplesize <- 20
 
 ### systematic 
 systematic_sampling <- function(suitability.raster,  samplesize){
-  evenstep <- length(suitability.raster)/stepsize
+  # systematic sampling to allow for Bernoulli process to reject some cells with high suitability and sometimes take cells with low suitability
+  # evenstep <- ceiling(length(suitability.raster)/(samplesize*mean(suitability.raster[]))) 
+  evenstep <- ceiling(length(suitability.raster)/(samplesize*100))
   i <- evenstep
   
   sampleout <- c()
   while(i < length(suitability.raster)){
-    if(getValues(suitability.raster)[i] > 0.3 &
-       rbinom(1, 1, getValues(suitability.raster)[i]) == 1){
-      sampleout <- rbind(sampleout,xyFromCell(suitability.raster, i))
-    }
+      if(rbinom(1, 1, getValues(suitability.raster)[i]) == 1){
+        sampleout <- rbind(sampleout,xyFromCell(suitability.raster, i))
+      }
       i <- i + evenstep
-  }
-
-  sampleout <- thin.max(sampleout, c("x","y"), samplesize)
+    }
+  
+  sampleout <- thin.max(sampleout, c("x","y"), samplesize) # spatial thinning
   sampleout
 }
 
 
-samplesys1 <- systematic_sampling_thinning(colorado.clru, 1000, 100)
-plot(colorado.clru); points(samplesys1, pch=16, cex=0.5)
+
+for(x in 1:10){
+  samplesys1 <- systematic_sampling(clru1_z[[3]], 100)
+  plot(clru1_z[[3]], main = "Systematic sampling (n = 100)"); points(samplesys1, pch=16, cex=0.5)
+  }
 
 # suitability.raster <- clru1[[3]]
 # rm(suitability.raster)
@@ -792,8 +611,7 @@ random_sampling <- function(suitability.raster, samplesize){
   while(i <= samplesize){
     randcell <- ceiling(runif(1, min = 1, max = length(suitability.raster)))
     
-    if(getValues(suitability.raster)[randcell] > 0.3 & 
-       rbinom(1, 1, getValues(suitability.raster)[randcell]) == 1){
+    if(rbinom(1, 1, getValues(suitability.raster)[randcell]) == 1){
       sampleout <- rbind(sampleout,xyFromCell(suitability.raster, randcell))
       i <- i+1
     } 
@@ -802,7 +620,82 @@ random_sampling <- function(suitability.raster, samplesize){
 }
 
 
+for(x in 1:10){
+  random1 <- random_sampling(clru1_z[[3]], 100)
+  plot(clru1_z[[3]], main = "Simple random sampling (n = 100)"); points(random1, pch=16, cex=0.5)
+  }
+
+
+
 ### adaptive cluster sampling 
+surroundingcells <- function(cellRowCol){
+  out <- data.frame(Cells = c(cellFromRowCol(suitability.raster, cellRowCol[1]-1, cellRowCol[2]-1),
+                          cellFromRowCol(suitability.raster, cellRowCol[1]-1, cellRowCol[2]),
+                          cellFromRowCol(suitability.raster, cellRowCol[1]-1, cellRowCol[2]+1), # row above
+                          cellFromRowCol(suitability.raster, cellRowCol[1], cellRowCol[2]-1),
+                          cellFromRowCol(suitability.raster, cellRowCol[1], cellRowCol[2]+1), # either side, same row
+                          cellFromRowCol(suitability.raster, cellRowCol[1]+1, cellRowCol[2]-1),
+                          cellFromRowCol(suitability.raster, cellRowCol[1]+1, cellRowCol[2]),
+                          cellFromRowCol(suitability.raster, cellRowCol[1]+1, cellRowCol[2]+1)),
+                    Rows = c(cellRowCol[1]-1,
+                          cellRowCol[1]-1,
+                          cellRowCol[1]-1, # row above
+                          cellRowCol[1], 
+                          cellRowCol[1],  # either side, same row
+                          cellRowCol[1]+1, 
+                          cellRowCol[1]+1, 
+                          cellRowCol[1]+1),
+                    Cols = c(cellRowCol[2]-1,
+                          cellRowCol[2],
+                          cellRowCol[2]+1, # row above
+                          cellRowCol[2]-1,
+                          cellRowCol[2]+1, # either side, same row
+                          cellRowCol[2]-1,
+                          cellRowCol[2],
+                          cellRowCol[2]+1))
+  out
+}
+
+        # Instead of the first if statement, start with the cluster function that picks a random point, builds a cluster until no additional cells are added, then if the length of the cluster is smaller than the sample size, run the cluster again.  
+      # the length of sampleout is the sample size, can take rows up to sample size
+cluster <- function(cells){
+  randomcell <- c(ceiling(runif(1, min = 1, max = nrow(suitability.raster))),
+               ceiling(runif(1, min = 1, max = ncol(suitability.raster))))
+  out <- lapply(1:8, function(c){
+    if(rbinom(1,1,getValues(suitability.raster)[cells[c,1]])==1){
+      samples <- rbind(sampleout,xyFromCell(suitability.raster, cells[c,1]))
+      additionalsurrounding <- surroundingcells(as.numeric(paste(cells[c,c(2:3)])))
+      samples_cells <- list(samples, additionalsurrounding)
+      samples_cells
+    }
+    })
+  samples <- unlist(out, recursive = FALSE)
+  samples
+} # end clustser function
+
+adaptive_cluster <- function(suitability.raster, samplesize){
+
+  i <- 1
+  while(i <= samplesize){
+    if(rbinom(1,1,suitability.raster[randomcell[1],randomcell[2]])==1){
+      sampleout <- rbind(sampleout,xyFromCell(suitability.raster, cellFromRowCol(suitability.raster, randomcell[1], randomcell[2])))
+      i <- i+1
+      surcells <- surroundingcells(randomcell)
+      
+    } # end if statement
+    
+
+      
+      
+      
+      
+      
+      
+  } # end while
+  
+}
+
+    
 
 ### neutral to species, weighted by sampled areas
 # 1. sort all weights to start with hightest weighted areas
