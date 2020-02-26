@@ -108,6 +108,7 @@ grViz("digraph flowchart {
       tab8 [label = '@@8-1']
       tab9 [label = '@@8-2']
       tab10 [label = '@@8-3']
+      tab11 [label = '@@8-4']
      
       # edge definitions with the node IDs
       tab1 -> tab3;
@@ -117,10 +118,12 @@ grViz("digraph flowchart {
       tab3 -> tab8;
       tab3 -> tab9;
       tab3 -> tab10;
+      tab3 -> tab11;
       tab7 -> tab2;
       tab8 -> tab4;
       tab9 -> tab4;
       tab10 -> tab4;
+      tab11 -> tab4;
       }
 
       [1]: 'Model organism (Claytonia rubra)'
@@ -130,7 +133,7 @@ grViz("digraph flowchart {
       [5]: 'Build SDM'
       [6]: 'Compare with true'
       [7]: 'Bio&#x2081; Bio&#x2082; Bio&#x2083; Bio&#x2084; Elevation, dummy'
-      [8]: c('Adaptive cluster','Convenience','Simple random')
+      [8]: c('Systematic','Adaptive cluster','Convenience','Simple random')
       ")
 
 
@@ -452,7 +455,7 @@ sd_clru3 <- apply(climate_clru3, 2, function(x) sd(x, na.rm = TRUE))
 hist(climate_clru3[,4])
 
 ```
-
+e^Xlinearmodel/1+e^linear model so that it's [0-1] of the probability of y|x 
 ```{r}
 # Need to be beta? if I've scaled? But these aren't 0-1 like it does somehow, when I don't rescale, maybe fine? 
 # bio19 precip of coldest quarter to represent snow accumulation
@@ -475,7 +478,7 @@ clru.para_z <- formatFunctions(bio1_12 = c(fun = 'dnorm', mean = -0.05, sd = 0.4
  #            To disable, set argument rescale = FALSE
 clru1_z <- generateSpFromFun(raster.stack = rasterstack3_z, parameters = clru.para_z,
                              species.type = "mixed",
-                             formula = "bio1_12 + bio12_12 + (bio11_12 * bio19_12) + ElevationResampled_bioclim + dummy", 
+                             formula = "bio1_12*3 + bio12_12 *2+ (bio11_12 * bio19_12)*4 + ElevationResampled_bioclim + dummy", 
                              rescale.each.response = FALSE,
                              plot = TRUE)
 
@@ -483,7 +486,7 @@ plot(clru1_z);plot(colocounties, add=TRUE); points(clruspdf, pch=16, cex=0.25,co
 
 # Plot response curves
 plotResponse(clru1_z)
-
+edit(generateSpFromFun)
 ```
 
 
@@ -627,17 +630,21 @@ for(x in 1:10){
 
 
 
-### adaptive cluster sampling 
+### adaptive cluster sampling  
+# function to find the surrounding cells
+# check if on edge is it 1 or max row or col then select the remaining ones
 surroundingcells <- function(cellRowCol){
-  out <- data.frame(Cells = c(cellFromRowCol(suitability.raster, cellRowCol[1]-1, cellRowCol[2]-1),
+  out <- data.frame(Cells = c(cellFromRowCol(suitability.raster, cellRowCol[1], cellRowCol[2]), # center cell; 1
+                          cellFromRowCol(suitability.raster, cellRowCol[1]-1, cellRowCol[2]-1),
                           cellFromRowCol(suitability.raster, cellRowCol[1]-1, cellRowCol[2]),
-                          cellFromRowCol(suitability.raster, cellRowCol[1]-1, cellRowCol[2]+1), # row above
+                          cellFromRowCol(suitability.raster, cellRowCol[1]-1, cellRowCol[2]+1), # row above; 4
                           cellFromRowCol(suitability.raster, cellRowCol[1], cellRowCol[2]-1),
-                          cellFromRowCol(suitability.raster, cellRowCol[1], cellRowCol[2]+1), # either side, same row
+                          cellFromRowCol(suitability.raster, cellRowCol[1], cellRowCol[2]+1), # either side, same row; 6
                           cellFromRowCol(suitability.raster, cellRowCol[1]+1, cellRowCol[2]-1),
                           cellFromRowCol(suitability.raster, cellRowCol[1]+1, cellRowCol[2]),
-                          cellFromRowCol(suitability.raster, cellRowCol[1]+1, cellRowCol[2]+1)),
-                    Rows = c(cellRowCol[1]-1,
+                          cellFromRowCol(suitability.raster, cellRowCol[1]+1, cellRowCol[2]+1)), # next row; 9
+                    Rows = c(cellRowCol[1], # center row
+                          cellRowCol[1]-1,
                           cellRowCol[1]-1,
                           cellRowCol[1]-1, # row above
                           cellRowCol[1], 
@@ -645,7 +652,8 @@ surroundingcells <- function(cellRowCol){
                           cellRowCol[1]+1, 
                           cellRowCol[1]+1, 
                           cellRowCol[1]+1),
-                    Cols = c(cellRowCol[2]-1,
+                    Cols = c(cellRowCol[2], # center col
+                          cellRowCol[2]-1,
                           cellRowCol[2],
                           cellRowCol[2]+1, # row above
                           cellRowCol[2]-1,
@@ -653,57 +661,81 @@ surroundingcells <- function(cellRowCol){
                           cellRowCol[2]-1,
                           cellRowCol[2],
                           cellRowCol[2]+1))
+  if(cellRowCol[1]==1){
+    out <- out[c(1,5:9),]
+  }
+  if(cellRowCol[2]==1){
+    out <- out[c(1,3:4,6,8:9),]
+  }
+  if(cellRowCol[1]==nrow(suitability.raster)){
+    out <- out[c(1,1:6),]
+  }
+  if(cellRowCol[2]==ncol(suitability.raster)){
+    out <- out[c(1:3,5,7:8),]
+  }
   out
 }
 
-        # Instead of the first if statement, start with the cluster function that picks a random point, builds a cluster until no additional cells are added, then if the length of the cluster is smaller than the sample size, run the cluster again.  
-      # the length of sampleout is the sample size, can take rows up to sample size
-cluster <- function(cells){
-  randomcell <- c(ceiling(runif(1, min = 1, max = nrow(suitability.raster))),
-               ceiling(runif(1, min = 1, max = ncol(suitability.raster))))
-  out <- lapply(1:8, function(c){
-    if(rbinom(1,1,getValues(suitability.raster)[cells[c,1]])==1){
-      samples <- rbind(sampleout,xyFromCell(suitability.raster, cells[c,1]))
-      additionalsurrounding <- surroundingcells(as.numeric(paste(cells[c,c(2:3)])))
-      samples_cells <- list(samples, additionalsurrounding)
-      samples_cells
-    }
-    })
-  samples <- unlist(out, recursive = FALSE)
-  samples
-} # end clustser function
 
 adaptive_cluster <- function(suitability.raster, samplesize){
-
-  i <- 1
-  while(i <= samplesize){
-    if(rbinom(1,1,suitability.raster[randomcell[1],randomcell[2]])==1){
-      sampleout <- rbind(sampleout,xyFromCell(suitability.raster, cellFromRowCol(suitability.raster, randomcell[1], randomcell[2])))
-      i <- i+1
-      surcells <- surroundingcells(randomcell)
+  n <- 0
+  samples <- c()
+  while(n <= samplesize){
+    if(n == samplesize) break
+    # Select a random cell (name row, col, and cell number)
+    randcellRowCol <- c(ceiling(runif(1, min = 1, max = nrow(suitability.raster))),
+                    ceiling(runif(1, min = 1, max = ncol(suitability.raster)))) # Row Col
+    randcell <- cellFromRowCol(suitability.raster,randcellRowCol[1],randcellRowCol[2]) # cell number that matches
+    # start a cluster
+    # Bernoulli trial for setting a presence at the cell with probabiliity of suitability score to start a cluster
+    if(rbinom(1,1,getValues(suitability.raster)[randcell]) == 1){
+      n <- n+1
+      samples <- rbind(samples, xyFromCell(suitability.raster, randcell))
+      if(n == samplesize) break
+      surrcells <- surroundingcells(randcellRowCol)
       
-    } # end if statement
+      # check surrounding cells of a 'presence' and start this cluster
+      j <- 2 # move down the table of cells, adding non-duplicated if cell occupied, first row is center of cluster, included to check for dupliates
+      # Could hit sample size in the middle of checking all the surrounding cells
+      while(j < nrow(surrcells)){
+        if(rbinom(1,1,getValues(suitability.raster)[surrcells$Cells[j]]) == 1){
+          samples <- rbind(samples, xyFromCell(suitability.raster, surrcells$Cells[j]))
+          surrcells <- rbind(surrcells, surroundingcells(as.numeric(paste(surrcells[j,c(2:3)]))) )
+          surrcells <- surrcells[!duplicated(surrcells$Cells),] # only add the surrounding cells not already included
+          j <- j+1 # move down surrounding cells of original cluster 
+          n <- n+1 # added to sample
+          if(n == samplesize) break
+          if(j == samplesize) break
+        } else {# surrounding the surrounding cells, clusters
+          j <- j+1 # last one not added, check the next row
+          }
+      }  # end while statement j is number of surrounding cells to be checked
+    } # end if cell selected, when not occupied, select a new random cell
     
+  } # end while sample size n <= samplesize so don't start a new cluster
+  samples
+}
 
-      
-      
-      
-      
-      
-      
-  } # end while
+for(x in 1:10){
+cluster1 <- adaptive_cluster(clru1_z[[3]], 100)
+print(nrow(cluster1))
+plot(clru1_z[[3]], main = "Adaptive cluster sampling (n = 100)"); points(cluster1, pch=16, cex=0.5)
+}   
+
+### Convenience sampling, weighted by sampled areas
+# 1. set each convenience raster cell to the proportion of SEINet herb collections per cell as convenience
+# 2. have rbinom selection of that cell probability based on convenience weights
+# 3. follow the random selection 
+convenience_sampling <- function(suitability.raster, samplesize){
   
 }
 
-    
 
-### neutral to species, weighted by sampled areas
-# 1. sort all weights to start with hightest weighted areas
-# 2. have random selection of that point or not
+rasterstack
 ```
+
+
 Maxent compared to the 'true' distribution
-
-
 # Maxent function  
   Background points are sampled randomly from the cells that are not NA in the first predictor variable, unless background points are specified with argument a.
 ```{r}
@@ -722,7 +754,7 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
   if(grepl(sampling_type, "systematic")){
     sample_xy <- systematic_sampling_thinning(true.dist, stepsize = stepsize, samplesize)
   }
-  if(grepl(sampling_type, "neutral")){
+  if(grepl(sampling_type, "convenience")){
     sample_xy <- neutral()
   }
   if(grepl(sampling_type, "cluster")){
@@ -792,6 +824,25 @@ maxent_sampling(rasterstack = rasterstack2, true.dist = clru1[[3]], sampling_typ
 maxent_sampling(rasterstack = rasterstack2, true.dist = clru1[[3]], sampling_type = "system", reps = 20, samplesize = 50, pathstart = pathstart, stepsize = 1000)
 
 ```
+
+# Look at response curves 
+```{r}
+
+modelstoload <- unlist(lapply(c("random","system"), function(x){
+  resultpath <- list.files(path = pathstart,
+                           pattern = paste("^","maxent",x,"rep",sep=""),
+                           full.names = TRUE)
+  }))
+
+
+load(modelstoload[1])
+
+maxModels <- lapply(modelstoload, function(x) load(x))
+response(xm) # response curve shapes
+plot(xm) # variable contriubtion
+```
+
+
 
 # Nicheoverlap function    
 ```{r}
