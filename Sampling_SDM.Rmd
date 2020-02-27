@@ -325,7 +325,6 @@ rasterstack2 <- stack(coloElev,bioclim.stack)
 # Variables bio1 (annual mean temperature in °C * 10) and bio2 (annual precipitation)
 plot(bioclim.colorado[[c("bio1_12","bio12_12")]])
 
-
 ```
 
 Define response functions
@@ -440,6 +439,102 @@ rasterstack3 <- stack(coloElev,bioclim.stack, sim_layer)
 # scale will center (subtract the layer mean) and scale by dividing the centered layer by SD
 rasterstack3_z <- scale(rasterstack3)
 plot(rasterstack3_z[[6]])
+
+
+```
+
+Look at coding distributions
+```{r}
+x <- seq(0,1,length.out = 100)
+#beta
+alpha <- 0.3
+beta_1 <- 1 
+
+for(alpha in seq(0,1,length.out = 10)){
+  for(beta_1 in seq(0,1,length.out = 10)){
+    y <- (x^(alpha-1))*((1-x)^(beta_1-1))
+    plot(x,y, main=paste("alpha =", alpha, " beta =", beta_1))
+}}
+
+```
+
+lognormal
+```{r}
+x <- seq(0,1,length.out = 100)
+
+for(mu in seq(0.001,1,length.out = 10)){
+  for(sig2 in seq(0.001,1,length.out = 10)){
+    alpha1 <- log(mu)-(1/2)*log((sig2+mu^2)/mu^2)
+    beta1 <- sqrt(log((sig2+mu^2)/mu^2))
+    y <- (1/(x*sqrt(2*pi*beta1^2)))*(exp(-(log(x)-alpha1)^2)/(2*beta1^2))
+    plot(x,y, main=paste("mu =",mu, "sig2 =",sig2,"alpha =", alpha, " beta =", beta_1))
+}}
+
+```
+
+Exponential
+```{r}
+x <- seq(0,1,length.out = 100)
+
+
+for(alpha in seq(0,1,length.out = 10)){
+  for(beta_1 in seq(0,1,length.out = 10)){
+    y <- (x^(alpha-1))*((1-x)^(beta_1-1))
+    plot(x,y, main=paste("alpha =", alpha, " beta =", beta_1))
+}}
+
+```
+
+Normalize raster layers to 0-1; linear transformations so do not change the shape of the data
+```{r}
+# normalize
+# X - min(X) /  max(X) - min(X)
+# z-score; Standardized
+# X - min(X) / max(X)-min(X)
+
+
+rasterstack_norm <- rasterstack3
+# Normalize to 0-1
+for(i in 1:6){
+  rasterstack_norm[[i]] <- calc(rasterstack_norm[[1]], function(x){
+    (x-min(getValues(rasterstack_norm[[i]])))/(max(getValues(rasterstack_norm[[i]]))-min(getValues(rasterstack_norm[[i]])))
+  })
+}
+
+plot(rasterstack_norm[[1]])
+plot(rasterstack3[[1]])
+plot(rasterstack3_z[[1]])
+plot(scale(rasterstack_norm[[1]]))
+
+# scale in raster::scale just give the z-score
+rasterstack_norm[[2]] <- scale(rasterstack_norm[[2]])
+plot(rasterstack_norm[[2]])
+plot(rasterstack3[[2]])
+
+```
+
+
+
+Create my own glm for comparison with maxent
+```{r}
+predic_raster <- rasterstack_norm[[1]]
+predic_raster[] <- (getValues(rasterstack3_z[[1]])^2)*1 + log(getValues(rasterstack3_z[[2]]))*2 + getValues(rasterstack3_z[[3]])*3 + getValues(rasterstack3_z[[4]])*4 + getValues(rasterstack3_z[[5]])*0.001
+
+# predic_raster[] <- exp(getValues(rasterstack3_z[[1]])*1 + getValues(rasterstack3_z[[2]])*2 + getValues(rasterstack3_z[[3]])*3 + getValues(rasterstack3_z[[4]])*4 + getValues(rasterstack3_z[[5]])*0.001)/(1-exp(getValues(rasterstack3_z[[1]])*1 + getValues(rasterstack3_z[[2]])*2 + getValues(rasterstack3_z[[3]])*3 + getValues(rasterstack3_z[[4]])*4 + getValues(rasterstack3_z[[5]])*0.001))
+
+plot(predic_raster)
+plot(rasterstack3_z[[1]])
+
+for(i in 1:6){
+  hist(getValues(rasterstack3_z[[i]]))
+}
+
+hist(predic_raster)
+
+for(i in 1:6){
+  hist(getValues(rasterstack3_z[[i]][predic_raster[predic_raster>0.5]]))
+}
+
 ```
 
 Define response functions   
@@ -455,6 +550,7 @@ sd_clru3 <- apply(climate_clru3, 2, function(x) sd(x, na.rm = TRUE))
 hist(climate_clru3[,4])
 
 ```
+
 e^Xlinearmodel/1+e^linear model so that it's [0-1] of the probability of y|x 
 ```{r}
 # Need to be beta? if I've scaled? But these aren't 0-1 like it does somehow, when I don't rescale, maybe fine? 
@@ -740,25 +836,27 @@ Maxent compared to the 'true' distribution
   Background points are sampled randomly from the cells that are not NA in the first predictor variable, unless background points are specified with argument a.
 ```{r}
 #test 
-# rasterstack <- rasterstack2
+rasterstack <- rasterstack3_z
+sampling_type <- "random"
 pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations/"
-# true.dist <- clru1[[3]]
+true.dist <- clru1_z[[3]]
+reps <- 2
 # sampling_type <- "ra"
 rm(rasterstack); rm(true.dist); rm(sampling_type)
 
-maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","systematic","neutral","cluster"),
-                            reps = 100, samplesize, stepsize, pathstart = pathstart){
+maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","systematic","convenience","cluster"),
+                            reps = 100, samplesize, pathstart = pathstart){
   if(grepl(sampling_type, "random")){
     sample_xy <- random_sampling(suitability.raster = true.dist,samplesize = samplesize)
   } 
   if(grepl(sampling_type, "systematic")){
-    sample_xy <- systematic_sampling_thinning(true.dist, stepsize = stepsize, samplesize)
+    sample_xy <- systematic_sampling(suitability.raster = true.dist, samplesize = samplesize)
   }
   if(grepl(sampling_type, "convenience")){
-    sample_xy <- neutral()
+    sample_xy <- convenience_sampling()
   }
   if(grepl(sampling_type, "cluster")){
-    sample_xy <- cluster()
+    sample_xy <- cluster_sampling()
   }
   
   for(r in 1:reps){
@@ -812,6 +910,10 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
 
 
 plot(xm)
+r <- response(xm, var="bio19_12")
+plot(r, type = "l")
+response(xm)
+
 ```
 
 <https://www.youtube.com/watch?v=42rSg60Rk-k&feature=youtu.be&fbclid=IwAR3AvdVB3U7YVI0aVrfm-KYGQm0Vnfo_W3udZL2YoH0h5vQjxQjp6_Kde7A>
