@@ -126,6 +126,28 @@ plot(predic_raster)
 
 ```
 
+
+```{r}
+lm2 <- formula(~getValues(rasterstack_norm[[1]])*0.5 + 
+                 getValues(rasterstack_norm[[2]])*2 -
+                 getValues(rasterstack_norm[[3]])*5 +
+                 getValues(rasterstack_norm[[4]]) *
+                 getValues(rasterstack_norm[[5]]) +  #interaction term 
+                 getValues(rasterstack_norm[[4]])*1.5 + 
+                 getValues(rasterstack_norm[[5]])*1.9 + 
+                 getValues(rasterstack_norm[[6]])*1)
+
+hist(exp(as.formula(lm2[[2]]))/(1+exp(as.formula(lm2[[2]]))))
+
+predic_raster <- setValues(predic_raster, as.numeric(exp(as.formula(lm2[[2]]))/(1+exp(as.formula(lm2[[2]])))))
+plot(predic_raster)
+
+
+```
+
+
+
+
 Or a slower way
 ```{r}
 # same result, 1s and lots of NAs
