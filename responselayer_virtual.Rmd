@@ -1,0 +1,167 @@
+Code snippits for sample design impact on SDM
+Michelle DePrenger-Levin
+2020-02-27
+
+Partial dependence plots    
+suggested packages pdp; edarf     
+these seem to all be for random forest models. Can this be applied to a glm?    
+```{r}
+library(pdp)
+library(edarf)
+```
+Plotting marginal effect of regression models    
+This sounds more aligned with maxent output but how to tell?  
+```{r}
+library(sjPlot)
+library(ggplot2)
+
+```
+```{r}
+library(raster)
+
+```
+
+From the layers as-is (rasterstack3)
+this is how I normalized layers for rasterstack_norm
+```{r, eval=FALSE}
+rasterstack_norm1 <- raster::stack("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/rasterstack_normalized.tif")
+
+# rasterstack_norm <- rasterstack3
+# # Normalize to 0-1
+# for(i in 1:6){
+#   rasterstack_norm[[i]] <- calc(rasterstack_norm[[1]], function(x){
+#     (x-min(getValues(rasterstack_norm[[i]])))/(max(getValues(rasterstack_norm[[i]]))-min(getValues(rasterstack_norm[[i]])))
+#   })
+# }
+```
+
+Create my own glm for comparison with maxent
+```{r}
+# make a raster to hold response, suitability scores
+predic_raster <- rasterstack_norm[[1]]
+
+# lm to assign suitaiblity, but this is not 0-1
+# predic_raster[] <- getValues(rasterstack_norm[[1]])*5 +
+#                    getValues(rasterstack_norm[[2]])*2 + 
+#                    getValues(rasterstack_norm[[3]])*3 + 
+#                    getValues(rasterstack_norm[[4]])*4 + 
+#                    getValues(rasterstack_norm[[5]])*6 +
+#                    getValues(rasterstack_norm[[6]]*.01)
+plot(predic_raster)
+# this is not the same as y ~ exp(lm)/(1-exp(lm))
+
+# trying exp(lm)/(1+exp(lm)) response is between 0 and 1
+# lm1 <- formula(~getValues(rasterstack_norm[[1]]) + getValues(rasterstack_norm[[2]])*2 + getValues(rasterstack_norm[[3]])*3 + getValues(rasterstack_norm[[4]])*4 + getValues(rasterstack_norm[[5]])*5 + getValues(rasterstack_norm[[6]]))
+lm1 <- formula(~getValues(rasterstack_norm[[1]])^2 + 
+                 getValues(rasterstack_norm[[2]])+2 + 
+                 getValues(rasterstack_norm[[3]])*2.5 - 
+                 getValues(rasterstack_norm[[4]])*4 + 
+                 getValues(rasterstack_norm[[5]])*5 + 
+                 getValues(rasterstack_norm[[6]])*1)
+
+hist(exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]]))))
+
+# Why this gives errors, it's the same length, should replace just fine. 
+# > length(as.formula(lm1[[2]]))
+# [1] 406808
+# > length(1+exp(as.formula(lm1[[2]])))
+# [1] 406808
+# > length(predic_raster)
+# [1] 406808
+# setValues(x,values) values must be a vector - are there still NAs that are not treated as numeric?
+# class(as.numeric(exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]])))))
+predic_raster <- setValues(predic_raster, as.numeric(exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]]))))) # from a 'try-error' 
+plot(predic_raster)
+
+```
+Try fancy response curves
+```{r}
+# make a raster to hold response, suitability scores
+predic_raster <- rasterstack_norm[[1]]
+
+# lm to assign suitaiblity, but this is not 0-1
+# predic_raster[] <- getValues(rasterstack_norm[[1]])*5 +
+#                    getValues(rasterstack_norm[[2]])*2 + 
+#                    getValues(rasterstack_norm[[3]])*3 + 
+#                    getValues(rasterstack_norm[[4]])*4 + 
+#                    getValues(rasterstack_norm[[5]])*6 +
+#                    getValues(rasterstack_norm[[6]]*.01)
+plot(predic_raster)
+# this is not the same as y ~ exp(lm)/(1-exp(lm))
+```
+
+```{r}
+# trying exp(lm)/(1+exp(lm)) response is between 0 and 1
+# lm1 <- formula(~getValues(rasterstack_norm[[1]]) + getValues(rasterstack_norm[[2]])*2 + getValues(rasterstack_norm[[3]])*3 + getValues(rasterstack_norm[[4]])*4 + getValues(rasterstack_norm[[5]])*5 + getValues(rasterstack_norm[[6]]))
+beta1 <-1
+alpha1 <- 1
+alpha_1 <- 7
+beta2 <-3
+alpha_log2 <- 10
+beta_log2 <- 10
+lm1 <- formula(~getValues(rasterstack_norm[[1]])*5 + 
+                 # lognormal
+       (1/(getValues(rasterstack_norm[[2]])*sqrt(2*pi*beta1^2)))*(exp(-(log(getValues(rasterstack_norm[[2]]))-alpha1)^2)/(2*beta1^2)) + 
+                 # beta 
+                 (getValues(rasterstack_norm[[3]])^(alpha_1-1))*((1-getValues(rasterstack_norm[[3]]))^(beta2-1)) +
+                 # lognormal
+   (1/(getValues(rasterstack_norm[[4]])*sqrt(2*pi*beta_log2^2)))*(exp(-(log(getValues(rasterstack_norm[[4]]))-alpha_log2)^2)/(2*beta_log2^2)) +
+             
+                 getValues(rasterstack_norm[[5]])*2 + 
+                 getValues(rasterstack_norm[[6]])*1)
+
+hist(exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]]))))
+
+# Why this gives errors, it's the same length, should replace just fine. 
+# > length(as.formula(lm1[[2]]))
+# [1] 406808
+# > length(1+exp(as.formula(lm1[[2]])))
+# [1] 406808
+# > length(predic_raster)
+# [1] 406808
+# setValues(x,values) values must be a vector - are there still NAs that are not treated as numeric?
+# class(as.numeric(exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]])))))
+predic_raster <- setValues(predic_raster, as.numeric(exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]]))))) # from a 'try-error' 
+plot(predic_raster)
+
+```
+
+Or a slower way
+```{r}
+# same result, 1s and lots of NAs
+predic_raster[] <- exp(getValues(rasterstack_norm[[1]])*1.5 + 
+                   getValues(rasterstack_norm[[2]])*2 + 
+                   getValues(rasterstack_norm[[3]])*3 + 
+                   getValues(rasterstack_norm[[4]])*4 + 
+                   getValues(rasterstack_norm[[5]])*5 + 
+                   getValues(rasterstack_norm[[6]])*1)/
+                (1+exp(getValues(rasterstack_norm[[1]])*1.5 + 
+                   getValues(rasterstack_norm[[2]])*2 + 
+                   getValues(rasterstack_norm[[3]])*3 + 
+                   getValues(rasterstack_norm[[4]])*4 + 
+                   getValues(rasterstack_norm[[5]])*5 + 
+                   getValues(rasterstack_norm[[6]])*1))
+
+plot(predic_raster)
+```
+
+Response curves?
+```{r}
+plot(rasterstack_norm[[1]][], predic_raster[],col="blue", cex=0.5, pch=16)
+
+# Maxent outputs a response line with 'all other variables held constant'
+
+modeldf <- data.frame(y=predic_raster[], x1=rasterstack_norm[[1]][],x2=rasterstack_norm[[2]][],x3=rasterstack_norm[[3]][],
+                      x4=rasterstack_norm[[4]][],x5=rasterstack_norm[[5]][],x6=rasterstack_norm[[6]][])
+
+lm <- lm(y ~ x1 +x2 + x3 + x4 + x5 + x6, data=modeldf)
+
+theme_set(theme_sjplot())
+sjPlot::plot_model(lm, type = "pred", terms = "x1") # plot predicted values (marginal effects) for specific model terms; warnings prediction from a rank-deficient fit may be misleading  
+
+
+```
+
+
+
+
