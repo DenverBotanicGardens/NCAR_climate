@@ -28,7 +28,7 @@ library(Rmisc)
 library(rgdal) # errors with readOGR
 library(sf)
 library(ENMeval)
-# devtools::install_github("ropensci/prism")
+ # devtools::install_github("ropensci/prism")
 library(prism)
 options(java.parameters = "Xmx26000m")
 # library(rJava)
@@ -328,22 +328,6 @@ write.csv(tab1, "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My 
 
 ```
 
-Test maxentrun function for EOR and combined
-```{r}
-distXsp_justEOR_forspdf <- mapply('[[', distXsp_EOR, 2)
-distXsp_justEOR_spdf <- lapply(1:68, function(x) NA)
-for(i in atleast12){
-  out <- data.frame(distXsp_justEOR_forspdf[[i]])
-  colnames(out) <- c("decimalLongitude","decimalLatitude")
-  distXsp_justEOR_spdf[[i]] <- out
-}
-
-
-spatialpointsdataframe_herb <- distXsp_justEOR_forspdf
-x <- atleast12[1]
-
-          Whichproj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
-```
 
 #Maxent function
 ```{r}
@@ -855,6 +839,8 @@ habsp_smallbg <- habitatSpecificity(whichones = atleast12[atleast12 != 8], paths
                                     replicates = 10, filenames = filenames[-3])
 save(habsp_smallbg, file= paste(pathstart,"habsp_smallbg.Rda", sep=""))
 
+load()
+
 ggplot(data = habsp_smallbg, aes(HerbType, habspec))+
   geom_boxplot()+
   theme_bw()
@@ -913,7 +899,13 @@ stitchtogether(atleast12, pathstart=pathstart, patternmatch = patternmatchbig[4]
 habsp_bigbg <- habitatSpecificity(atleast12[atleast12 != 8], pathstart, replicates = 10, filenames = filenamesbig[-3])
 save(habsp_bigbg, file= paste(pathstart,"habsp_bigbg.Rda", sep=""))
 
-load(paste(pathstart, "habsp_bigbg.Rda", sep=""))
+# these only have error, nothing else, need the 21 species one that actually is 22 species
+# load(paste(pathstart,"habsp_smallbg.Rda", sep=""))
+# habsp_bigbg
+# habspebig
+# habsp_smallbg
+load(paste(pathstart, "habsp_21species.Rda", sep=""))
+habsp_22species
 ```
 
 
@@ -924,7 +916,7 @@ load(paste(pathstart, "habsp_bigbg.Rda", sep=""))
         
 Merge habitat specificity and tab 1 to look at the impact of actual habitt specificity, not just the range of the polygons.
 ```{r}
-habspebig <- merge(habsp_bigbg, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
+habspebig <- merge(habsp_22species, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
 # habspesmall <- merge(habsp_smallbg, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
 
 # Not fair since area is based on EOR, of course it will better reflect 
@@ -992,10 +984,12 @@ saveGIF(
 ```
 
 Merge habitat specificity and tab 1 to look at the impact of actual habitt specificity, not just the range of the polygons.
+Should turn all into the number of cells occupied instead of a sum of the polygon space of the EORs, of course EORs will have a relationship, the area measure comes from EORs only, does not change by the dataset used. 
 ```{r}
 # habspe <- merge(habSp_EOR_uncleaned_error, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
 
-habspe <- merge(habsp_smallbg, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
+# update 2020.03.02
+habspe <- merge(habsp_22species, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
 
 summaryHabSp <- summarySE(habsp_smallbg, "habspec", "SpeciesNum")
 habspe_aic <- merge(summaryHabSp, df_dist, by.x = "SpeciesNum", by.y = "SpNum")
@@ -1004,7 +998,7 @@ ggplot(habspe, aes(as.factor(round(Area/(1000^2),0)), habspec, colour=HerbType))
   geom_jitter()+
   geom_boxplot(position=position_dodge(width=-0.5))+
   theme_bw()+
-  theme(legend.position = "none")+
+  # theme(legend.position = "none")+
   xlab(expression("Area km"^2))+
   geom_boxplot()
 
@@ -2111,3 +2105,63 @@ ggplot(habsp_long, aes(variable, value, colour= as.factor(SpeciesNum), group=Spe
   
 summary(lm(value~variable, data = habsp_long))
 ```
+
+
+Are all the Combined wrong?!?!
+```{r}
+LyGr_comb <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/RMaxEnt_EOR_asis_error/AvgTiffSp66HerbCombined_bg500000Lygodesmia grandiflora.tif")
+
+
+```
+
+
+
+
+Supplemental images
+```{r}
+#length(atleast12)
+# Will be in the order: EOR, Herbarium, Combined
+
+lapply(atleast12, function(i){ 
+  
+  jpeg(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/S1_AvgMapsSmallbg_",
+             g1g2namesall68$AcceptedName[i],".jpg", sep=""),
+       width=500, height=110,units='mm', res=300)
+
+    rastout <- lapply(filenames[-3], function(f){
+     # for(f in filenames[-3]){ 
+      resultpath <- list.files(path = pathstart,
+                               pattern = paste("AvgTiffSp",i,"Herb",f,
+                                               g1g2namesall68$AcceptedName[i], sep=""),
+                               full.names=TRUE)
+      rastout <- raster(resultpath)
+      
+    # par(mar =  c(5.1, 4.1, 4.1, 2.1))
+    #   plot(rastout)
+      })
+    
+  # layout(matrix(c(1:4), 1,4), widths = c(1,5,5,5))
+  # layout.show(n=4)
+    
+    par(mfrow=c(1,4))
+  # 1  
+    par(mar = c(0,0,0,0))
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 1, y = 0.5, g1g2namesall68$AcceptedName[i], cex = 2.5, srt = 90)
+    
+  # 2:4
+    par(mar =  c(5.1, 4.1, 4.1, 2.1))
+    plot(rastout[[1]])
+    # mtext()
+    plot(rastout[[2]])
+    plot(rastout[[3]])
+    
+  
+  dev.off()
+})
+
+
+```
+
+
+
