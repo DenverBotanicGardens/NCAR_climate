@@ -422,11 +422,6 @@ maxentrun <- function(whichones, spatialpointsdataframe_herb,
 }
 
 
-
-```
-
-More functions
-```{r}
 stitchtogether <- function(whichones, pathstart, patternmatch, rasternames){
   lapply(whichones, function(i){
   gc()
@@ -683,19 +678,6 @@ coloradosps.g1g2_168[coloradosps.g1g2_168$scientificName %in%
                                 !is.na(coloradosps.g1g2_168$decimalLatitude),]
 ```
 
-5, 7,8, 11 8 is good but none outside
-```{r}
-plot(toplot[c(7),], border="red", lwd=2)
-points(g1g2now$decimalLongitude, g1g2now$decimalLatitude, pch=16, cex = 0.5)
-
-
-plot(toplot, border="red", lwd=2)
-points(g1g2now$decimalLongitude, g1g2now$decimalLatitude, pch=16, cex = 0.5)
-
-
-plot(g1g2now$decimalLongitude, g1g2now$decimalLatitude, pch=16, cex = 0.5)
-
-```
 
 # (1) AIC for distance distribution   
 ```{r}
@@ -816,10 +798,15 @@ The rasternames are "Herb" and filenames
 patternmatch <- paste("PredictHerb", filenames, "Sp", sep="")
 rasternames <- paste("Herb", filenames, "kfold", sep="")
 
-lapply(1:3, function(x) stitchtogether(atleast12, pathstart=pathstart, patternmatch = patternmatch[x], rasternames = rasternames[x]))
+lapply(c(1:3), function(x) stitchtogether(atleast12, pathstart=pathstart, patternmatch = patternmatch[x], rasternames = rasternames[x]))
 
 # add in the combined dataset
 stitchtogether(atleast12, pathstart = pathstart, patternmatch = patternmatch[4], rasternames = rasternames[4])
+
+```
+
+
+```{r}
 
 # There are too few points, they overlap in the raster cells for the EOR points for species 8
 for(i in atleast12){
@@ -832,6 +819,49 @@ for(i in atleast12){
     rm(xm)
     }
 }
+
+i<-1;k<-1;f<-filenames[1]
+rm(i);rm(k);rm(f)
+
+# Get the area as defined by the number of cell occupied for each dataset
+# maxentrun does kfold = 4, takes out k=1 for p
+CellsOccupied <- do.call(rbind,lapply(atleast12, function(i){
+  numCells <- do.call(rbind,lapply(1:10, function(k){
+    spFile <- do.call(rbind,lapply(filenames[c(1:2,4)], function(f){
+      pr <- read.csv(paste(pathstart,"presenceHerb", f, "Sp",i,"kfold",k,".csv",sep=""))
+      cells <- length(cellFromXY(rasterstack, pr[pr$kfold!=1,c("decimalLongitude.1","decimalLatitude.1")]))
+      out <- data.frame(CellsOccupied = cells, Dataset = f, rep = k, SpNum = i, Species = g1g2namesall68$AcceptedName[i])
+      out
+      }))
+    spFile
+    }))
+  numCells
+}))
+
+ggplot(CellsOccupied, aes(Dataset, CellsOccupied))+
+  geom_boxplot()
+
+tab1_cells <- merge(tab1, CellsOccupied, by.x = "SpNum1", by.y = "SpNum")
+
+table(tab1_cells$Dataset)
+tab1_cells[tab1_cells$Dataset=="EOR_bg5000",]
+
+ggplot(tab1_cells[tab1_cells$Dataset=="EOR_bg5000",], aes(Area,CellsOccupied, colour = Dataset))+
+  geom_point()+
+  stat_smooth(method="lm")+
+  theme_bw()
+
+# The cells covered does not change much by dataset and only slightly declines with range covered. 
+ggplot(tab1_cells, aes(log(Area),CellsOccupied, colour = Dataset))+
+  geom_jitter(width = 0.2)+
+  stat_smooth(method="lm")+
+  theme_bw()
+
+☺# EOR and Combined totally overlap; Herbarium covers a little more area
+ggplot(tab1_cells[tab1_cells$Dataset!="As-Is_bg5000",], aes(log(Area),CellsOccupied, colour = Dataset))+
+  geom_jitter(width = .2)+
+  stat_smooth(method="lm")+
+  theme_bw()
 
 # habitat specificity with combined instead of error 
 # Did have "habSp_EOR_uncleaned_error" but now have habsp_smallbg for the small background and habsp_bigbg for big
