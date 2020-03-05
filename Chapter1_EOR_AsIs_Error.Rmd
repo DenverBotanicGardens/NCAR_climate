@@ -820,36 +820,38 @@ for(i in atleast12){
     }
 }
 
-i<-1;k<-1;f<-filenames[1]
-rm(i);rm(k);rm(f)
+# i<-1;k<-1;f<-filenames[2]
+# rm(i);rm(k);rm(f)
 
 # Get the area as defined by the number of cell occupied for each dataset
 # maxentrun does kfold = 4, takes out k=1 for p
 CellsOccupied <- do.call(rbind,lapply(atleast12, function(i){
+  
   numCells <- do.call(rbind,lapply(1:10, function(k){
+    
     spFile <- do.call(rbind,lapply(filenames[c(1:2,4)], function(f){
       pr <- read.csv(paste(pathstart,"presenceHerb", f, "Sp",i,"kfold",k,".csv",sep=""))
-      cells <- length(cellFromXY(rasterstack, pr[pr$kfold!=1,c("decimalLongitude.1","decimalLatitude.1")]))
+      cells <- length(unique(cellFromXY(rasterstack, pr[pr$kfold!=1,c("decimalLongitude","decimalLatitude")]))) # lat.1 are UTM in herbarium records
       out <- data.frame(CellsOccupied = cells, Dataset = f, rep = k, SpNum = i, Species = g1g2namesall68$AcceptedName[i])
       out
       }))
+    
     spFile
     }))
+  
   numCells
 }))
 
 ggplot(CellsOccupied, aes(Dataset, CellsOccupied))+
   geom_boxplot()
+```
 
+## Somehow forgot how to read lm output, help!
+```{r}
 tab1_cells <- merge(tab1, CellsOccupied, by.x = "SpNum1", by.y = "SpNum")
 
 table(tab1_cells$Dataset)
 tab1_cells[tab1_cells$Dataset=="EOR_bg5000",]
-
-ggplot(tab1_cells[tab1_cells$Dataset=="EOR_bg5000",], aes(Area,CellsOccupied, colour = Dataset))+
-  geom_point()+
-  stat_smooth(method="lm")+
-  theme_bw()
 
 # The cells covered does not change much by dataset and only slightly declines with range covered. 
 ggplot(tab1_cells, aes(log(Area),CellsOccupied, colour = Dataset))+
@@ -857,11 +859,45 @@ ggplot(tab1_cells, aes(log(Area),CellsOccupied, colour = Dataset))+
   stat_smooth(method="lm")+
   theme_bw()
 
-☺# EOR and Combined totally overlap; Herbarium covers a little more area
-ggplot(tab1_cells[tab1_cells$Dataset!="As-Is_bg5000",], aes(log(Area),CellsOccupied, colour = Dataset))+
-  geom_jitter(width = .2)+
-  stat_smooth(method="lm")+
-  theme_bw()
+cellslm1 <- lm(CellsOccupied~log(Area)*Dataset, tab1_cells)
+# (1) intercept, (2) intercept for EOR 1+2 and slope of EOR 2 (3) intercept Herb 1+3, (4) intercept of combined 1+4, (5) slope effect offset of herb 2+3+ 5  (6)  slope effect offset of combined (From EOR) 1+2+4+6
+summary(cellslm1) 
+
+# Matters when unique cells are added. 
+# Call:
+# lm(formula = CellsOccupied ~ log(Area) * Dataset, data = tab1_cells)
+# 
+# Residuals:
+#     Min      1Q  Median      3Q     Max 
+# -14.022  -7.771  -4.120   6.307  50.510 
+# 
+# Coefficients:
+#                                  Estimate Std. Error t value Pr(>|t|)  
+# (Intercept)                       12.2372     7.0603   1.733   0.0835 .   <- interecpt of EOR
+# log(Area)                          0.4349     0.4440   0.980   0.3276     <- the slope of EOR
+# DatasetAs-Is_bg5000               23.0910     9.9848   2.313   0.0211 *   <- intercept of Herb (EOR + Herb)
+# DatasetCombined_bg5000            20.8482     9.9848   2.088   0.0372 *   <- intercept of Comb (EOR + comb)
+# log(Area):DatasetAs-Is_bg5000     -1.3578     0.6279  -2.163   0.0309 *   <- the slope of Herb (EOR + log(Area):DatasetAs-Is...)
+# log(Area):DatasetCombined_bg5000  -1.2717     0.6279  -2.025   0.0432 *   <- the slope of combined (EOR + comb)
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 11.84 on 654 degrees of freedom
+# Multiple R-squared:  0.01645,	Adjusted R-squared:  0.00893 
+# F-statistic: 2.188 on 5 and 654 DF,  p-value: 0.05398
+
+
+# visualize with a model.matrix
+areas <- unique(tab1_cells$Area)
+Datasets <- factor(unique(tab1_cells$Dataset))
+model.df <- expand.grid(areas,Datasets)
+model.matrix(~Var1*Var2, data=model.df) # var1 is area, var2 is datasets
+
+slopeEOR <- cellslm1$coefficients[1:2] # ~0x + 19
+slopeHerb <- sum(cellslm1$coefficients[c(2:3,5)]) # 2.4
+slopecomb <- sum(cellslm1$coefficients[c(2,4,6)]) # 1.33
+interEOR <- cellslm1$coefficients[1] # 19.06`
+# interHerb <- (cellslm1$coefficients[1:2]) # no no no
 
 # habitat specificity with combined instead of error 
 # Did have "habSp_EOR_uncleaned_error" but now have habsp_smallbg for the small background and habsp_bigbg for big
@@ -869,12 +905,9 @@ habsp_smallbg <- habitatSpecificity(whichones = atleast12[atleast12 != 8], paths
                                     replicates = 10, filenames = filenames[-3])
 save(habsp_smallbg, file= paste(pathstart,"habsp_smallbg.Rda", sep=""))
 
-load()
-
 ggplot(data = habsp_smallbg, aes(HerbType, habspec))+
   geom_boxplot()+
   theme_bw()
-
 
 ```
 
@@ -926,8 +959,8 @@ stitchtogether(atleast12, pathstart=pathstart, patternmatch = patternmatchbig[4]
 
 # habitat specificity
 
-habsp_bigbg <- habitatSpecificity(atleast12[atleast12 != 8], pathstart, replicates = 10, filenames = filenamesbig[-3])
-save(habsp_bigbg, file= paste(pathstart,"habsp_bigbg.Rda", sep=""))
+# habsp_bigbg <- habitatSpecificity(atleast12[atleast12 != 8], pathstart, replicates = 10, filenames = filenamesbig[-3])
+# save(habsp_bigbg, file= paste(pathstart,"habsp_bigbg.Rda", sep=""))
 
 # these only have error, nothing else, need the 21 species one that actually is 22 species
 # load(paste(pathstart,"habsp_smallbg.Rda", sep=""))
@@ -936,6 +969,10 @@ save(habsp_bigbg, file= paste(pathstart,"habsp_bigbg.Rda", sep=""))
 # habsp_smallbg
 load(paste(pathstart, "habsp_21species.Rda", sep=""))
 habsp_22species
+
+# Identical!
+identical(habsp_smallbg, habsp_22species)
+
 ```
 
 
@@ -946,7 +983,9 @@ habsp_22species
         
 Merge habitat specificity and tab 1 to look at the impact of actual habitt specificity, not just the range of the polygons.
 ```{r}
-habspebig <- merge(habsp_22species, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
+# CellsOccupied from cellsfromXY of the samples so does reflect area of sample
+table(habsp_22species$HerbType) # same as the three datasets and 5000 background, background doesn't matter for these measures
+habspebig <- merge(habsp_22species, tab1_cells, by.x = c("SpeciesNum","HerbType"), by.y = c("SpNum1","Dataset"))
 # habspesmall <- merge(habsp_smallbg, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
 
 # Not fair since area is based on EOR, of course it will better reflect 
@@ -954,6 +993,18 @@ ggplot(habspebig, aes(y = habspec, x =(Area/(1000^2)), colour = HerbType))+
   geom_point()+
   stat_smooth(method="lm")+
   theme_bw()
+
+# So test by cells occupied by each dataset
+ggplot(habspebig, aes(y = habspec, x = CellsOccupied, colour = HerbType))+
+  geom_jitter(height = 5000, width = 0.5, shape=1, size=0.75)+
+  stat_smooth(method="lm")+
+  theme_bw()+
+  scale_color_manual(values=c("slateblue", "#E69F00", "orangered"), 
+                       name="Dataset",
+                       breaks=c("As-Is_bg5000", "Combined_bg5000", "EOR_bg5000"),
+                       labels=c("Herbarium", "Combined", "Field Survey"))
+  
+table(habspebig$HerbType)
 
 ggplot(habspebig, aes(y = habspec, x = HerbType, colour=HerbType))+
   geom_boxplot()
