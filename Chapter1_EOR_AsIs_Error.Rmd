@@ -1083,12 +1083,18 @@ x <- splithabs[[1]]
   plots <- lapply(split(allsphabsp,
                list(allsphabsp$SpeciesNum), #,allsphabsp$kfold), 
                drop=TRUE), function(x){
-                      outplot <- ggplot(x, aes(Comp.1,Comp.2, colour=HerbType))+
+                      outplot <- ggplot(x, aes(Comp.1,Comp.2, colour=HerbType, shape=HerbType))+
                         geom_point()+
                         stat_ellipse()+
                         ggtitle(g1g2namesall68$AcceptedName[x$SpeciesNum[1]])+
                         # xlab("Comp.1  0.1%")+
-                        theme_bw()
+                        theme_bw()+
+                        scale_color_manual(values=c("slateblue", "#E69F00", "orangered"),  # "slateblue", "#E69F00", "orangered"
+                       name="Dataset",
+                       breaks=c("As-Is_bg5000", "Combined_bg5000", "EOR_bg5000"),
+                       labels=c("Herbarium", "Combined", "Field Survey"))+
+                        scale_shape_manual(values = c(15,16,17),
+                                           guide="none")
                       outplot
                       })
 
@@ -1096,6 +1102,15 @@ length(plots)
 length(unique(howmany$SpeciesNum))
 plots[[1]]
 
+# Supplemental material S2
+lapply(1:22, function(x){
+  jpeg(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Supplemental_HabitatSpecificity_",x,".jpg", sep=""),
+     width=150, height=75,units='mm', res=300)
+
+  print(plots[[x]])
+  
+  dev.off()
+})
 
 
 
@@ -1143,10 +1158,11 @@ g <- ggplotGrob(ggplot(habspe[habspe$Area<max(habspe$Area),],
       xlab("")+
       ylab(""))
 
-jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure3_v3_20190805.jpg",
+# Not included in paper
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/FigureXX_v20200305.jpg",
      width=225, height=150,units='mm', res=300)   
 ggplot(habspe, aes(Area/(1000^2), habspec/1000, shape=HerbType, colour=HerbType))+
-            geom_point(position = position_dodge(width=.25))+
+            geom_point(position = position_dodge(width=.02))+
             stat_smooth(method="lm", se=FALSE)+
             theme_bw()+
             scale_colour_manual(values = c("green","red","blue"))+ #  "EOR"   "NoError"   "WithError"
@@ -1156,10 +1172,10 @@ ggplot(habspe, aes(Area/(1000^2), habspec/1000, shape=HerbType, colour=HerbType)
             ylab("Habitat specificity (size of 95% CI)")+
   annotation_custom(
     grob = g,
-    xmin = 42,
-    xmax = 99,
-    ymin = 900,
-    ymax = 2510
+    xmin = 30,
+    xmax = 89,
+    ymin = 665,
+    ymax = 1390
   )
 dev.off()
 
@@ -1287,7 +1303,8 @@ fig3 <-
 #  limits = c(paste(filenames[-3]), paste(filenamesbig[-3])), 
 
 
-ggsave(filename = "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Uncertainty data source Chapter XX/fig3_AUC.png", fig3, width = 150, height = 80, dpi = 300, units = "mm", device='png')
+# was fig 3??
+ggsave(filename = "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Uncertainty data source Chapter XX/fig4_20200305_AUC.png", fig3, width = 150, height = 80, dpi = 300, units = "mm", device='png')
 
 # effect size as the estimate and standard error? 
 summary(lm(AUC~filename, data=maxevaluates))
@@ -2240,7 +2257,8 @@ LyGr_comb <- raster("Q:/Research/Projects/alpine-phenology/Uncertainty in niche 
 
 
 
-Supplemental images
+Supplemental images   
+Supplementary Material S1 
 ```{r}
 #length(atleast12)
 # Will be in the order: EOR, Herbarium, Combined
@@ -2249,7 +2267,7 @@ lapply(atleast12, function(i){
   
   jpeg(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/S1_AvgMapsSmallbg_",
              g1g2namesall68$AcceptedName[i],".jpg", sep=""),
-       width=500, height=110,units='mm', res=300)
+       width=560, height=110,units='mm', res=300)
 
     rastout <- lapply(filenames[-3], function(f){
      # for(f in filenames[-3]){ 
@@ -2273,7 +2291,7 @@ lapply(atleast12, function(i){
     text(x = 1, y = 0.5, g1g2namesall68$AcceptedName[i], cex = 2.5, srt = 90)
     
   # 2:4
-    par(mar =  c(5.1, 4.1, 4.1, 2.1))
+    par(mar =  c(2.1, 4.1, 4.1, 4.1))
     plot(rastout[[1]])
     # mtext()
     plot(rastout[[2]])
@@ -2283,7 +2301,17 @@ lapply(atleast12, function(i){
   dev.off()
 })
 
-
+# The scale is there, just not showing up on the figures I made. Maybe they need to be wider? 
+# lapply(atleast12, function(i){ 
+#   rastout <- lapply(filenames[4], function(f){
+#         resultpath <- list.files(path = pathstart,
+#                                  pattern = paste("AvgTiffSp",i,"Herb",f,
+#                                                  g1g2namesall68$AcceptedName[i], sep=""),
+#                                  full.names=TRUE)
+#         rastout <- raster(resultpath)
+#         plot(rastout)
+#         })
+# })
 ```
 
 
