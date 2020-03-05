@@ -859,9 +859,15 @@ ggplot(tab1_cells, aes(log(Area),CellsOccupied, colour = Dataset))+
   stat_smooth(method="lm")+
   theme_bw()
 
+
+
 cellslm1 <- lm(CellsOccupied~log(Area)*Dataset, tab1_cells)
 # (1) intercept, (2) intercept for EOR 1+2 and slope of EOR 2 (3) intercept Herb 1+3, (4) intercept of combined 1+4, (5) slope effect offset of herb 2+3+ 5  (6)  slope effect offset of combined (From EOR) 1+2+4+6
 summary(cellslm1) 
+summary(lm(CellsOccupied~Dataset, tab1_cells))
+ggplot(tab1_cells, aes(Dataset, CellsOccupied))+
+  geom_boxplot()+
+  geom_jitter()
 
 # Matters when unique cells are added. 
 # Call:
@@ -899,6 +905,16 @@ slopecomb <- sum(cellslm1$coefficients[c(2,4,6)]) # 1.33
 interEOR <- cellslm1$coefficients[1] # 19.06`
 # interHerb <- (cellslm1$coefficients[1:2]) # no no no
 
+ggplot(tab1_cells, aes(log(DistAvg.Dist), CellsOccupied, colour = Dataset))+
+  geom_jitter(width=.5)+
+  stat_smooth(method = "lm")+
+  theme_bw()
+  
+
+```
+
+
+```{r}
 # habitat specificity with combined instead of error 
 # Did have "habSp_EOR_uncleaned_error" but now have habsp_smallbg for the small background and habsp_bigbg for big
 habsp_smallbg <- habitatSpecificity(whichones = atleast12[atleast12 != 8], pathstart = pathstart, 
@@ -908,6 +924,7 @@ save(habsp_smallbg, file= paste(pathstart,"habsp_smallbg.Rda", sep=""))
 ggplot(data = habsp_smallbg, aes(HerbType, habspec))+
   geom_boxplot()+
   theme_bw()
+
 
 ```
 
@@ -989,20 +1006,31 @@ habspebig <- merge(habsp_22species, tab1_cells, by.x = c("SpeciesNum","HerbType"
 # habspesmall <- merge(habsp_smallbg, tab1, by.x = "SpeciesNum", by.y = "SpNum1")
 
 # Not fair since area is based on EOR, of course it will better reflect 
-ggplot(habspebig, aes(y = habspec, x =(Area/(1000^2)), colour = HerbType))+
+ggplot(habspebig, aes(y = habspec, x =log(Area), colour = HerbType))+   # (Area/(1000^2))
   geom_point()+
   stat_smooth(method="lm")+
   theme_bw()
+```
+
+```{r}
+jpeg("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure3_habsp_cellsoccupied.jpg",
+     width=150, height=75,units='mm', res=300)
 
 # So test by cells occupied by each dataset
-ggplot(habspebig, aes(y = habspec, x = CellsOccupied, colour = HerbType))+
-  geom_jitter(height = 5000, width = 0.5, shape=1, size=0.75)+
+ggplot(habspebig, aes(y = habspec/1000, x = log(CellsOccupied), colour = HerbType, shape=HerbType))+
+  geom_jitter(height = .0001, width = 0.0001,  size=1.5)+ # shape=1,
   stat_smooth(method="lm")+
-  theme_bw()+
-  scale_color_manual(values=c("slateblue", "#E69F00", "orangered"), 
+  # theme_bw()+
+  ylab(expression(paste("Habitat specificity ",frac("95%CI","1000"))))+
+  xlab(expression("Occupied Cells"[log]))+
+  scale_color_manual(values=c("grey50","black","white"),  # "slateblue", "#E69F00", "orangered"
                        name="Dataset",
                        breaks=c("As-Is_bg5000", "Combined_bg5000", "EOR_bg5000"),
-                       labels=c("Herbarium", "Combined", "Field Survey"))
+                       labels=c("Herbarium", "Combined", "Field Survey"))+
+  scale_shape_manual(values = c(3,20,2),
+                     guide="none")
+
+dev.off()
   
 table(habspebig$HerbType)
 
@@ -1043,12 +1071,23 @@ allsphabsp <- data.frame(howmany[,1:3],prPCA$scores)
 allsphabsp$HerbType <- as.character(allsphabsp$HerbType)
 x.Pov <- prPCA$sdev/sum(prPCA$sdev^2) # Percent of variance explained by the components
   
+# get spnum
+
+splithabs <- split(allsphabsp,
+               list(allsphabsp$SpeciesNum), #,allsphabsp$kfold), 
+               drop=TRUE)
+
+x <- splithabs[[1]]
+
+
   plots <- lapply(split(allsphabsp,
                list(allsphabsp$SpeciesNum), #,allsphabsp$kfold), 
                drop=TRUE), function(x){
                       outplot <- ggplot(x, aes(Comp.1,Comp.2, colour=HerbType))+
                         geom_point()+
                         stat_ellipse()+
+                        ggtitle(g1g2namesall68$AcceptedName[x$SpeciesNum[1]])+
+                        # xlab("Comp.1  0.1%")+
                         theme_bw()
                       outplot
                       })
@@ -1056,6 +1095,9 @@ x.Pov <- prPCA$sdev/sum(prPCA$sdev^2) # Percent of variance explained by the com
 length(plots)
 length(unique(howmany$SpeciesNum))
 plots[[1]]
+
+
+
 
 library(animation)
 saveGIF(
