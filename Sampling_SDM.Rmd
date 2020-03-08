@@ -109,6 +109,10 @@ grViz("digraph flowchart {
       tab9 [label = '@@8-2']
       tab10 [label = '@@8-3']
       tab11 [label = '@@8-4']
+      tab12 [label = <Bio<SUB>1</SUB>>]
+      tab13 [label = <Bio<SUB>11</SUB>>]
+      tab14 [label = <Bio<SUB>12</SUB>>]
+      tab15 [label = <Bio<SUB>19</SUB>>]
      
       # edge definitions with the node IDs
       tab1 -> tab3;
@@ -116,14 +120,19 @@ grViz("digraph flowchart {
       tab2 -> tab3;
       tab5 -> tab6;
       tab3 -> tab8;
+      tab8 -> tab3; 
       tab3 -> tab9;
       tab3 -> tab10;
       tab3 -> tab11;
       tab7 -> tab2;
-      tab8 -> tab4;
+      tab12 -> tab2;
+      tab13 -> tab2;
+      tab14 -> tab2;
+      tab15 -> tab2;
       tab9 -> tab4;
       tab10 -> tab4;
       tab11 -> tab4;
+      {rank = same ; tab8; tab3;}
       }
 
       [1]: 'Model organism (Claytonia rubra)'
@@ -132,8 +141,8 @@ grViz("digraph flowchart {
       [4]: 'sample'
       [5]: 'Build SDM'
       [6]: 'Compare with true'
-      [7]: 'Bio&#x2081; Bio&#x2082; Bio&#x2083; Bio&#x2084; Elevation, dummy'
-      [8]: c('Systematic','Adaptive cluster','Convenience','Simple random')
+      [7]: 'Elevation'
+      [8]: c('Systematic (true sample)','Adaptive cluster','Convenience','Simple random')
       ")
 
 
@@ -247,24 +256,6 @@ rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
 
 Use maxent, and then refine the relatonships of environment and points  
 ```{r}
-# hygr <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Hymenoxys grandiflora_SEINet/occurrences.csv")
-# 
-# plot(hygr$decimalLongitude, hygr$decimalLatitude)
-# 
-# hygr <- hygr[complete.cases(hygr$decimalLatitude),]
-# 
-# pointsspdf <- SpatialPointsDataFrame(coords = hygr[,c("decimalLongitude","decimalLatitude")],
-#                                      data = hygr,
-#                                      proj4string = CRS("+proj=longlat +datum=WGS84"))
-# 
-# plot(bio12_res)
-# # plot(SNOWHLNDmodel17.raster[[1]][[1]], add=TRUE)
-# points(pointsspdf, pch = 16)
-# plot(colocounties, add=TRUE)
-
-
-# clar <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Claytonia arctica_SEINet/occurrences.csv")
-
 clru <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Claytonia rubra_SEINet/occurrences.csv")
 
 plot(colocounties)
@@ -282,26 +273,10 @@ clruspdf <- SpatialPointsDataFrame(coords = clru[,c("decimalLongitude","decimalL
                                      data = clru,
                                      proj4string = CRS("+proj=longlat +datum=WGS84"))
 
-# 
-# plot(SNOWHLNDmodel17.raster[[1]][[1]])
-# points(clruspdf, pch = 16)
-# plot(colocounties, add=TRUE)
-
-# snow11 <- rotate(SNOWHLNDmodel17.raster[[1]][[1]])
-# plot(snow11)
-# plot(SNOWHLNDmodel17.raster[[1]][[1]])
-# 
-# snowclip11 <- mask(snow11, colocounties)
-# plot(snowclip11)
-# 
-# snowcrop11 <- crop(snow11, extent(colocounties), snap="out")
-# plot(snowcrop11)
-# points(clar$decimalLongitude, clar$decimalLatitude)
-# points(hygr$decimalLongitude, hygr$decimalLatitude, col="blue")
 ```
 SDMtune
 ```{r}
-install.packages("SDMtune")
+# install.packages("SDMtune")
 library(SDMtune)
 ```
 
@@ -315,143 +290,32 @@ virtual species based on Claytonia rubra
 load("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/bioclim.colorado.Rda")
 bioclim.colorado
 
-rasterstack1 <- stack(bioclim.colorado[[c(1,11,12,19)]]) # Does this need to be rotated? And turned into Z scores? subtract mean and divide by SD? 
-
+rasterstack1 <- stack(bioclim.colorado[[c(1,11,12,19)]]) 
 coloElev_resam <- resample(coElev_res, bioclim.colorado[[1]], method = 'bilinear')
 coloElev <- crop(coloElev_resam, extent(colocounties), snap="out")
 bioclim.stack <- crop(rasterstack1,extent(colocounties), snap="out")
 rasterstack2 <- stack(coloElev,bioclim.stack)
 
-# Variables bio1 (annual mean temperature in °C * 10) and bio2 (annual precipitation)
-plot(bioclim.colorado[[c("bio1_12","bio12_12")]])
 
-```
-
-Define response functions
-```{r}
-
-# climate_clru <- raster::extract(bioclim.colorado, clru[,c("decimalLongitude","decimalLatitude")])
-# 
-# mu_clru <- colMeans(climate_clru, na.rm = TRUE)
-# sd_clru <- apply(climate_clru, 2, function(x) sd(x, na.rm = TRUE))
-# 
-# # gaussian distribution functions 
-# dnorm_clru <- mapply(function(x,y) dnorm(x = 150, mean = x, sd = y), mu_clru, sd_clru)
-# 
-# 
-# # using dnorm to generate vitural species
-# # my.parameters <- mapply(function(bio, x, y) formatFunctions(assign(paste(bio), 
-# #                                                                    c(fun = 'dnorm', mean = x, sd = y))),
-# #                         names(bioclim.colorado), mu_clru, sd_clru)
-# mu_clru[11]
-# sd_clru[11]
-# 
-# # my.parameters2 <- formatFunctions(bio1_12 = c(fun = 'dnorm', assign('mean', mu_clru[1]), 
-# #                                              assign('sd', mu_clru[1])),
-# #                                  bio12_12 = c(fun = 'dnorm', assign('mean', mu_clru[12]), 
-# #                                               assign('sd', mu_clru[12])))
-# # 
-# # my.first.species2 <- generateSpFromFun(raster.stack = bioclim.colorado[[c("bio1_12", "bio12_12")]],
-# #                                               parameters = my.parameters2,
-# #                                               plot = TRUE)
-# 
-# # bio19 precip of coldest quarter to represent snow accumulation
-# # bio11 mean temp of coldest quarter
-# my.parameters <- formatFunctions(bio1_12 = c(fun = 'dnorm', mean = 81.5, sd = 30.4),
-#                                  bio12_12 = c(fun = 'dnorm', mean = 505.9, sd = 182),
-#                                  bio19_12 = c(fun = 'dnorm', mean = 198.1, sd = 117.8),
-#                                  bio11_12 = c(fun = 'dnorm', mean = -1.38, sd = 37.4))
-# 
-# 
-# my.first.species <- generateSpFromFun(raster.stack = 
-#                                         bioclim.colorado[[c("bio1_12", "bio12_12", "bio19_12", "bio11_12")]],
-#                                               parameters = my.parameters,
-#                                               plot = TRUE)
-# 
-# plot(colocounties);plot(my.first.species, add=TRUE);plot(colocounties, add=TRUE); points(clruspdf)
-```
-
-Change the functions to use built in linear, quadratic, logistic, normal, and beta or make your own  
-logisticFun   (alpha=7.42; beta=272.035035035035) has all 1 suitability until the beta and drops fast to 0
-```{r}
-# rasterstack1 <- stack(bioclim.colorado[[c(1,11,12,19)]]) # Does this need to be rotated? And turned into Z scores? subtract mean and divide by SD? 
-# 
-# hist(climate_clru[,12])
-# 
-# clru.parameters1 <- formatFunctions(bio1_12 = c(fun = 'dnorm', mean = 81.5, sd = 20),
-#                                  bio12_12 = c(fun = 'custnorm', mean = 505.9, diff = 70, prob = 0.99),
-#                                  bio19_12 = c(fun = 'betaFun', p1 = 0, p2 = 198.1, alpha = 0.9, gamma = 0.08), # precip coldest quarter
-#                                  # bio11_12 = c(fun = 'logisticFun', beta = -1.38, alpha = 2)) # mean temp of coldest quarter, should be how fast the snow melts
-#                                  bio11_12 = c(fun = 'quadraticFun', a = -1, b = 2, c = -1))
-# 
-# clru.species1 <- generateSpFromFun(raster.stack = 
-#                                         bioclim.colorado[[c("bio1_12", "bio12_12", "bio19_12", "bio11_12")]],
-#                                               parameters = clru.parameters1,
-#                                    # species.type = "additive",
-#                                    formula = "3 * bio19_12 + sqrt(bio11_12) + bio12_12 * bio1_12",
-#                                               plot = TRUE)
-# 
-# plot(colocounties);plot(clru.species1, add=TRUE);plot(colocounties, add=TRUE); points(clruspdf, pch=16, cex=0.5, col='blue')
-
-```
-
-Plot response curves
-```{r}
-
-# plotResponse(clru.species1)
-
-
-```
-
-
-```{r}
-# class(clru.species1)
-# 
-# # suitability map
-# clru.species1[[3]]
-# 
-# colorado.clru <- crop(clru.species1[[3]], extent(colocounties), snap="out")
-# plot(colorado.clru); points(clruspdf, pch=16, cex=0.5, col='blue')
-# 
-# # convert to presence absence, use beta to set the inflection and alpha to make stronger switch from suitable to unsuitable
-# pa1 <- convertToPA(clru.species1, plot = TRUE, beta = 0.65, alpha = -0.001)
-# 
-# # Can set the species prevalance and let it get there with testing levels of beta that get to the desired prevalence, alpha fixed at default -0.05
-# pa2 <- convertToPA(clru.species1, plot = TRUE, species.prevalence = 0.2)  
-# - beta = 0.4677734375
-# - alpha = -0.05
-# - species prevalence =0.200104841931879
-```
-
-#########################################################################################
-# attempt to get a more specific distribution  
-## add a dummy predictor variable
-
-```{r}
 # dummy variable
 sim_layer <- coloElev
 sim_layer <- setValues(sim_layer, runif(length(coloElev), min = 0, max = 100))
 names(sim_layer) <- "dummy"
 plot(sim_layer)
-
 rasterstack3 <- stack(coloElev,bioclim.stack, sim_layer)
 
 # scale will center (subtract the layer mean) and scale by dividing the centered layer by SD
 rasterstack3_z <- scale(rasterstack3)
-plot(rasterstack3_z[[6]])
-
-
+plot(rasterstack3_z)
 ```
 
-Look at coding distributions
+Look at coding distributions  
+Beta distriubtion
 ```{r}
 x <- seq(0,1,length.out = 100)
-#beta
-alpha <- 0.3
-beta_1 <- 1 
 
-for(alpha in seq(0,1,length.out = 10)){
-  for(beta_1 in seq(0,1,length.out = 10)){
+for(alpha in seq(1,10,length.out = 10)){
+  for(beta_1 in seq(1,10,length.out = 10)){
     y <- (x^(alpha-1))*((1-x)^(beta_1-1))
     plot(x,y, main=paste("alpha =", alpha, " beta =", beta_1))
 }}
@@ -472,55 +336,76 @@ for(mu in seq(0.001,1,length.out = 10)){
 
 ```
 
-Exponential
-```{r}
-x <- seq(0,1,length.out = 100)
-
-
-for(alpha in seq(0,1,length.out = 10)){
-  for(beta_1 in seq(0,1,length.out = 10)){
-    y <- (x^(alpha-1))*((1-x)^(beta_1-1))
-    plot(x,y, main=paste("alpha =", alpha, " beta =", beta_1))
-}}
-
-```
 
 Normalize raster layers to 0-1; linear transformations so do not change the shape of the data
 ```{r}
 # normalize
 # X - min(X) /  max(X) - min(X)
 # z-score; Standardized
-# X - min(X) / max(X)-min(X)
-
+# X - mean(X) / sd(X)
 
 rasterstack_norm <- rasterstack3
-# Normalize to 0-1
+# Normalize to 0-1; worked before and now doesn't
 for(i in 1:6){
-  rasterstack_norm[[i]] <- calc(rasterstack_norm[[1]], function(x){
+  rasterstack_norm[[i]] <- calc(rasterstack_norm[[i]], function(x){
     (x-min(getValues(rasterstack_norm[[i]])))/(max(getValues(rasterstack_norm[[i]]))-min(getValues(rasterstack_norm[[i]])))
   })
 }
 
-plot(rasterstack_norm[[1]])
-plot(rasterstack3[[1]])
-plot(rasterstack3_z[[1]])
-plot(scale(rasterstack_norm[[1]]))
+plot(rasterstack_norm[[1]], main="noramlized")
+plot(rasterstack3[[1]], main="elevation as is")
+plot(rasterstack3_z[[1]], main="scaled minus mean/sd")
+plot(scale(rasterstack_norm[[1]]), main="scaled normalized")
 
 # scale in raster::scale just give the z-score
-rasterstack_norm[[2]] <- scale(rasterstack_norm[[2]])
 plot(rasterstack_norm[[2]])
 plot(rasterstack3[[2]])
 
-```
 
+writeRaster(rasterstack_norm, "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/rasterstack_normalized.tif", overwrite=TRUE)
+```
+lognormal
+alpha1 <- log(mu)-(1/2)*log((sig2+mu^2)/mu^2)
+beta1 <- sqrt(log((sig2+mu^2)/mu^2))
+y <- (1/(x*sqrt(2*pi*beta1^2)))*(exp(-(log(x)-alpha1)^2)/(2*beta1^2))
 
 
 Create my own glm for comparison with maxent
 ```{r}
 predic_raster <- rasterstack_norm[[1]]
-predic_raster[] <- (getValues(rasterstack3_z[[1]])^2)*1 + log(getValues(rasterstack3_z[[2]]))*2 + getValues(rasterstack3_z[[3]])*3 + getValues(rasterstack3_z[[4]])*4 + getValues(rasterstack3_z[[5]])*0.001
 
-# predic_raster[] <- exp(getValues(rasterstack3_z[[1]])*1 + getValues(rasterstack3_z[[2]])*2 + getValues(rasterstack3_z[[3]])*3 + getValues(rasterstack3_z[[4]])*4 + getValues(rasterstack3_z[[5]])*0.001)/(1-exp(getValues(rasterstack3_z[[1]])*1 + getValues(rasterstack3_z[[2]])*2 + getValues(rasterstack3_z[[3]])*3 + getValues(rasterstack3_z[[4]])*4 + getValues(rasterstack3_z[[5]])*0.001))
+lm1 <- as.formula("getValues(rasterstack_norm[[1]])*1 + getValues(rasterstack_norm[[2]])*2 + getValues(rasterstack_norm[[3]])*3 +
+                    getValues(rasterstack_norm[[4]])*4 + getValues(rasterstack_norm[[5]])*5 + getValues(rasterstack_norm[[6]])*.01")
+
+predic_raster[] <- exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]])))
+
+# predic_raster[] <- exp((getValues(rasterstack3_z[[1]])^2)*1 + log(getValues(rasterstack3_z[[2]]))*2 + getValues(rasterstack3_z[[3]])*3 + getValues(rasterstack3_z[[4]])*4 + getValues(rasterstack3_z[[5]])*0.001)/
+#   (1-exp((getValues(rasterstack3_z[[1]])^2)*1 + log(getValues(rasterstack3_z[[2]]))*2 + getValues(rasterstack3_z[[3]])*3 + getValues(rasterstack3_z[[4]])*4 + getValues(rasterstack3_z[[5]])*0.001))
+
+plot(predic_raster)
+```
+
+```{r}
+mu <- 0.22
+sig2 <- 0.001
+alpha1 <- 1
+beta1 <- 1
+
+# should result in 0-1 but doesn't
+predic_raster[] <- exp(getValues(rasterstack3_z[[1]])*1 + 
+                         # lognormal
+                         (1/(getValues(rasterstack3_z[[2]])*sqrt(2*pi*beta1^2)))*
+                         (exp(-(log(getValues(rasterstack3_z[[2]]))-alpha1)^2)/(2*beta1^2)) + 
+                         # linear?
+                         getValues(rasterstack3_z[[3]])*3 + getValues(rasterstack3_z[[4]])*4 +
+                         getValues(rasterstack3_z[[5]])*1)/
+                    (1-exp(getValues(rasterstack3_z[[1]])*1 + 
+                             # lognormal
+                             (1/(getValues(rasterstack3_z[[2]])*sqrt(2*pi*beta1^2)))*
+                             (exp(-(log(getValues(rasterstack3_z[[2]]))-alpha1)^2)/(2*beta1^2)) + 
+                             # linear?
+                             getValues(rasterstack3_z[[3]])*3 + getValues(rasterstack3_z[[4]])*4 + 
+                             getValues(rasterstack3_z[[5]])*1))
 
 plot(predic_raster)
 plot(rasterstack3_z[[1]])
@@ -584,32 +469,6 @@ plot(clru1_z);plot(colocounties, add=TRUE); points(clruspdf, pch=16, cex=0.25,co
 plotResponse(clru1_z)
 edit(generateSpFromFun)
 ```
-
-
-
-###############################################################################################
-###############################################################################################
-###############################################################################################
-
-
-```{r}
-# suitability map
-# clru.species1[[3]]
-
-# colorado.clru <- crop(clru.species1[[3]], extent(colocounties), snap="out")
-# plot(colorado.clru); points(clruspdf, pch=16, cex=0.5, col='blue')
-
-# convert to presence absence, use beta to set the inflection and alpha to make stronger switch from suitable to unsuitable
-# pa1 <- convertToPA(clru.species1, plot = TRUE, beta = 0.65, alpha = -0.001)
-
-# Can set the species prevalance and let it get there with testing levels of beta that get to the desired prevalence, alpha fixed at default -0.05
-# pa2 <- convertToPA(clru.species1, plot = TRUE, species.prevalence = 0.2)  
-# - beta = 0.4677734375
-# - alpha = -0.05
-# - species prevalence =0.200104841931879
-```
-
-
 
 
 
