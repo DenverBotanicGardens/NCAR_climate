@@ -500,7 +500,15 @@ systematic_sampling <- function(suitability.raster,  samplesize){
 
 for(x in 1:10){
   samplesys1 <- systematic_sampling(predic_raster, 100)
-  plot(predic_raster, main = "Systematic sampling (n = 100)"); points(samplesys1, pch=16, cex=0.5)
+      
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_SystematicTrue",x,".jpg", sep=""),
+       width=145, height=100,units='mm', res=300)
+  par(mar=c(2.1,2.1,2.1,1.1))
+  plot(predic_raster, main = ""); points(samplesys1, pch=16, cex=0.25)
+  mtext("d)", side=3, line=0.5, adj=-0.1)
+  mtext("Systematic sampling (n = 100)", side=3, line=0, adj=0.5, cex=1.15)
+  
+  dev.off()
   }
 
 # suitability.raster <- clru1[[3]]
@@ -523,8 +531,15 @@ random_sampling <- function(suitability.raster, samplesize){
 
 for(x in 1:10){
   random1 <- random_sampling(predic_raster, 100)
-  plot(predic_raster, main = "Simple random sampling (n = 100)"); points(random1, pch=16, cex=0.5)
-  mtext
+  
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_simplerandom",x,".jpg", sep=""),
+       width=145, height=100,units='mm', res=300)
+  par(mar=c(2.1,2.1,2.1,1.1))
+  plot(predic_raster, main = ""); points(random1, pch=16, cex=0.25)
+  mtext("a)", side=3, line=0.5, adj=-0.1)
+  mtext("Simple random sampling (n = 100)", side=3, line=0, adj=0.5, cex=1.15)
+  
+  dev.off()
   }
 
 
@@ -618,19 +633,93 @@ adaptive_cluster <- function(suitability.raster, samplesize){
 for(x in 1:10){
   cluster1 <- adaptive_cluster(predic_raster, 100)
   print(nrow(cluster1))
-  plot(predic_raster, main = "Adaptive cluster sampling (n = 100)"); points(cluster1, pch=16, cex=0.25)
+    
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_AdaptiveCluster",x,".jpg", sep=""),
+       width=145, height=100,units='mm', res=300)
+  par(mar=c(2.1,2.1,2.1,1.1))
+  plot(predic_raster, main = ""); points(cluster1, pch=16, cex=0.25)
+    mtext("b)", side=3, line=0.5, adj=-0.1)
+  mtext("Adaptive cluster sampling (n = 100)", side=3, line=0, adj=0.5, cex=1.15)
+  
+  dev.off()
 }   
 
 ### Convenience sampling, weighted by sampled areas
 # 1. set each convenience raster cell to the proportion of SEINet herb collections per cell as convenience
+
+convenience_raster <- predic_raster
+# All samples from 1990, 2000, 2010 to represent samples over time over 21 years
+xy_1990 <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Colorado_1990/occurrences.csv")
+xy_2000 <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Colorado_2000/occurrences.csv")
+xy_2010 <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Colorado_2010/occurrences.csv")
+xys <- do.call(rbind,lapply(list(xy_1990,xy_2000,xy_2010), function(xys){
+  i <- sapply(xys, is.factor)
+  xys[i] <- lapply(xys[i], as.character)
+  xys    
+}))
+
+xys$decimalLatitude <- as.numeric(xys$decimalLatitude)
+xys$decimalLongitude <- as.numeric(xys$decimalLongitude)
+xys <- xys[!is.na(xys$decimalLongitude),c("decimalLongitude","decimalLatitude")]
+convenience_raster <- rasterize(xys, convenience_raster, fun='count')
+
+# Interpolate <https://www.rdocumentation.org/packages/raster/versions/3.0-12/topics/interpolate> 
+library(fields)
+tps <- Tps(xyFromCell(convenience_raster, 1:ncell(convenience_raster)), getValues(convenience_raster))
+p <- raster(convenience_raster)
+p <- interpolate(p, tps)
+writeRaster(p, "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/convenience_raster_interpolated.tif", overwrite=TRUE)
+
+p_norm <- calc(p, function(x){
+    (x-min(getValues(p)))/(max(getValues(p))-min(getValues(p)))
+})
+plot(p)
+plot(p_norm)
+plot(convenience_raster)
+    
+    # contour lines for the convenience map
+    cont <- rasterToContour(p_norm)
+    plot(cont)
+plot(predic_raster)
+plot(cont, add=TRUE)
+
+
 # 2. have rbinom selection of that cell probability based on convenience weights
 # 3. follow the random selection 
-convenience_sampling <- function(suitability.raster, samplesize){
+convenience_sampling <- function(suitability.raster, convenience.raster, samplesize){
+  sampleout <- c()
+  i <- 1
+  while(i <= samplesize){
+    randcell <- ceiling(runif(1, min = 1, max = length(suitability.raster)))
+      if(rbinom(1,1,getValues(convenience.raster)[randcell]) == 1){
+        
+        if(rbinom(1, 1, getValues(suitability.raster)[randcell]) == 1){
+          sampleout <- rbind(sampleout,xyFromCell(suitability.raster, randcell))
+          i <- i+1
+        }
+      }
+    
+  }
+  sampleout
   
 }
 
+for(x in 1:10){
+  conve1 <- convenience_sampling(predic_raster, p_norm, 100)
+  print(nrow(conve1))
+    
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_Convenience",x,".jpg", sep=""),
+       width=145, height=100,units='mm', res=300)
+  par(mar=c(2.1,2.1,2.1,1.1))
+  plot(predic_raster, main = ""); points(conve1, pch=16, cex=0.25)
+  contour(p_norm, levels = c(0,0.25,0.5,0.75,1), add=TRUE)
+  mtext("c)", side=3, line=0.5, adj=-0.1)
 
-rasterstack
+  mtext("Convenience sampling (n = 100)", side=3, line=0, adj=0.5, cex=1.15)
+  
+  dev.off()
+}   
+
 ```
 
 
@@ -639,8 +728,8 @@ Maxent compared to the 'true' distribution
   Background points are sampled randomly from the cells that are not NA in the first predictor variable, unless background points are specified with argument a.
 ```{r}
 #test 
-rasterstack <- rasterstack3_z
-sampling_type <- "random"
+rasterstack <- rasterstack_norm
+sampling_type <- "system"
 pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations/"
 true.dist <- predic_raster
 reps <- 2
@@ -656,7 +745,7 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
     sample_xy <- systematic_sampling(suitability.raster = true.dist, samplesize = samplesize)
   }
   if(grepl(sampling_type, "convenience")){
-    sample_xy <- convenience_sampling()
+    sample_xy <- convenience_sampling(suitability.raster = true.dist, samplesize = samplesize)
   }
   if(grepl(sampling_type, "cluster")){
     sample_xy <- cluster_sampling()
