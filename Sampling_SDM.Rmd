@@ -279,6 +279,7 @@ SDMtune
 # install.packages("SDMtune")
 library(SDMtune)
 ```
+## Skip to next to load normalized layers
 
 # Virtual species 
 <http://borisleroy.com/files/virtualspecies-tutorial.html>
@@ -307,38 +308,8 @@ rasterstack3 <- stack(coloElev,bioclim.stack, sim_layer)
 # scale will center (subtract the layer mean) and scale by dividing the centered layer by SD
 rasterstack3_z <- scale(rasterstack3)
 plot(rasterstack3_z)
-```
 
-Look at coding distributions  
-Beta distriubtion
-```{r}
-x <- seq(0,1,length.out = 100)
-
-for(alpha in seq(1,10,length.out = 10)){
-  for(beta_1 in seq(1,10,length.out = 10)){
-    y <- (x^(alpha-1))*((1-x)^(beta_1-1))
-    plot(x,y, main=paste("alpha =", alpha, " beta =", beta_1))
-}}
-
-```
-
-lognormal
-```{r}
-x <- seq(0,1,length.out = 100)
-
-for(mu in seq(0.001,1,length.out = 10)){
-  for(sig2 in seq(0.001,1,length.out = 10)){
-    alpha1 <- log(mu)-(1/2)*log((sig2+mu^2)/mu^2)
-    beta1 <- sqrt(log((sig2+mu^2)/mu^2))
-    y <- (1/(x*sqrt(2*pi*beta1^2)))*(exp(-(log(x)-alpha1)^2)/(2*beta1^2))
-    plot(x,y, main=paste("mu =",mu, "sig2 =",sig2,"alpha =", alpha, " beta =", beta_1))
-}}
-
-```
-
-
-Normalize raster layers to 0-1; linear transformations so do not change the shape of the data
-```{r}
+# Normalize raster layers to 0-1; linear transformations so do not change the shape of the data
 # normalize
 # X - min(X) /  max(X) - min(X)
 # z-score; Standardized
@@ -358,116 +329,75 @@ plot(rasterstack3_z[[1]], main="scaled minus mean/sd")
 plot(scale(rasterstack_norm[[1]]), main="scaled normalized")
 
 # scale in raster::scale just give the z-score
-plot(rasterstack_norm[[2]])
-plot(rasterstack3[[2]])
-
-
-writeRaster(rasterstack_norm, "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/rasterstack_normalized.tif", overwrite=TRUE)
-```
-lognormal
-alpha1 <- log(mu)-(1/2)*log((sig2+mu^2)/mu^2)
-beta1 <- sqrt(log((sig2+mu^2)/mu^2))
-y <- (1/(x*sqrt(2*pi*beta1^2)))*(exp(-(log(x)-alpha1)^2)/(2*beta1^2))
-
-
-Create my own glm for comparison with maxent
-```{r}
-predic_raster <- rasterstack_norm[[1]]
-
-lm1 <- as.formula("getValues(rasterstack_norm[[1]])*1 + getValues(rasterstack_norm[[2]])*2 + getValues(rasterstack_norm[[3]])*3 +
-                    getValues(rasterstack_norm[[4]])*4 + getValues(rasterstack_norm[[5]])*5 + getValues(rasterstack_norm[[6]])*.01")
-
-predic_raster[] <- exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]])))
-
-# predic_raster[] <- exp((getValues(rasterstack3_z[[1]])^2)*1 + log(getValues(rasterstack3_z[[2]]))*2 + getValues(rasterstack3_z[[3]])*3 + getValues(rasterstack3_z[[4]])*4 + getValues(rasterstack3_z[[5]])*0.001)/
-#   (1-exp((getValues(rasterstack3_z[[1]])^2)*1 + log(getValues(rasterstack3_z[[2]]))*2 + getValues(rasterstack3_z[[3]])*3 + getValues(rasterstack3_z[[4]])*4 + getValues(rasterstack3_z[[5]])*0.001))
-
-plot(predic_raster)
-```
-
-```{r}
-mu <- 0.22
-sig2 <- 0.001
-alpha1 <- 1
-beta1 <- 1
-
-# should result in 0-1 but doesn't
-predic_raster[] <- exp(getValues(rasterstack3_z[[1]])*1 + 
-                         # lognormal
-                         (1/(getValues(rasterstack3_z[[2]])*sqrt(2*pi*beta1^2)))*
-                         (exp(-(log(getValues(rasterstack3_z[[2]]))-alpha1)^2)/(2*beta1^2)) + 
-                         # linear?
-                         getValues(rasterstack3_z[[3]])*3 + getValues(rasterstack3_z[[4]])*4 +
-                         getValues(rasterstack3_z[[5]])*1)/
-                    (1-exp(getValues(rasterstack3_z[[1]])*1 + 
-                             # lognormal
-                             (1/(getValues(rasterstack3_z[[2]])*sqrt(2*pi*beta1^2)))*
-                             (exp(-(log(getValues(rasterstack3_z[[2]]))-alpha1)^2)/(2*beta1^2)) + 
-                             # linear?
-                             getValues(rasterstack3_z[[3]])*3 + getValues(rasterstack3_z[[4]])*4 + 
-                             getValues(rasterstack3_z[[5]])*1))
-
-plot(predic_raster)
-plot(rasterstack3_z[[1]])
+names(rasterstack_norm) <- c("Elevation","Bio1","Bio11","Bio12","Bio19","dummy")
 
 for(i in 1:6){
-  hist(getValues(rasterstack3_z[[i]]))
+    writeRaster(rasterstack_norm[[i]], paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/rasterstack_normalized,",i,".tif",sep=""), overwrite=TRUE)
 }
 
-hist(predic_raster)
-
-for(i in 1:6){
-  hist(getValues(rasterstack3_z[[i]][predic_raster[predic_raster>0.5]]))
-}
 
 ```
 
-Define response functions   
- again with a dummy variable to check model
-```{r}
-
-# add in a dummy variable and scale all variables
-rasterstack3_z
-
-climate_clru3 <- raster::extract(rasterstack3_z, clru[,c("decimalLongitude","decimalLatitude")])
-mu_clru3 <- colMeans(climate_clru3, na.rm = TRUE)
-sd_clru3 <- apply(climate_clru3, 2, function(x) sd(x, na.rm = TRUE))
-hist(climate_clru3[,4])
-
-```
 
 e^Xlinearmodel/1+e^linear model so that it's [0-1] of the probability of y|x 
+Create my own glm for comparison with maxent
 ```{r}
-# Need to be beta? if I've scaled? But these aren't 0-1 like it does somehow, when I don't rescale, maybe fine? 
-# bio19 precip of coldest quarter to represent snow accumulation
-# bio11 mean temp of coldest quarter
-# BIO12 = Annual Precipitation
-# BIO1 = Annual Mean Temperature
-clru.para_z <- formatFunctions(bio1_12 = c(fun = 'dnorm', mean = -0.05, sd = 0.47035730),
-                             bio12_12 = c(fun = 'dnorm', mean = 0.14942025, sd = 0.1),
-                             # bio19_12 = c(fun = 'linearFun', a = 1, b = 0),
-                             bio19_12 = c(fun = 'betaFun', p1 = -1, p2 = 3, alpha = 0.9, gamma = 0.09),
-                             bio11_12 = c(fun = 'logisticFun', beta = -1, alpha = .2),
-                             ElevationResampled_bioclim = c(fun = 'betaFun', p1 = -1, p2 = 0.3, alpha = 0.9, gamma = 0.08),
-                             dummy = c(fun = 'linearFun', a=0, b=0),
-                             rescale = FALSE) # but let the suitability be rescaled to 0 - 1
 
- # - The response to each variable was rescaled between 0 and 1. To
- #            disable, set argument rescale.each.response = FALSE
- # 
- # - The final environmental suitability was rescaled between 0 and 1.
- #            To disable, set argument rescale = FALSE
-clru1_z <- generateSpFromFun(raster.stack = rasterstack3_z, parameters = clru.para_z,
-                             species.type = "mixed",
-                             formula = "bio1_12*3 + bio12_12 *2+ (bio11_12 * bio19_12)*4 + ElevationResampled_bioclim + dummy", 
-                             rescale.each.response = FALSE,
-                             plot = TRUE)
+predic_raster <- rasterstack_norm[[1]]
 
-plot(clru1_z);plot(colocounties, add=TRUE); points(clruspdf, pch=16, cex=0.25,col="blue")
+lm1 <- as.formula(~ getValues(rasterstack_norm[[1]])*1 + getValues(rasterstack_norm[[2]])*2.5 - getValues(rasterstack_norm[[3]])*6 +
+                    getValues(rasterstack_norm[[4]])*4 - getValues(rasterstack_norm[[5]])*5 + getValues(rasterstack_norm[[6]])*.005)
 
-# Plot response curves
-plotResponse(clru1_z)
-edit(generateSpFromFun)
+
+identical(length(predic_raster),length(exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]])))))
+
+# predic_raster[] <- exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]])))
+predic_raster <- setValues(predic_raster, as.vector(exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]])))))
+
+plot(predic_raster)
+
+# normalize response
+predic_raster <- calc(predic_raster, function(x){
+    (x-min(getValues(predic_raster)))/(max(getValues(predic_raster))-min(getValues(predic_raster)))
+})
+
+jpeg("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig1a_abioticvars.jpg",
+     width=170, height=100,units='mm', res=300)
+        par(mar=c(2.1,2.1,1.1,2.1))
+        plot(predic_raster)
+        mtext("a)", side=3, line=0, adj=0)
+ 
+dev.off()
+
+jpeg("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig1b_abioticvars.jpg",
+     width=225, height=105,units='mm', res=300)
+
+        plot(rasterstack_norm)
+        mtext("b)", side=3, line=3, adj=-.10)
+
+dev.off()
+        
+
+# jpeg("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig1_abioticvars.jpg",
+#      width=170, height=100,units='mm', res=300)
+#   
+# par(mfrow=c(1,2))      
+# # layout(matrix(c(1,2), 1,2, byrow = TRUE), widths = c(3,3), heights = c(1,1))
+# # layout.show(2)
+# # plot 1
+# par(mar=c(2.1,2.1,1.1,2.1))
+# plot(predic_raster)
+# mtext("a)", side=3, line=0, adj=0)
+# 
+# # plot 2
+# plot(rasterstack_norm)
+# mtext("b)", side=3, line=3, adj= -0.1)
+# 
+# dev.off()
+        
+
+
+
 ```
 
 
@@ -527,11 +457,24 @@ plot(colorado.clru); points(samplerand1, pch=16, cex=0.5)
 ```
 
 
+Pattern and process figures
+```{r}
+
+
+plot(1:10, 1:10, type="l", lwd=2, yaxt="n", xaxt="n", ylab="Biased Sampling", xlab="True distribution")
+# polygon(c(1,1,8.9), c(2.1,9.9,9.9), col=rgb(.15,0,.5,.25))
+arrows(5,5.1,2.5,7.5,lwd=1, col='red')
+arrows(5,4.9,7.5,2.5, col='red')
+
+```
+
+
+
 # Sampling functions
 Sampling methods
 ```{r}
 # test
-suitability.raster <- clru1_z[[3]]
+suitability.raster <- predic_raster
 samplesize <- 20
 
 ### systematic 
@@ -556,8 +499,8 @@ systematic_sampling <- function(suitability.raster,  samplesize){
 
 
 for(x in 1:10){
-  samplesys1 <- systematic_sampling(clru1_z[[3]], 100)
-  plot(clru1_z[[3]], main = "Systematic sampling (n = 100)"); points(samplesys1, pch=16, cex=0.5)
+  samplesys1 <- systematic_sampling(predic_raster, 100)
+  plot(predic_raster, main = "Systematic sampling (n = 100)"); points(samplesys1, pch=16, cex=0.5)
   }
 
 # suitability.raster <- clru1[[3]]
@@ -579,8 +522,9 @@ random_sampling <- function(suitability.raster, samplesize){
 
 
 for(x in 1:10){
-  random1 <- random_sampling(clru1_z[[3]], 100)
-  plot(clru1_z[[3]], main = "Simple random sampling (n = 100)"); points(random1, pch=16, cex=0.5)
+  random1 <- random_sampling(predic_raster, 100)
+  plot(predic_raster, main = "Simple random sampling (n = 100)"); points(random1, pch=16, cex=0.5)
+  mtext
   }
 
 
@@ -672,9 +616,9 @@ adaptive_cluster <- function(suitability.raster, samplesize){
 }
 
 for(x in 1:10){
-cluster1 <- adaptive_cluster(clru1_z[[3]], 100)
-print(nrow(cluster1))
-plot(clru1_z[[3]], main = "Adaptive cluster sampling (n = 100)"); points(cluster1, pch=16, cex=0.5)
+  cluster1 <- adaptive_cluster(predic_raster, 100)
+  print(nrow(cluster1))
+  plot(predic_raster, main = "Adaptive cluster sampling (n = 100)"); points(cluster1, pch=16, cex=0.25)
 }   
 
 ### Convenience sampling, weighted by sampled areas
@@ -698,7 +642,7 @@ Maxent compared to the 'true' distribution
 rasterstack <- rasterstack3_z
 sampling_type <- "random"
 pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations/"
-true.dist <- clru1_z[[3]]
+true.dist <- predic_raster
 reps <- 2
 # sampling_type <- "ra"
 rm(rasterstack); rm(true.dist); rm(sampling_type)
