@@ -10,6 +10,8 @@ output: html_document
 # require(installr)
 # updateR()
 
+rm(list=ls())
+
 # maybe a mix of R3.5.X and R3.6.X so need to update everything?
 # update.packages(ask = FALSE, checkBuilt = TRUE)
 
@@ -179,6 +181,7 @@ grViz("digraph flowchart {
        node [label = '&sigma;&#x00B2;']
       tab14
       tab3 [label = '@@3']
+      tab15 [label = '@@5']
       
       # edge
       edge[ dir = forw];
@@ -193,11 +196,12 @@ grViz("digraph flowchart {
       # edge definitions with the node IDs
       edge[ dir = back];
       tab1 -> tab2; 
-      tab2 -> tab4;
-      tab2 -> tab5;
-      tab2 -> tab6;
-      tab2 -> tab7;
-      tab2 -> tab8;
+      tab2 -> tab15;
+      tab15 -> tab4;
+      tab15 -> tab5;
+      tab15 -> tab6;
+      tab15 -> tab7;
+      tab15 -> tab8;
       tab4 -> tab9;
       tab5 -> tab10;
       tab6 -> tab12;
@@ -207,38 +211,13 @@ grViz("digraph flowchart {
       }
 
       [1]: '(Data) &gamma;&#x2081;'
-      [2]: 'SDM (Process) &eta;'
+      [2]: 'SDM (Pattern) &eta;'
       [3]: 'Sampling design'
       [4]: c('Annual Precipition','Annual Temperature','Precip of coldest quarter','Mean temp of coldest quarter','Elevation')
+      [5]: 'Variable contribution (Process)'
       ")
 ```
 
-
-
-Snow melt, temperature
-```{r}
-# install.packages("snotelr")
-# library("snotelr")
-# 
-# library(snotelr)
-# snotel.explorer()
-
-# install.packages("RNRCS")
-
-
-# grabNRCS.meta()
-# snow1 <- grabNRCS.data(network = 'SNTL', site_id = 2229, timescale = "monthly", DayBgn = '2019-01-01', DayEnd = '2020-01-01')
-# 
-# 
-# load("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/hackathon/Simulations/SNOWHLNDmodelavg_annual.RData") # 1920-2005
-# load("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/hackathon/Simulations/SNOWHLNDmodelavg.raster.RData")
-# load("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/hackathon/Simulations/SNOWHLNDmodel17_annual.RData") # 5, 17 year blocks averaged 
-# load("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/hackathon/Simulations/SNOWHLNDmodel17_raster.RData")
-# 
-# 
-# str(SNOWHLNDmodel17.raster[[1]])
-# plot(SNOWHLNDmodel17.raster[[1]][[1]])
-```
 
 ```{r}
 colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
@@ -360,7 +339,9 @@ plot(predic_raster)
 predic_raster <- calc(predic_raster, function(x){
     (x-min(getValues(predic_raster)))/(max(getValues(predic_raster))-min(getValues(predic_raster)))
 })
+```
 
+```{r}
 jpeg("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig1a_abioticvars.jpg",
      width=170, height=100,units='mm', res=300)
         par(mar=c(2.1,2.1,1.1,2.1))
@@ -401,71 +382,24 @@ dev.off()
 ```
 
 
-
-#################################################################################
-Sampler testing  
-```{r}
-
-length(clru1_z) 
-nrow(clru1_z) # 482
-ncol(clru1_z) # 844
-# use xyFromCell() to get coordinates from row, column, or cell number
-xyFromCell(clru1_z[[3]], ceiling(runif(1, min = 1, max = length(clru1_z[[3]]))))
-
-### systematic and thinning
-systematic_sampling_thinning <- function(suitability.raster,  samplesize){
-  evenstep <- length(suitability.raster)/stepsize
-  i <- evenstep
-  
-  sampleout <- c()
-  while(i < length(suitability.raster)){
-    if(getValues(suitability.raster)[i] > 0.3 &
-       rbinom(1, 1, getValues(suitability.raster)[i]) == 1){
-      sampleout <- rbind(sampleout,xyFromCell(suitability.raster, i))
-    }
-      i <- i + evenstep
-  }
-
-  sampleout <- thin.max(sampleout, c("x","y"), samplesize)
-  sampleout
-}
-
-
-# use prob argument in sample?
-# select that cell if a runif(1, min = minValue(colorado.clru), max = maxValue(colorado.clru)) is < the cell value; cell number comes from indexing: colorado.clru[cellnumber]
-getValues(colorado.clru)[ceiling(runif(1, min = 1, max = length(colorado.clru)))]
-
- # the first parameter of pbinom must be the number of "successes,", the second parameter is the number of trials, and the third parameter is the chance of success (not of failure). It looks like pbinom(n,m,p) is returning Pr(X≤n) when X has a Binomial(m,p) distribution. Just as a check that ≤ is meant instead of <, compute some small values
-
-plot(pbinom(1:100,100,0.8))
-rbinom(1:100, 1, 0.8)
-
-# > runif(1, min = mean(getValue(suitability.raster), max = maxValue(colorado.clru))
-
-
-# Maybe this is faster? But need to not get below 0.5
-# Which are above threshold of 0.5? Oh, maybe change the values from 0.5 to 0 
-colorado.clru.threshold <- colorado.clru
-colorado.clru.threshold[colorado.clru.threshold<0.5] <- 0
-randfaster <- xyFromCell(colorado.clru.threshold,sample(1:length(colorado.clru.threshold), 100, prob = getValues(colorado.clru.threshold)))
-plot(colorado.clru); points(randfaster, pch=16, cex=0.5)
-# randfaster <- xyFromCell(colorado.clru,sample(colorado.clru[colorado.clru>0.5], 100, prob = getValues(colorado.clru[colorado.clru[colorado.clru>0.5]])))
-
-
-samplerand1 <- random_sampling(colorado.clru, 100)
-plot(colorado.clru); points(samplerand1, pch=16, cex=0.5)
-```
-
-
 Pattern and process figures
 ```{r}
 
 
-plot(1:10, 1:10, type="l", lwd=2, yaxt="n", xaxt="n", ylab="Biased Sampling", xlab="True distribution")
-# polygon(c(1,1,8.9), c(2.1,9.9,9.9), col=rgb(.15,0,.5,.25))
-arrows(5,5.1,2.5,7.5,lwd=1, col='red')
-arrows(5,4.9,7.5,2.5, col='red')
+jpeg("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Pattern_compare.jpg",
+     width=175, height=175,units='mm', res=300)
 
+plot(1:10, 1:10, type="l", lwd=2, yaxt="n", xaxt="n", ylab="Biased Sampling", xlab="True sampling (systematic)")
+mtext("Pixel-based distance from true", side=1, line=0.5)
+mtext("Pixel-based distance from true", side=2, line=0.5)
+# polygon(c(1,1,8.9), c(2.1,9.9,9.9), col=rgb(.15,0,.5,.25))
+arrows(4.9,5.1,3.5,6.5,lwd=1, col='red')
+arrows(5.1,4.9,6.5,3.5, col='red')
+text("sampling method outperformed systematic", x = 2, y=7.5, adj = 0, cex= 0.95)
+text("sampling method underperformed systematic", x = 9, y = 2, adj = 1, cex=0.95)
+# across sample size? colored dots by sample size? yes maybe
+
+dev.off()
 ```
 
 
@@ -474,8 +408,8 @@ arrows(5,4.9,7.5,2.5, col='red')
 Sampling methods
 ```{r}
 # test
-suitability.raster <- predic_raster
-samplesize <- 20
+# suitability.raster <- predic_raster
+# samplesize <- 20
 
 ### systematic 
 systematic_sampling <- function(suitability.raster,  samplesize){
@@ -497,20 +431,6 @@ systematic_sampling <- function(suitability.raster,  samplesize){
 }
 
 
-
-for(x in 1:10){
-  samplesys1 <- systematic_sampling(predic_raster, 100)
-      
-  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_SystematicTrue",x,".jpg", sep=""),
-       width=145, height=100,units='mm', res=300)
-  par(mar=c(2.1,2.1,2.1,1.1))
-  plot(predic_raster, main = ""); points(samplesys1, pch=16, cex=0.25)
-  mtext("d)", side=3, line=0.5, adj=-0.1)
-  mtext("Systematic sampling (n = 100)", side=3, line=0, adj=0.5, cex=1.15)
-  
-  dev.off()
-  }
-
 # suitability.raster <- clru1[[3]]
 # rm(suitability.raster)
 ### random
@@ -527,20 +447,6 @@ random_sampling <- function(suitability.raster, samplesize){
   }
   sampleout
 }
-
-
-for(x in 1:10){
-  random1 <- random_sampling(predic_raster, 100)
-  
-  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_simplerandom",x,".jpg", sep=""),
-       width=145, height=100,units='mm', res=300)
-  par(mar=c(2.1,2.1,2.1,1.1))
-  plot(predic_raster, main = ""); points(random1, pch=16, cex=0.25)
-  mtext("a)", side=3, line=0.5, adj=-0.1)
-  mtext("Simple random sampling (n = 100)", side=3, line=0, adj=0.5, cex=1.15)
-  
-  dev.off()
-  }
 
 
 
@@ -630,58 +536,45 @@ adaptive_cluster <- function(suitability.raster, samplesize){
   samples
 }
 
-for(x in 1:10){
-  cluster1 <- adaptive_cluster(predic_raster, 100)
-  print(nrow(cluster1))
-    
-  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_AdaptiveCluster",x,".jpg", sep=""),
-       width=145, height=100,units='mm', res=300)
-  par(mar=c(2.1,2.1,2.1,1.1))
-  plot(predic_raster, main = ""); points(cluster1, pch=16, cex=0.25)
-    mtext("b)", side=3, line=0.5, adj=-0.1)
-  mtext("Adaptive cluster sampling (n = 100)", side=3, line=0, adj=0.5, cex=1.15)
-  
-  dev.off()
-}   
 
 ### Convenience sampling, weighted by sampled areas
 # 1. set each convenience raster cell to the proportion of SEINet herb collections per cell as convenience
 
-convenience_raster <- predic_raster
-# All samples from 1990, 2000, 2010 to represent samples over time over 21 years
-xy_1990 <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Colorado_1990/occurrences.csv")
-xy_2000 <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Colorado_2000/occurrences.csv")
-xy_2010 <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Colorado_2010/occurrences.csv")
-xys <- do.call(rbind,lapply(list(xy_1990,xy_2000,xy_2010), function(xys){
-  i <- sapply(xys, is.factor)
-  xys[i] <- lapply(xys[i], as.character)
-  xys    
-}))
+# convenience_raster <- predic_raster
+# # All samples from 1990, 2000, 2010 to represent samples over time over 21 years
+# xy_1990 <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Colorado_1990/occurrences.csv")
+# xy_2000 <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Colorado_2000/occurrences.csv")
+# xy_2010 <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Colorado_2010/occurrences.csv")
+# xys <- do.call(rbind,lapply(list(xy_1990,xy_2000,xy_2010), function(xys){
+#   i <- sapply(xys, is.factor)
+#   xys[i] <- lapply(xys[i], as.character)
+#   xys    
+# }))
+# 
+# xys$decimalLatitude <- as.numeric(xys$decimalLatitude)
+# xys$decimalLongitude <- as.numeric(xys$decimalLongitude)
+# xys <- xys[!is.na(xys$decimalLongitude),c("decimalLongitude","decimalLatitude")]
+# convenience_raster <- rasterize(xys, convenience_raster, fun='count')
 
-xys$decimalLatitude <- as.numeric(xys$decimalLatitude)
-xys$decimalLongitude <- as.numeric(xys$decimalLongitude)
-xys <- xys[!is.na(xys$decimalLongitude),c("decimalLongitude","decimalLatitude")]
-convenience_raster <- rasterize(xys, convenience_raster, fun='count')
-
-# Interpolate <https://www.rdocumentation.org/packages/raster/versions/3.0-12/topics/interpolate> 
-library(fields)
-tps <- Tps(xyFromCell(convenience_raster, 1:ncell(convenience_raster)), getValues(convenience_raster))
-p <- raster(convenience_raster)
-p <- interpolate(p, tps)
-writeRaster(p, "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/convenience_raster_interpolated.tif", overwrite=TRUE)
+## Interpolate <https://www.rdocumentation.org/packages/raster/versions/3.0-12/topics/interpolate> 
+# library(fields)
+# tps <- Tps(xyFromCell(convenience_raster, 1:ncell(convenience_raster)), getValues(convenience_raster))
+# p <- raster(convenience_raster)
+# p <- interpolate(p, tps)
+# writeRaster(p, "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/convenience_raster_interpolated.tif", overwrite=TRUE)
+p <- raster("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/convenience_raster_interpolated.tif")
 
 p_norm <- calc(p, function(x){
     (x-min(getValues(p)))/(max(getValues(p))-min(getValues(p)))
 })
-plot(p)
+# plot(p)
 plot(p_norm)
-plot(convenience_raster)
-    
-    # contour lines for the convenience map
-    cont <- rasterToContour(p_norm)
-    plot(cont)
-plot(predic_raster)
-plot(cont, add=TRUE)
+
+# # contour lines for the convenience map
+# cont <- rasterToContour(p_norm)
+# plot(cont)
+# plot(predic_raster)
+# plot(cont, add=TRUE)
 
 
 # 2. have rbinom selection of that cell probability based on convenience weights
@@ -704,6 +597,62 @@ convenience_sampling <- function(suitability.raster, convenience.raster, samples
   
 }
 
+ 
+
+```
+
+Sampling images
+```{r}
+
+########### Systematic (true sample) ############
+ 
+for(x in 1:10){
+  samplesys1 <- systematic_sampling(predic_raster, 100)
+      
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_SystematicTrue",x,".jpg", sep=""),
+       width=145, height=100,units='mm', res=300)
+  par(mar=c(2.1,2.1,2.1,1.1))
+  plot(predic_raster, main = ""); points(samplesys1, pch=16, cex=0.25)
+  mtext("d)", side=3, line=0.5, adj=-0.1)
+  mtext("Systematic sampling (n = 100)", side=3, line=0, adj=0.5, cex=1.15)
+  
+  dev.off()
+  }
+
+
+############ Simple random ###############
+
+for(x in 1:10){
+  random1 <- random_sampling(predic_raster, 100)
+  
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_simplerandom",x,".jpg", sep=""),
+       width=145, height=100,units='mm', res=300)
+  par(mar=c(2.1,2.1,2.1,1.1))
+  plot(predic_raster, main = ""); points(random1, pch=16, cex=0.25)
+  mtext("a)", side=3, line=0.5, adj=-0.1)
+  mtext("Simple random sampling (n = 100)", side=3, line=0, adj=0.5, cex=1.15)
+  
+  dev.off()
+  }
+
+
+
+############ Adaptive Cluster ###############
+for(x in 1:10){
+  cluster1 <- adaptive_cluster(predic_raster, 100)
+  print(nrow(cluster1))
+    
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_AdaptiveCluster",x,".jpg", sep=""),
+       width=145, height=100,units='mm', res=300)
+  par(mar=c(2.1,2.1,2.1,1.1))
+  plot(predic_raster, main = ""); points(cluster1, pch=16, cex=0.25)
+    mtext("b)", side=3, line=0.5, adj=-0.1)
+  mtext("Adaptive cluster sampling (n = 100)", side=3, line=0, adj=0.5, cex=1.15)
+  
+  dev.off()
+}   
+
+############ Convenience (based on samples from 1990, 2000, and 2010) ##########
 for(x in 1:10){
   conve1 <- convenience_sampling(predic_raster, p_norm, 100)
   print(nrow(conve1))
@@ -718,8 +667,7 @@ for(x in 1:10){
   mtext("Convenience sampling (n = 100)", side=3, line=0, adj=0.5, cex=1.15)
   
   dev.off()
-}   
-
+}  
 ```
 
 
@@ -729,14 +677,15 @@ Maxent compared to the 'true' distribution
 ```{r}
 #test 
 rasterstack <- rasterstack_norm
-sampling_type <- "system"
+# sampling_type <- "system"
 pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations/"
 true.dist <- predic_raster
-reps <- 2
+# reps <- 2
 # sampling_type <- "ra"
-rm(rasterstack); rm(true.dist); rm(sampling_type)
+# rm(rasterstack); rm(true.dist); rm(sampling_type)
 
 maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","systematic","convenience","cluster"),
+                            convenience.raster = p_norm,
                             reps = 100, samplesize, pathstart = pathstart){
   if(grepl(sampling_type, "random")){
     sample_xy <- random_sampling(suitability.raster = true.dist,samplesize = samplesize)
@@ -745,17 +694,32 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
     sample_xy <- systematic_sampling(suitability.raster = true.dist, samplesize = samplesize)
   }
   if(grepl(sampling_type, "convenience")){
-    sample_xy <- convenience_sampling(suitability.raster = true.dist, samplesize = samplesize)
+    sample_xy <- convenience_sampling(suitability.raster = true.dist, convenience.raster, samplesize = samplesize)
   }
   if(grepl(sampling_type, "cluster")){
-    sample_xy <- cluster_sampling()
+    sample_xy <- adaptive_cluster(suitability.raster = true.dist, samplesize = samplesize)
   }
   
   for(r in 1:reps){
-    fold <- kfold(sample_xy, k=5) # withold 20% of the sample for testing
+    fold <- kfold(sample_xy, k=5) # withold 20% of the sample for testing; or just use whole sample and test with random background?
     occtest <- sample_xy[fold == 1,]
     occtrain <- sample_xy[fold != 1,]
-    xm <- maxent(x = rasterstack, p = occtrain)
+    xm <- maxent(x = rasterstack, p = occtrain,  args=c(
+  # 'maximumbackground=10000',
+  'defaultprevalence=1.00',
+  # 'betamultiplier=0.5',
+  # 'pictures=true',
+  # 'randomtestpoints=30',
+  'linear=true',
+  'quadratic=false',
+  'product=false',
+  'threshold=false',
+  'hinge=false',
+  # 'threads=2',
+  'responsecurves=true',
+  'jackknife=true',
+  'askoverwrite=false'
+))
     write.csv(data.frame(sample_xy, fold), paste(pathstart,"maxentOcc",sampling_type,"rep",r,".csv",sep=""))
     save(xm, file = paste(pathstart, "maxent",sampling_type,"rep",r,".Rda",sep=""))
     
@@ -800,11 +764,11 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
   })
 }
 
-
-plot(xm)
-r <- response(xm, var="bio19_12")
-plot(r, type = "l")
-response(xm)
+# 
+# plot(xm)
+# r <- response(xm, var="bio19_12")
+# plot(r, type = "l")
+# response(xm)
 
 ```
 
@@ -812,14 +776,60 @@ response(xm)
 <https://www.youtube.com/watch?v=2vgX7QoyPJo&feature=youtu.be&fbclid=IwAR2mvP8p9LDdz1LefrCwjcMMXi1l_uLI1m-1-sIiydHqHyIpMwcooSoz6lc> 
 
 ```{r}
-maxent_sampling(rasterstack = rasterstack2, true.dist = clru1[[3]], sampling_type = "random", reps = 20, samplesize = 50, pathstart = pathstart)
+pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations/"
 
+maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "random", reps = 10, samplesize = 50, pathstart = pathstart)
 
-maxent_sampling(rasterstack = rasterstack2, true.dist = clru1[[3]], sampling_type = "system", reps = 20, samplesize = 50, pathstart = pathstart, stepsize = 1000)
+maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "system", reps = 10, samplesize = 50, pathstart = pathstart)
+
+maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "convenience", reps = 10, samplesize = 50, pathstart = pathstart)
+
+maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "cluster", reps = 10, samplesize = 50, pathstart = pathstart)
+
 
 ```
 
-# Look at response curves 
+# Pattern: correlation between, within, and to the systematic  
+```{r}
+
+# c("system","random","convenience","cluster")
+All_nicheEquivalency <- lapply(1:10, function(i) {
+      # Sample from the kfolds and repeat a few times
+      sp1 <- read.csv(paste(pathstart, "maxentOccsystemrep", sample(1:10, 1),".csv", sep=""))
+      sp2 <- read.csv(paste(pathstart, "maxentOccrandomrep", sample(1:10, 1),".csv", sep=""))
+      sp3 <- read.csv(paste(pathstart, "maxentOccconveniencerep", sample(1:10, 1),".csv", sep=""))
+      sp4 <- read.csv(paste(pathstart, "maxentOccclusterrep", sample(1:10, 1),".csv", sep=""))
+      
+      Sp1 <- SpatialPoints(sp1[,c("x","y")],
+                           proj4string =
+                             CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+      Sp2 <- SpatialPoints(sp2[,c("x","y")],
+                           proj4string =
+                             CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+      Sp3 <- SpatialPoints(sp3[,c("x","y")],
+                           proj4string =
+                             CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+      registerDoParallel(cl)
+      trials <- 100
+      foreach(icount(trials),  
+              .combine='c', 
+              .packages = c("dismo")) %dopar% {
+                
+                equiv1_2 <- nicheEquivalency(Sp1, Sp2, rasterstack, n=100)
+                equiv1_3 <- nicheEquivalency(Sp1, Sp3, rasterstack, n=100)
+                equiv2_3 <- nicheEquivalency(Sp2, Sp3, rasterstack, n=100)
+                list(equiv1_2,equiv1_3,equiv2_3)
+              }
+      
+      stopCluster(cl)
+      })
+
+```
+
+
+
+
+# Process: variable importance
 ```{r}
 
 modelstoload <- unlist(lapply(c("random","system"), function(x){
@@ -834,6 +844,17 @@ load(modelstoload[1])
 maxModels <- lapply(modelstoload, function(x) load(x))
 response(xm) # response curve shapes
 plot(xm) # variable contriubtion
+var.importance <- data.frame(Var = row.names(xm@results), xm@results)[7:12,]
+
+# evaluate models
+evalstoload <- list.files(path = pathstart,
+                           pattern = "evaluate",
+                           full.names = TRUE)
+evalModels <- lapply(evalstoload, function(x) load(x))
+
+load(evalstoload[1])
+threshold(e)  # can get prevalence and other measures for thresholds
+plot(e, 'ROC')
 ```
 
 
