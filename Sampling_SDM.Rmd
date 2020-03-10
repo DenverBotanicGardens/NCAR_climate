@@ -453,7 +453,7 @@ random_sampling <- function(suitability.raster, samplesize){
 ### adaptive cluster sampling  
 # function to find the surrounding cells
 # check if on edge is it 1 or max row or col then select the remaining ones
-surroundingcells <- function(cellRowCol){
+surroundingcells <- function(cellRowCol, suitability.raster){
   out <- data.frame(Cells = c(cellFromRowCol(suitability.raster, cellRowCol[1], cellRowCol[2]), # center cell; 1
                           cellFromRowCol(suitability.raster, cellRowCol[1]-1, cellRowCol[2]-1),
                           cellFromRowCol(suitability.raster, cellRowCol[1]-1, cellRowCol[2]),
@@ -496,6 +496,10 @@ surroundingcells <- function(cellRowCol){
   out
 }
 
+# Test
+# suitability.raster <- predic_raster
+# samplesize <- 20
+# rm(suitability.raster);rm(samplesize)
 
 adaptive_cluster <- function(suitability.raster, samplesize){
   n <- 0
