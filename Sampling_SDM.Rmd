@@ -12,19 +12,13 @@ output: html_document
 
 rm(list=ls())
 
-# maybe a mix of R3.5.X and R3.6.X so need to update everything?
-# update.packages(ask = FALSE, checkBuilt = TRUE)
-
-# maybe broken and not getting updated or removed, need to find and delete
-# find.package("knitr")
-# remove.packages("knitr")
-
 
 # Sys.setenv(JAVA_HOME="C:/Program Files (x86)/Java/jre1.8.0_241/lib/") # for 64-bit version
 # install.packages("rJava")
 # library(rJava)
 
 library(diagram)
+library(ggplot2)
 
 require(DiagrammeR)
 
@@ -32,11 +26,6 @@ require(DiagrammeR)
 library(virtualspecies)
 
 # SDM
-# Sys.getenv("JAVA_HOME")
-# Sys.setenv(JAVA_HOME="C:/Program Files (x86)/Java/jre1.8.0_241/lib/") # for 64-bit version
-# Sys.setenv(JAVA_HOME="C:/Program Files (x86)/Java/") # for 64-bit version
-# Sys.setenv(JAVA_HOME="C:/Program Files (x86)/Common Files/Oracle/Java/") # for 64-bit version
-# Sys.setenv(JAVA_HOME="C:/Users/DePrengm/R/R-3.6.2/library/rJava/libs") # for 64-bit version
 library(rJava)
 
 library(dismo)
@@ -219,6 +208,7 @@ grViz("digraph flowchart {
 ```
 
 
+
 ```{r}
 colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
 
@@ -233,6 +223,7 @@ rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
 ```
 
 
+### Skip ###
 Use maxent, and then refine the relatonships of environment and points  
 ```{r}
 clru <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Claytonia rubra_SEINet/occurrences.csv")
@@ -241,11 +232,6 @@ plot(colocounties)
 points(clru$decimalLongitude, clru$decimalLatitude, col="blue")
 # points(clar$decimalLongitude, clar$decimalLatitude)
 
-
-```
-
-
-```{r}
 
 clru <- clru[complete.cases(clru$decimalLatitude),]
 clruspdf <- SpatialPointsDataFrame(coords = clru[,c("decimalLongitude","decimalLatitude")],
@@ -258,7 +244,7 @@ SDMtune
 # install.packages("SDMtune")
 library(SDMtune)
 ```
-## Skip to next to load normalized layers
+
 
 # Virtual species 
 <http://borisleroy.com/files/virtualspecies-tutorial.html>
@@ -310,9 +296,9 @@ plot(scale(rasterstack_norm[[1]]), main="scaled normalized")
 # scale in raster::scale just give the z-score
 names(rasterstack_norm) <- c("Elevation","Bio1","Bio11","Bio12","Bio19","dummy")
 
-for(i in 1:6){
-    writeRaster(rasterstack_norm[[i]], paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/rasterstack_normalized,",i,".tif",sep=""), overwrite=TRUE)
-}
+# for(i in 1:6){
+#     writeRaster(rasterstack_norm[[i]], paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/rasterstack_normalized,",i,".tif",sep=""), overwrite=TRUE)
+# }
 
 
 ```
@@ -343,7 +329,7 @@ predic_raster <- calc(predic_raster, function(x){
 
 ```{r}
 jpeg("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig1a_abioticvars.jpg",
-     width=170, height=100,units='mm', res=300)
+     width=173, height=105,units='mm', res=300)
         par(mar=c(2.1,2.1,1.1,2.1))
         plot(predic_raster)
         mtext("a)", side=3, line=0, adj=0)
@@ -516,7 +502,7 @@ adaptive_cluster <- function(suitability.raster, samplesize){
       n <- n+1
       samples <- rbind(samples, xyFromCell(suitability.raster, randcell))
       if(n == samplesize) break
-      surrcells <- surroundingcells(randcellRowCol)
+      surrcells <- surroundingcells(randcellRowCol, suitability.raster)
       
       # check surrounding cells of a 'presence' and start this cluster
       j <- 2 # move down the table of cells, adding non-duplicated if cell occupied, first row is center of cluster, included to check for dupliates
@@ -524,7 +510,7 @@ adaptive_cluster <- function(suitability.raster, samplesize){
       while(j < nrow(surrcells)){
         if(rbinom(1,1,getValues(suitability.raster)[surrcells$Cells[j]]) == 1){
           samples <- rbind(samples, xyFromCell(suitability.raster, surrcells$Cells[j]))
-          surrcells <- rbind(surrcells, surroundingcells(as.numeric(paste(surrcells[j,c(2:3)]))) )
+          surrcells <- rbind(surrcells, surroundingcells(as.numeric(paste(surrcells[j,c(2:3)])),suitability.raster) )
           surrcells <- surrcells[!duplicated(surrcells$Cells),] # only add the surrounding cells not already included
           j <- j+1 # move down surrounding cells of original cluster 
           n <- n+1 # added to sample
@@ -682,7 +668,7 @@ Maxent compared to the 'true' distribution
 #test 
 rasterstack <- rasterstack_norm
 # sampling_type <- "system"
-pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations/"
+# pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations/"
 true.dist <- predic_raster
 # reps <- 2
 # sampling_type <- "ra"
@@ -705,10 +691,11 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
   }
   
   for(r in 1:reps){
-    fold <- kfold(sample_xy, k=5) # withold 20% of the sample for testing; or just use whole sample and test with random background?
-    occtest <- sample_xy[fold == 1,]
-    occtrain <- sample_xy[fold != 1,]
-    xm <- maxent(x = rasterstack, p = occtrain,  args=c(
+    # fold <- kfold(sample_xy, k=5) # withold 20% of the sample for testing; or just use whole sample and test with random background?
+    # occtest <- sample_xy[fold == 1,]
+    # occtrain <- sample_xy[fold != 1,]
+    # xm <- maxent(x = rasterstack, p = occtrain,  args=c(
+    xm <- maxent(x = rasterstack, p = sample_xy, args=c(
   # 'maximumbackground=10000',
   'defaultprevalence=1.00',
   # 'betamultiplier=0.5',
@@ -724,8 +711,9 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
   'jackknife=true',
   'askoverwrite=false'
 ))
-    write.csv(data.frame(sample_xy, fold), paste(pathstart,"maxentOcc",sampling_type,"rep",r,".csv",sep=""))
-    save(xm, file = paste(pathstart, "maxent",sampling_type,"rep",r,".Rda",sep=""))
+    # write.csv(data.frame(sample_xy, fold), paste(pathstart,"maxentOcc",sampling_type,"rep",r,".csv",sep=""))    
+    write.csv(sample_xy, paste(pathstart,"maxentOcc",sampling_type,"rep",r,"SampleSize",samplesize,".csv",sep=""))
+    save(xm, file = paste(pathstart, "maxent",sampling_type,"rep",r,"SampleSize",samplesize,".Rda",sep=""))
     
     gc()
     ncores <- detectCores()-1
@@ -745,11 +733,12 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
       raster::predict(sub, xm, filename = paste(outname, i, sep="_"), overwrite = TRUE)
     }
     
+    # Do I care? Do I need to get the AUC? I don't think I care
     # random background data
-    bg <- randomPoints(rasterstack, 300)
-    e <- evaluate(xm, p=occtest, a=bg, x=rasterstack)
-    save(e, file = paste(pathstart, "evaluate", sampling_type,"rep",r,".Rda",sep=""))
-    
+    # bg <- randomPoints(rasterstack, 300)
+    # e <- evaluate(xm, p=occtest, a=bg, x=rasterstack)
+    # save(e, file = paste(pathstart, "evaluate", sampling_type,"rep",r,".Rda",sep=""))
+    # 
     rm(xm)
     gc()
     stopCluster(cl)
@@ -762,7 +751,7 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
     rastout <- lapply(resultpath, function(x){
       raster(x)
       })
-    rastout$filename <- paste(pathstart,"ProbTiff",r,sampling_type,"Rep",k,".tif", sep="")
+    rastout$filename <- paste(pathstart,"ProbTiff",sampling_type,"Rep",k,"SampleSize",samplesize,".tif", sep="")
     rastout$overwrite <- TRUE
     m <- do.call(merge, rastout)
   })
@@ -780,21 +769,69 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
 <https://www.youtube.com/watch?v=2vgX7QoyPJo&feature=youtu.be&fbclid=IwAR2mvP8p9LDdz1LefrCwjcMMXi1l_uLI1m-1-sIiydHqHyIpMwcooSoz6lc> 
 
 ```{r}
-pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations/"
 
-maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "random", reps = 10, samplesize = 50, pathstart = pathstart)
+# pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations/"
+# pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200313/"
 
-maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "system", reps = 10, samplesize = 50, pathstart = pathstart)
-
-maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "convenience", reps = 10, samplesize = 50, pathstart = pathstart)
-
-maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "cluster", reps = 10, samplesize = 50, pathstart = pathstart)
+pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200314/"
 
 
+lapply(c(3:10, 20, 30, 50, 100), function(sampsize){
+    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "random", reps = 100, samplesize = sampsize, pathstart = pathstart)
+    
+    # maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "system", reps = 10, samplesize = 100, pathstart = pathstart)
+    
+    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "convenience", reps = 100, samplesize = sampsize, pathstart = pathstart)
+    
+    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "cluster", reps = 100, samplesize = sampsize, pathstart = pathstart)
+})
+    
+
+
+# failed at cluster sample size 20 rep 85...
 ```
+
+   
+ 
 
 # Pattern: correlation between, within, and to the systematic  
 ```{r}
+
+## UPDATE WITH SAMPLE SIZE IN NAME!!
+for(ss in c(3:10,20)){
+  
+  r_random <- raster(list.files(path = pathstart, 
+                                    pattern = paste("ProbTiffrandomRep", sample(1:100,1),"SampleSize",ss, ".tif", sep=""),
+                                    full.names = TRUE))
+  plot(getValues(predic_raster), getValues(r_random), pch=16, cex=0.5)
+for(i in 1:5){
+  r_random <- raster(list.files(path = pathstart, 
+                                    pattern = paste("ProbTiffrandomRep", sample(1:10,1), ".tif", sep=""),
+                                    full.names = TRUE))
+  points(getValues(predic_raster), getValues(r_random), pch=16, cex=0.5, col = i)
+  }
+}
+
+
+# plot(predic_raster)
+
+
+    r_clust <- raster(list.files(path = pathstart, 
+                                    pattern = paste("ProbTiffclusterRep", sample(1:10,1), ".tif", sep=""),
+                                    full.names = TRUE))
+  plot(getValues(predic_raster), getValues(r_clust), pch=16, cex=0.25)
+for(i in 1:5){
+  r_random <- raster(list.files(path = pathstart, 
+                                    pattern = paste("ProbTiffclusterRep", sample(1:10,1), ".tif", sep=""),
+                                    full.names = TRUE))
+  points(getValues(predic_raster), getValues(r_clust), pch=16, cex=0.25, col = i)
+  }
+
+```
+
+
+```{r}
+
 
 # c("system","random","convenience","cluster")
 All_nicheEquivalency <- lapply(1:10, function(i) {
@@ -813,6 +850,9 @@ All_nicheEquivalency <- lapply(1:10, function(i) {
       Sp3 <- SpatialPoints(sp3[,c("x","y")],
                            proj4string =
                              CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+      
+
+      
       registerDoParallel(cl)
       trials <- 100
       foreach(icount(trials),  
@@ -828,6 +868,62 @@ All_nicheEquivalency <- lapply(1:10, function(i) {
       stopCluster(cl)
       })
 
+
+true_random <- lapply(1:100, function(x){
+      
+          ## Correlation to true
+          rtrue <- raster(list.files(path = pathstart, 
+                                  pattern = paste("ProbTiffsystemRep", sample(1:10,1), ".tif", sep=""),
+                                  full.names = TRUE))
+          rsimprand <- raster(list.files(path = pathstart, 
+                                  pattern = paste("ProbTiffrandomRep", sample(1:10,1), ".tif", sep=""),
+                                  full.names = TRUE))
+          cor_True_System <- layerStats(stack(rtrue, predic_raster), 'pearson', na.rm=TRUE)  # non-parameteric, not normally distributied and relationship not linear
+          cor_True_System$`pearson correlation coefficient`
+          
+          cor_True_Random <- layerStats(stack(rsimprand, predic_raster), 'pearson', na.rm=TRUE)  # non-parameteric, not normally distributied and relationship not linear
+          cor_True_Random$`pearson correlation coefficient`
+          
+          out <- data.frame(True = cor_True_System$`pearson correlation coefficient`[2], Random = cor_True_Random$`pearson correlation coefficient`[2])
+          out
+})
+
+true_random <- do.call(rbind, true_random)
+
+ggplot(true_random, aes(True, Random))+
+  geom_point()+
+  theme_bw()+
+  geom_abline(slope = 1, intercept = 0)+
+  scale_x_continuous(limits = c(0,1))+
+  scale_y_continuous(limits = c(0,1))
+
+
+cluster_random <- do.call(rbind,lapply(1:100, function(x){
+      
+          ## Correlation to true
+          rclust <- raster(list.files(path = pathstart, 
+                                  pattern = paste("ProbTiffclusterRep", sample(1:10,1), ".tif", sep=""),
+                                  full.names = TRUE))
+          rsimprand <- raster(list.files(path = pathstart, 
+                                  pattern = paste("ProbTiffrandomRep", sample(1:10,1), ".tif", sep=""),
+                                  full.names = TRUE))
+          cor_True_System <- layerStats(stack(rclust, predic_raster), 'pearson', na.rm=TRUE)  # non-parameteric, not normally distributied and relationship not linear
+          cor_True_System$`pearson correlation coefficient`
+          
+          cor_True_Random <- layerStats(stack(rsimprand, predic_raster), 'pearson', na.rm=TRUE)  # non-parameteric, not normally distributied and relationship not linear
+          cor_True_Random$`pearson correlation coefficient`
+          
+          out <- data.frame(Cluster = cor_True_System$`pearson correlation coefficient`[2], Random = cor_True_Random$`pearson correlation coefficient`[2])
+          out
+}))
+
+
+ggplot(cluster_random, aes(Cluster, Random))+
+  geom_point()+
+  theme_bw()+
+  geom_abline(slope = 1, intercept = 0)+
+  scale_x_continuous(limits = c(0,1))+
+  scale_y_continuous(limits = c(0,1))
 ```
 
 
@@ -893,5 +989,91 @@ r_suitability <- stackApply(rasterstack3_z, indices = 1:6, function(x) )
 ```
 
 
+
+
+
+Cite Abdi, Abdulhakim M., et al. "The El Niño–La Niña cycle and recent trends in supply 
+ and demand of net primary productivity in African drylands." Climatic Change 138.1-2 (2016): 111-125. 
+ https://link.springer.com/article/10.1007/s10584-016-1730-1  
+Don't know if I need this 
+<https://www.hakimabdi.com/blog/test-pixelwise-correlation-between-two-time-series-of-gridded-satellite-data-in-r?fbclid=IwAR0aWWWwKX6IQUhEpzT1saT2yXtHPpwFmesC6eKXRbtMaGoGSdffZc35kWw>
+```{r}
+gridcorts <- function(rasterstack, method, type=c("corel","pval","both")){
+  # Values for (layers, ncell, ncol, nrow, method, crs, extent) come straight from the input raster stack
+  # e.g. nlayers(rasterstack), ncell(rasterstack)... etc.
+  print(paste("Start Gridcorts:",Sys.time()))
+  print("Loading parameters")
+  layers=nlayers(rasterstack);ncell=ncell(rasterstack);
+  ncol=ncol(rasterstack);nrow=nrow(rasterstack);crs=crs(rasterstack);
+  extent=extent(rasterstack);pb = txtProgressBar(min = 0, max = ncell, initial = 0)
+  print("Done loading parameters")
+  mtrx <- as.matrix(rasterstack,ncol=layers)
+  empt <- matrix(nrow=ncell, ncol=2)
+  print("Initiating loop operation")
+  if (type == "corel"){
+    for (i in 1:ncell){
+      setTxtProgressBar(pb,i)
+      if (all(is.na(mtrx[i,1:(layers/2)])) | all(is.na(mtrx[i,((layers/2)+1):layers]))){ 
+        empt[i,1] <- NA 
+      } else 
+        if (sum(!is.na(mtrx[i,1:(layers/2)]/mtrx[i,((layers/2)+1):layers])) < 4 ){
+          empt[i,1] <- NA 
+        } else 
+          empt[i,1] <- as.numeric(cor.test(mtrx[i,1:(layers/2)], mtrx[i,((layers/2)+1):layers],method=method)$estimate)
+    }
+    print("Creating empty raster")
+    corel <- raster(nrows=nrow,ncols=ncol,crs=crs)
+    extent(corel) <- extent
+    print("Populating correlation raster")
+    values(corel) <- empt[,1]
+    print(paste("Ending Gridcorts on",Sys.time()))
+    corel
+  } 
+  else
+    if (type == "pval"){
+      for (i in 1:ncell){
+        setTxtProgressBar(pb,i)
+        if (all(is.na(mtrx[i,1:(layers/2)])) | all(is.na(mtrx[i,((layers/2)+1):layers]))){ 
+          empt[i,2] <- NA 
+        } else 
+          if (sum(!is.na(mtrx[i,1:(layers/2)]/mtrx[i,((layers/2)+1):layers])) < 4 ){
+            empt[i,2] <- NA 
+          } else 
+            empt[i,2] <- as.numeric(cor.test(mtrx[i,1:(layers/2)], mtrx[i,((layers/2)+1):layers],method=method)$p.value)
+      }
+      pval <- raster(nrows=nrow,ncols=ncol,crs=crs)
+      extent(pval) <- extent
+      print("Populating significance raster")
+      values(pval) <- empt[,2]
+      print(paste("Ending Gridcorts on",Sys.time()))
+      pval
+    }
+  else
+    if (type == "both"){
+      for (i in 1:ncell){
+        setTxtProgressBar(pb,i)
+        if (all(is.na(mtrx[i,1:(layers/2)])) | all(is.na(mtrx[i,((layers/2)+1):layers]))){ 
+          empt[i,] <- NA 
+        } else 
+          if (sum(!is.na(mtrx[i,1:(layers/2)]/mtrx[i,((layers/2)+1):layers])) < 4 ){
+            empt[i,] <- NA 
+          } else {
+            empt[i,1] <- as.numeric(cor.test(mtrx[i,1:(layers/2)], mtrx[i,((layers/2)+1):layers],method=method)$estimate) 
+            empt[i,2] <- as.numeric(cor.test(mtrx[i,1:(layers/2)], mtrx[i,((layers/2)+1):layers],method=method)$p.value)
+          }
+      }
+      c <- raster(nrows=nrow,ncols=ncol,crs=crs)
+      p <- raster(nrows=nrow,ncols=ncol,crs=crs)
+      print("Populating raster brick")
+      values(c) <- empt[,1]
+      values(p) <- empt[,2]
+      brk <- brick(c,p)
+      extent(brk) <- extent
+      names(brk) <- c("Correlation","Pvalue")
+      print(paste("Ending Gridcorts on",Sys.time()))
+      brk
+    }
+}
+```
 
 
