@@ -8,6 +8,7 @@ output: html_document
 ```{r}
 rm(list=ls())
 
+
 ```
 
 Packages
@@ -831,8 +832,9 @@ CellsOccupied <- do.call(rbind,lapply(atleast12, function(i){
     
     spFile <- do.call(rbind,lapply(filenames[c(1:2,4)], function(f){
       pr <- read.csv(paste(pathstart,"presenceHerb", f, "Sp",i,"kfold",k,".csv",sep=""))
+      samplesize <- nrow(pr[pr$kfold!=1,])
       cells <- length(unique(cellFromXY(rasterstack, pr[pr$kfold!=1,c("decimalLongitude","decimalLatitude")]))) # lat.1 are UTM in herbarium records
-      out <- data.frame(CellsOccupied = cells, Dataset = f, rep = k, SpNum = i, Species = g1g2namesall68$AcceptedName[i])
+      out <- data.frame(CellsOccupied = cells, SampleSize = samplesize, Dataset = f, rep = k, SpNum = i, Species = g1g2namesall68$AcceptedName[i])
       out
       }))
     
@@ -844,6 +846,11 @@ CellsOccupied <- do.call(rbind,lapply(atleast12, function(i){
 
 ggplot(CellsOccupied, aes(Dataset, CellsOccupied))+
   geom_boxplot()
+
+ggplot(CellsOccupied, aes(SampleSize, CellsOccupied, colour = Dataset, shape = Dataset))+
+  geom_jitter(width = 2, height = 2)+
+  theme_bw()
+
 ```
 
 ## Somehow forgot how to read lm output, help!
@@ -905,7 +912,7 @@ slopecomb <- sum(cellslm1$coefficients[c(2,4,6)]) # 1.33
 interEOR <- cellslm1$coefficients[1] # 19.06`
 # interHerb <- (cellslm1$coefficients[1:2]) # no no no
 
-ggplot(tab1_cells, aes(log(DistAvg.Dist), CellsOccupied, colour = Dataset))+
+ggplot(tab1_cells, aes(CellsOccupied,log(DistAvg.Dist),  colour = Dataset))+
   geom_jitter(width=.5)+
   stat_smooth(method = "lm")+
   theme_bw()
@@ -1023,7 +1030,7 @@ ggplot(habspebig, aes(y = habspec/1000, x = log(CellsOccupied), colour = HerbTyp
   # theme_bw()+
   ylab(expression(paste("Habitat specificity ",frac("95%CI","1000"))))+
   xlab(expression("Occupied Cells"[log]))+
-  scale_color_manual(values=c("grey50","black","white"),  # "slateblue", "#E69F00", "orangered"
+  scale_color_manual(values=c("slateblue", "#E69F00", "orangered"), # c("grey50","black","white"),  # "slateblue", "#E69F00", "orangered"
                        name="Dataset",
                        breaks=c("As-Is_bg5000", "Combined_bg5000", "EOR_bg5000"),
                        labels=c("Herbarium", "Combined", "Field Survey"))+
@@ -1295,8 +1302,8 @@ fig3 <-
   scale_fill_manual(values = c("grey","white","grey30","grey","white","grey30"),
                     name = "Dataset / background",
                     breaks = c(paste(filenames[-3]), paste(filenamesbig[-3])),
-                    labels = c("EOR / 500 km","herbarium / 500 km","combined / 500 km",
-                               "EOR / 5 km",  "herbarium / 5 km",  "combined / 5 km"))
+                    labels = c("field survey / 500 km","herbarium / 500 km","combined / 500 km",
+                               "field survey / 5 km",  "herbarium / 5 km",  "combined / 5 km"))
 # +
 #   scale_x_discrete(breaks = c(paste(filenames[-3]), paste(filenamesbig[-3])), 
 #                    labels =c("","small (5 km)","","","large (500 km)",""))
@@ -1304,7 +1311,7 @@ fig3 <-
 
 
 # was fig 3??
-ggsave(filename = "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Uncertainty data source Chapter XX/fig4_20200305_AUC.png", fig3, width = 150, height = 80, dpi = 300, units = "mm", device='png')
+ggsave(filename = "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Uncertainty data source Chapter XX/fig4_20200319_AUC.png", fig3, width = 150, height = 80, dpi = 300, units = "mm", device='png')
 
 # effect size as the estimate and standard error? 
 summary(lm(AUC~filename, data=maxevaluates))
