@@ -1466,7 +1466,9 @@ overlap_values <- melt(rbind(OverlapBig.df,OverlapSmall.df), id.vars = list("Bac
 ```{r}
 levels(overlap_values$Background)
 
-png("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure5_nicheOverlap.jpg",
+
+png("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Uncertainty data source Chapter XX/Figure5_nicheOverlap.png",
+# png("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/Figure5_nicheOverlap.jpg",
      width=150, height=80,units='mm', res=300)
 
 
@@ -1480,7 +1482,13 @@ ggplot(overlap_values, aes(variable, value, fill = Background))+
                   breaks = c("Big","Small"),
                   labels = c("Large","Small"))+
   scale_x_discrete(breaks =c("OverlapEOR_AsIs","OverlapEOR_comb","OverlapAsIs_comb"),
-                   labels =c("EOR - herbarium", "EOR - Combined", "herbarium - Combined"))
+                   labels =c(expression(atop("field survey -", " herbarium")), 
+                             expression(atop("field survey -", " combined")), 
+                             expression(atop("herbarium -", " combined"))))
+
+
+
+        
 dev.off()
 ```
 
@@ -2319,6 +2327,47 @@ lapply(atleast12, function(i){
 #         plot(rastout)
 #         })
 # })
+
+
+# For the large background extent
+lapply(atleast12, function(i){ 
+  
+  jpeg(paste("Q:/Research/Projects/alpine-phenology/Uncertainty in niche modeling/Images/S1_AvgMapsBigbg_",
+             g1g2namesall68$AcceptedName[i],".jpg", sep=""),
+       width=560, height=110,units='mm', res=300)
+
+    rastout <- lapply(filenamesbig[-3], function(f){
+     # for(f in filenames[-3]){ 
+      resultpath <- list.files(path = pathstart,
+                               pattern = paste("AvgTiffSp",i,"Herb",f,
+                                               g1g2namesall68$AcceptedName[i], sep=""),
+                               full.names=TRUE)
+      rastout <- raster(resultpath)
+      
+    # par(mar =  c(5.1, 4.1, 4.1, 2.1))
+    #   plot(rastout)
+      })
+    
+  # layout(matrix(c(1:4), 1,4), widths = c(1,5,5,5))
+  # layout.show(n=4)
+    
+    par(mfrow=c(1,4))
+  # 1  
+    par(mar = c(0,0,0,0))
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 1, y = 0.5, g1g2namesall68$AcceptedName[i], cex = 2.5, srt = 90)
+    
+  # 2:4
+    par(mar =  c(2.1, 4.1, 4.1, 4.1))
+    plot(rastout[[1]])
+    # mtext()
+    plot(rastout[[2]])
+    plot(rastout[[3]])
+    
+  
+  dev.off()
+})
+
 ```
 
 
