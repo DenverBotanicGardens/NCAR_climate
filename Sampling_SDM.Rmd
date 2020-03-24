@@ -964,51 +964,6 @@ for(ss in c(3:10, 20,30,50,100)){
 ```
 
 
-Try to grob all onto one plot
-```{r}
-pp1 <- ggplot_build(random2true[[1]][[2]])
-pp2 <- ggplot_build(random2true[[2]][[2]])$data[[1]]
-pp1$data[[1]]$fill[grep(pattern = "^2", pp2$group)] <- pp2$fill[grep(pattern = "^2", pp2$group)]
-
-# build plot grobs
-grob1 <- ggplot_gtable(pp1)
-# grob2 <- ggplotGrob(random2true[[2]][[2]])
-grob2 <- list()
-for(i in 2:5){
-  grob2[[i]] <- ggplotGrob(random2true[[i]][[2]])
-}
-
-# build legend grobs
-leg1 <- gtable_filter(grob1, "guide-box") 
-# leg2 <- gtable_filter(grob2, "guide-box") 
-leg2 <- list()
-for(i in 2:5){
-  leg2[[i]] <- gtable_filter(grob2[[i]], "guide-box")
-}
-leg <- gtable:::rbind_gtable(leg1[["grobs"]][[1]],  leg2[[2]][["grobs"]][[1]],
-                             # leg2[[3]][["grobs"]][[1]],
-                             # leg2[[4]][["grobs"]][[1]],
-                             # leg2[[5]][["grobs"]][[1]],
-                             "first")
-leg <- gtable:::rbind_gtable(leg, leg2[[3]][["grobs"]][[1]], "first")
-leg <- gtable:::rbind_gtable(leg, leg2[[4]][["grobs"]][[1]], "first")
-leg <- gtable:::rbind_gtable(leg, leg2[[5]][["grobs"]][[1]], "first")
-
-
-# replace legend in 'red' plot
-grob1$grobs[grob1$layout$name == "guide-box"][[1]] <- leg
-
-
-# plot
-grid.newpage()
-grid.draw(grob1)
-grid.draw(grob2[[2]])
-grid.draw(grob2[[3]])
-grid.draw(grob2[[4]])
-grid.draw(grob2[[5]])
-```
-
-
 ```{r}  
   ggplot(random2true, aes(true, random, colour = as.factor(samplesize)))+
     geom_point(pch=16, alpha = 0.25)+
