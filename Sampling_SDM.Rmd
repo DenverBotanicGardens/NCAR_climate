@@ -80,7 +80,7 @@ thin.max <- function(x, cols, npoints){
 }
 ```
 
-
+Systematic should either be removed or treated as spatially unbiased while simple random is both spatially and environmentally unbiased because environemtnal variables are spatially autocorrelated. 
 
 DiagrammeR 
 ```{r}
@@ -625,8 +625,6 @@ for(x in 1:10){
   dev.off()
   }
 
-
-
 ############ Adaptive Cluster ###############
 for(x in 1:10){
   cluster1 <- adaptive_cluster(predic_raster, 100)
@@ -673,6 +671,8 @@ true.dist <- predic_raster
 # reps <- 2
 # sampling_type <- "ra"
 # rm(rasterstack); rm(true.dist); rm(sampling_type)
+
+# rasterstack = predictor variables; true.dist = true distribution of suitability; conveience.raster = the raster of density of all herbarium collections sampled from three different years, could be roads or trails
 
 maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","systematic","convenience","cluster"),
                             convenience.raster = p_norm,
@@ -775,8 +775,8 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
 
 pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200314/"
 
-
-lapply(c(3:10, 20, 30, 50, 100), function(sampsize){
+# 3:10, 
+lapply(c(20, 30, 50, 100), function(sampsize){
     maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "random", reps = 100, samplesize = sampsize, pathstart = pathstart)
     
     # maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "system", reps = 10, samplesize = 100, pathstart = pathstart)
@@ -785,49 +785,251 @@ lapply(c(3:10, 20, 30, 50, 100), function(sampsize){
     
     maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "cluster", reps = 100, samplesize = sampsize, pathstart = pathstart)
 })
-    
 
+
+# errors unknown, NA by coercion??
+lapply(c(6:10, 20,30,50,100), function(sampsize){
+  maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "systematic", reps = 100, samplesize = sampsize, pathstart = pathstart)
+})
 
 # failed at cluster sample size 20 rep 85...
+
+for(ss in c(3:10, 20, 30, 50, 100)){
+  cluster1 <- adaptive_cluster(predic_raster, ss)
+  plot(cluster1)
+}
+    
 ```
 
-   
+
  
 
-# Pattern: correlation between, within, and to the systematic  
+# Pattern: correlation to the true distribution  
 ```{r}
 
-## UPDATE WITH SAMPLE SIZE IN NAME!!
-for(ss in c(3:10,20)){
+# c(3:10, 20,30,50,100)
+for(ss in c(3:10, 20,30,50,100)){
   
   r_random <- raster(list.files(path = pathstart, 
                                     pattern = paste("ProbTiffrandomRep", sample(1:100,1),"SampleSize",ss, ".tif", sep=""),
                                     full.names = TRUE))
-  plot(getValues(predic_raster), getValues(r_random), pch=16, cex=0.5)
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/random2true_samplesize",ss,".jpg", sep=""),
+       width=173, height=105,units='mm', res=300)
+  
+  plot(getValues(predic_raster), getValues(r_random), 
+       xlim = c(0,1), ylim = c(0,1), pch=16, cex=0.25, xlab="True Distribution", ylab="Random sampling",main=paste("Suitability by Pixel, Sample Size",ss))
 for(i in 1:5){
   r_random <- raster(list.files(path = pathstart, 
-                                    pattern = paste("ProbTiffrandomRep", sample(1:10,1), ".tif", sep=""),
+                                    pattern = paste("ProbTiffrandomRep", sample(1:100,1),"SampleSize",ss, ".tif", sep=""),
                                     full.names = TRUE))
-  points(getValues(predic_raster), getValues(r_random), pch=16, cex=0.5, col = i)
-  }
+  points(getValues(predic_raster), getValues(r_random), pch=16, cex=0.5, col = rgb(i/(i+1),0,i/(i+5),0.05))
+}
+  dev.off()
+}
+
+# systematic
+for(ss in c(3:10, 20,30,50,100)){
+  
+  r_systematic <- raster(list.files(path = pathstart, 
+                                    pattern = paste("ProbTiffsystematicRep", sample(1:100,1),"SampleSize",ss, ".tif", sep=""),
+                                    full.names = TRUE))
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/systematic2true_samplesize",ss,".jpg", sep=""),
+       width=173, height=105,units='mm', res=300)
+  
+  plot(getValues(predic_raster), getValues(r_systematic), 
+       xlim = c(0,1), ylim = c(0,1), pch=16, cex=0.25, xlab="True Distribution", ylab="Systematic sampling",main=paste("Suitability by Pixel, Sample Size",ss))
+for(i in 1:5){
+  r_systematic <- raster(list.files(path = pathstart, 
+                                    pattern = paste("ProbTiffsystematicRep", sample(1:100,1),"SampleSize",ss, ".tif", sep=""),
+                                    full.names = TRUE))
+  points(getValues(predic_raster), getValues(r_systematic), pch=16, cex=0.5, col = rgb(i/(i+1),0,i/(i+5),0.05))
+}
+  dev.off()
 }
 
 
-# plot(predic_raster)
-
-
+# adaptive cluster
+for(ss in c(3:10,20,30,50,100)){
     r_clust <- raster(list.files(path = pathstart, 
-                                    pattern = paste("ProbTiffclusterRep", sample(1:10,1), ".tif", sep=""),
+                                    pattern = paste("ProbTiffclusterRep", sample(1:80,1),"SampleSize",ss, ".tif", sep=""),
                                     full.names = TRUE))
-  plot(getValues(predic_raster), getValues(r_clust), pch=16, cex=0.25)
+
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/cluster2true_samplesize",ss,".jpg", sep=""),
+       width=153, height=105,units='mm', res=300)
+  
+  plot(getValues(predic_raster), getValues(r_clust), 
+       xlim = c(0,1), ylim = c(0,1), pch=16, cex=0.25, xlab="True Distribution", ylab="Adaptive Cluster sampling",main=paste("Suitability by Pixel, Sample Size",ss))
 for(i in 1:5){
-  r_random <- raster(list.files(path = pathstart, 
-                                    pattern = paste("ProbTiffclusterRep", sample(1:10,1), ".tif", sep=""),
+  r_clust <- raster(list.files(path = pathstart, 
+                                    pattern = paste("ProbTiffclusterRep",sample(1:80,1),"SampleSize",ss, ".tif", sep=""),
                                     full.names = TRUE))
-  points(getValues(predic_raster), getValues(r_clust), pch=16, cex=0.25, col = i)
-  }
+  points(getValues(predic_raster), getValues(r_clust), pch=16, cex=0.25, col = rgb(i/(i+1),i/(i+i),i/(i+5),0.05))
+}
+  dev.off()
+}
+
+# Convenience
+for(ss in c(3:10,20,30,50,100)){
+    r_clust <- raster(list.files(path = pathstart, 
+                                    pattern = paste("ProbTiffconvenienceRep", sample(1:80,1),"SampleSize",ss, ".tif", sep=""),
+                                    full.names = TRUE))
+
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/convenience2true_samplesize",ss,".jpg", sep=""),
+       width=153, height=105,units='mm', res=300)
+  
+  plot(getValues(predic_raster), getValues(r_clust), 
+       xlim = c(0,1), ylim = c(0,1), pch=16, cex=0.25, xlab="True Distribution", ylab="Convenience sampling",main=paste("Suitability by Pixel, Sample Size",ss))
+for(i in 1:5){
+  r_clust <- raster(list.files(path = pathstart, 
+                                    pattern = paste("ProbTiffconvenienceRep",sample(1:80,1),"SampleSize",ss, ".tif", sep=""),
+                                    full.names = TRUE))
+  points(getValues(predic_raster), getValues(r_clust), pch=16, cex=0.25, col = rgb(i/(i+1),i/(i+i),i/(i+5),0.05))
+}
+  dev.off()
+}
 
 ```
+
+
+```{r}
+
+library(MASS)
+library("RColorBrewer")
+library(dplyr)
+library(gtable)
+
+random2true <- lapply(c(10, 20,30,50,100), function(ss){
+  
+  r_random <- raster(list.files(path = pathstart, 
+                                    pattern = paste("ProbTiffrandomRep", sample(1:100,1),"SampleSize",ss, ".tif", sep=""),
+                                    full.names = TRUE))
+  # jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/random2true_samplesize",ss,".jpg", sep=""),
+       # width=173, height=105,units='mm', res=300)
+
+  random2true <- data.frame(true = getValues(predic_raster), random = getValues(r_random), samplesize = ss)
+
+  
+  plot <- ggplot(random2true, aes(true, random, colour = as.factor(samplesize)))+
+    stat_density2d(aes(fill = ..level..), alpha = 0.3, geom = "polygon")+
+    scale_fill_continuous(low = "grey", high = colors()[ss], space = "Lab",
+                          name = paste("samplesize =", ss))+
+    scale_color_discrete(guide = FALSE)+
+    expand_limits(x = c(0,1), y = c(0,1))+
+    theme_bw()
+  
+  out <- list(sample_n(random2true, size = 100000), plot)
+  out
+})
+```
+
+```{r}
+
+
+for(i in 1:5){
+  print(random2true[[i]][[2]])
+}
+
+```
+
+```{r}
+
+for(ss in c(3:10, 20,30,50,100)){
+  for(sampd in c("random", "cluster", "systematic", "convenience")){
+    
+    r_random <- raster(list.files(path = pathstart, 
+                                      pattern = paste("ProbTiff", sampd, "Rep", sample(1:100,1),"SampleSize",ss, ".tif", sep=""),
+                                      full.names = TRUE))
+  
+    random2true <- data.frame(true = getValues(predic_raster), V1 = getValues(r_random), samplesize = ss)
+    # names(random2true)[names(random2true == "V1")] <- sampd
+
+    p <- ggplot(random2true, aes(true, V1, colour = as.factor(samplesize)))+
+      geom_point(alpha=0.05, size=0.1)+
+      stat_density2d(aes(fill = ..level..), alpha = 0.3, geom = "polygon")+
+      scale_fill_continuous(low = "grey", high = colors()[ss], space = "Lab",
+                            name = paste("samplesize =", ss))+
+      scale_color_discrete(guide = FALSE)+
+      expand_limits(x = c(0,1), y = c(0,1))+
+      theme_bw()+ 
+      ylab(paste(sampd))+
+      geom_abline(intercept = 0, slope = 1)
+    
+    ggsave(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/", 
+                 sampd, "2true_density_samplesize",ss,".jpg", sep=""),
+           plot = p,
+           width=173, height=105,units='mm')
+  }
+}
+
+```
+
+
+Try to grob all onto one plot
+```{r}
+pp1 <- ggplot_build(random2true[[1]][[2]])
+pp2 <- ggplot_build(random2true[[2]][[2]])$data[[1]]
+pp1$data[[1]]$fill[grep(pattern = "^2", pp2$group)] <- pp2$fill[grep(pattern = "^2", pp2$group)]
+
+# build plot grobs
+grob1 <- ggplot_gtable(pp1)
+# grob2 <- ggplotGrob(random2true[[2]][[2]])
+grob2 <- list()
+for(i in 2:5){
+  grob2[[i]] <- ggplotGrob(random2true[[i]][[2]])
+}
+
+# build legend grobs
+leg1 <- gtable_filter(grob1, "guide-box") 
+# leg2 <- gtable_filter(grob2, "guide-box") 
+leg2 <- list()
+for(i in 2:5){
+  leg2[[i]] <- gtable_filter(grob2[[i]], "guide-box")
+}
+leg <- gtable:::rbind_gtable(leg1[["grobs"]][[1]],  leg2[[2]][["grobs"]][[1]],
+                             # leg2[[3]][["grobs"]][[1]],
+                             # leg2[[4]][["grobs"]][[1]],
+                             # leg2[[5]][["grobs"]][[1]],
+                             "first")
+leg <- gtable:::rbind_gtable(leg, leg2[[3]][["grobs"]][[1]], "first")
+leg <- gtable:::rbind_gtable(leg, leg2[[4]][["grobs"]][[1]], "first")
+leg <- gtable:::rbind_gtable(leg, leg2[[5]][["grobs"]][[1]], "first")
+
+
+# replace legend in 'red' plot
+grob1$grobs[grob1$layout$name == "guide-box"][[1]] <- leg
+
+
+# plot
+grid.newpage()
+grid.draw(grob1)
+grid.draw(grob2[[2]])
+grid.draw(grob2[[3]])
+grid.draw(grob2[[4]])
+grid.draw(grob2[[5]])
+```
+
+
+```{r}  
+  ggplot(random2true, aes(true, random, colour = as.factor(samplesize)))+
+    geom_point(pch=16, alpha = 0.25)+
+    expand_limits(x = c(0,1), y = c(0,1))+
+    xlab("True Distribution")+
+    ylab("Random sampling")+
+    stat_density2d(aes(fill = ..level..), alpha = 0.5, geom = "polygon", data = random2true)+
+    scale_fill_viridis_c()+
+    theme_bw()
+    
+    
+for(i in 1:5){
+  r_random <- raster(list.files(path = pathstart, 
+                                    pattern = paste("ProbTiffrandomRep", sample(1:100,1),"SampleSize",ss, ".tif", sep=""),
+                                    full.names = TRUE))
+  points(getValues(predic_raster), getValues(r_random), pch=16, cex=0.5, col = rgb(i/(i+1),0,i/(i+5),0.05))
+}
+  # dev.off()
+# }
+```
+
 
 
 ```{r}
