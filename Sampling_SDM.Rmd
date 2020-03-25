@@ -933,7 +933,7 @@ for(i in 1:5){
 
 ```{r}
 
-for(ss in c(3:10, 20,30,50,100)){
+for(ss in c(3:10, 20,30,50,100)){ #
   for(sampd in c("random", "cluster", "systematic", "convenience")){
     
     r_design <- do.call(rbind,lapply(sample(1:100, 10), function(s){
@@ -942,12 +942,12 @@ for(ss in c(3:10, 20,30,50,100)){
                                         full.names = TRUE))
     
       design2true <- data.frame(true = getValues(predic_raster), V1 = getValues(r1), samplesize = ss)
-      design2true
+      design2true[sample(1:nrow(design2true), 100000),]
     }))
 
     p <- ggplot(r_design, aes(true, V1, colour = as.factor(samplesize)))+
       geom_point(alpha=0.05, size=0.1)+
-      stat_density2d(aes(fill = ..level..), alpha = 0.3, geom = "polygon")+
+      stat_density2d(aes(fill = ..level..), alpha = 0.3, geom = "polygon", n = 500)+
       scale_fill_continuous(low = "grey", high = colors()[30], space = "Lab",
                             name = paste("samplesize =", ss))+
       scale_color_discrete(guide = FALSE)+
@@ -957,7 +957,7 @@ for(ss in c(3:10, 20,30,50,100)){
       geom_abline(intercept = 0, slope = 1)
     
     # ggsave(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/", 
-    ggsave(paste("Q:/Research/MEDL_folder/Dissertation/SDM_SamplingDesign/Figures",
+    ggsave(paste("Q:/Research/MEDL_folder/Dissertation/SDM_SamplingDesign/Figures/",
                  sampd, "2true_density_samplesize",ss,".jpg", sep=""),
            plot = p,
            width=173, height=105,units='mm')
