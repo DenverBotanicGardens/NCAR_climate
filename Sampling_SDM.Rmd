@@ -936,17 +936,19 @@ for(i in 1:5){
 for(ss in c(3:10, 20,30,50,100)){
   for(sampd in c("random", "cluster", "systematic", "convenience")){
     
-    r_random <- raster(list.files(path = pathstart, 
-                                      pattern = paste("ProbTiff", sampd, "Rep", sample(1:100,1),"SampleSize",ss, ".tif", sep=""),
-                                      full.names = TRUE))
-  
-    random2true <- data.frame(true = getValues(predic_raster), V1 = getValues(r_random), samplesize = ss)
-    # names(random2true)[names(random2true == "V1")] <- sampd
+    r_design <- do.call(rbind,lapply(sample(1:100, 10), function(s){
+      r1 <- raster(list.files(path = pathstart, 
+                                        pattern = paste("ProbTiff", sampd, "Rep", s,"SampleSize",ss, ".tif", sep=""),
+                                        full.names = TRUE))
+    
+      design2true <- data.frame(true = getValues(predic_raster), V1 = getValues(r1), samplesize = ss)
+      design2true
+    }))
 
-    p <- ggplot(random2true, aes(true, V1, colour = as.factor(samplesize)))+
+    p <- ggplot(r_design, aes(true, V1, colour = as.factor(samplesize)))+
       geom_point(alpha=0.05, size=0.1)+
       stat_density2d(aes(fill = ..level..), alpha = 0.3, geom = "polygon")+
-      scale_fill_continuous(low = "grey", high = colors()[ss], space = "Lab",
+      scale_fill_continuous(low = "grey", high = colors()[30], space = "Lab",
                             name = paste("samplesize =", ss))+
       scale_color_discrete(guide = FALSE)+
       expand_limits(x = c(0,1), y = c(0,1))+
@@ -954,7 +956,8 @@ for(ss in c(3:10, 20,30,50,100)){
       ylab(paste(sampd))+
       geom_abline(intercept = 0, slope = 1)
     
-    ggsave(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/", 
+    # ggsave(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/", 
+    ggsave(paste("Q:/Research/MEDL_folder/Dissertation/SDM_SamplingDesign/Figures",
                  sampd, "2true_density_samplesize",ss,".jpg", sep=""),
            plot = p,
            width=173, height=105,units='mm')
@@ -991,41 +994,85 @@ for(i in 1:5){
 
 
 # c("system","random","convenience","cluster")
-All_nicheEquivalency <- lapply(1:10, function(i) {
-      # Sample from the kfolds and repeat a few times
-      sp1 <- read.csv(paste(pathstart, "maxentOccsystemrep", sample(1:10, 1),".csv", sep=""))
-      sp2 <- read.csv(paste(pathstart, "maxentOccrandomrep", sample(1:10, 1),".csv", sep=""))
-      sp3 <- read.csv(paste(pathstart, "maxentOccconveniencerep", sample(1:10, 1),".csv", sep=""))
-      sp4 <- read.csv(paste(pathstart, "maxentOccclusterrep", sample(1:10, 1),".csv", sep=""))
-      
-      Sp1 <- SpatialPoints(sp1[,c("x","y")],
-                           proj4string =
-                             CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
-      Sp2 <- SpatialPoints(sp2[,c("x","y")],
-                           proj4string =
-                             CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
-      Sp3 <- SpatialPoints(sp3[,c("x","y")],
-                           proj4string =
-                             CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
-      
 
-      
-      registerDoParallel(cl)
-      trials <- 100
-      foreach(icount(trials),  
-              .combine='c', 
-              .packages = c("dismo")) %dopar% {
-                
-                equiv1_2 <- nicheEquivalency(Sp1, Sp2, rasterstack, n=100)
-                equiv1_3 <- nicheEquivalency(Sp1, Sp3, rasterstack, n=100)
-                equiv2_3 <- nicheEquivalency(Sp2, Sp3, rasterstack, n=100)
-                list(equiv1_2,equiv1_3,equiv2_3)
-              }
-      
-      stopCluster(cl)
+# Sample from the replicates with replacement; ProbTiffsystematicRep100SampleSize3
+repsXsamplesize <- lapply(c(3:10, 20, 30, 50, 100), function(x){
+  reps <- lapply(1:100, function(rep){
+      system <- raster(list.files(path = pathstart, 
+                                  pattern = paste("ProbTiffsystematicRep", sample(1:10,1), "SampleSize", x,".tif", sep=""),
+                                  full.names = TRUE))
+      random <-  raster(list.files(path = pathstart, 
+                                  pattern = paste("ProbTiffrandomRep", sample(1:10,1), "SampleSize", x,".tif", sep=""),
+                                  full.names = TRUE))
+      convenience <-  raster(list.files(path = pathstart, 
+                                  pattern = paste("ProbTiffconvenienceRep", sample(1:10,1), "SampleSize", x,".tif", sep=""),
+                                  full.names = TRUE))
+      cluster <-  raster(list.files(path = pathstart, 
+                                  pattern = paste("ProbTiffclusterRep", sample(1:10,1), "SampleSize", x,".tif", sep=""),
+                                  full.names = TRUE))
+      out<- list(system, random, convenience, cluster)
+      out
       })
+  reps
+})
+
+# Histogram of each alone as correlation to true
+Cor2True <- do.call(rbind, lapply(1:(length(c(3:10, 20,30,50,100))), function(ss){
+  systemcor <- do.call(rbind,lapply(1:100, function(i){
+    corout <- cor(getValues(repsXsamplesize[[ss]][[i]][[1]]), getValues(predic_raster), method = "pearson")
+    corout
+  }))
+  randomcor <- do.call(rbind,lapply(1:100, function(i){
+    corout <- cor(getValues(repsXsamplesize[[ss]][[i]][[2]]), getValues(predic_raster), method = "pearson")
+    corout
+  }))
+  conveniencecor <- do.call(rbind,lapply(1:100, function(i){
+    corout <- cor(getValues(repsXsamplesize[[ss]][[i]][[3]]), getValues(predic_raster), method = "pearson")
+    corout
+  }))
+  clustercor <- do.call(rbind,lapply(1:100, function(i){
+    corout <- cor(getValues(repsXsamplesize[[ss]][[i]][[4]]), getValues(predic_raster), method = "pearson")
+    corout
+  }))
+  data.frame(systemcor, randomcor, conveniencecor, clustercor, SampleSize = ss)
+})
+)
+  
+# ggplot(Cor2True, aes(systemcor, color = as.factor(SampleSize)))+
+#   geom_freqpoly(position = "dodge", na.rm = TRUE)+
+#   scale_color_manual(values=colors()[sample(1:600, 12)],
+#                     name="Systematic sampling\nSample Size",
+#                     breaks=c(1:12),
+#                     labels=c(3:10,20,30,50,100))+
+#   theme_bw()
 
 
+
+ggplot(Cor2True, aes(systemcor, fill = as.factor(SampleSize)))+
+  geom_histogram(position = "dodge", na.rm = TRUE, binwidth = 0.15)+
+  expand_limits(x = c(-1,1))+
+  scale_fill_manual(values=rainbow(12),
+                    name="Systematic sampling\nSample Size",
+                    breaks=c(1:12),
+                    labels=c(3:10,20,30,50,100))+
+  theme_bw()
+
+
+ggplot(Cor2True, aes(randomcor, fill = as.factor(SampleSize)))+
+  geom_histogram(position = "dodge", na.rm = TRUE, binwidth = 0.15)+ #
+  expand_limits(x = c(-1,1))+
+  scale_fill_manual(values=rainbow(12),
+                    name="Systematic sampling\nSample Size",
+                    breaks=c(1:12),
+                    labels=c(3:10,20,30,50,100))+
+  theme_bw()
+``` 
+
+
+
+
+
+```{r}
 true_random <- lapply(1:100, function(x){
       
           ## Correlation to true
