@@ -402,16 +402,38 @@ Sampling methods
 # test
 # suitability.raster <- predic_raster
 # samplesize <- 20
+# studyarea <- 50
 
 ### systematic 
 systematic_sampling <- function(suitability.raster,  samplesize){
   # systematic sampling to allow for Bernoulli process to reject some cells with high suitability and sometimes take cells with low suitability
-  # evenstep <- ceiling(length(suitability.raster)/(samplesize*mean(suitability.raster[]))) 
-  evenstep <- ceiling(length(suitability.raster)/(samplesize*100))
+  randcellRowCol <- c(ceiling(runif(1, min = 1, max = nrow(suitability.raster))),
+                      ceiling(runif(1, min = 1, max = ncol(suitability.raster)))) # Row Col
+  randcell <- cellFromRowCol(suitability.raster,randcellRowCol[1],randcellRowCol[2]) # cell number that matches
+    # systematically sample the study area
+  evenstep <- ceiling(studyarea/(samplesize*100))
   i <- evenstep
   
   sampleout <- c()
-  while(i < length(suitability.raster)){
+  # set the 'study area' of 50 x 50 cells so study area == 50
+      # Systematically sample and then use thinmax to get the samplesize
+      studyarea <- function(cellRowCol, suitability.raster, samplesize, studyarea){
+        # if(all(cellRowCol > 20))
+        if(cellRowCol[1] > (nrow(suitability.raster)-(studyarea+1))) cellRowCol[1] <- (nrow(suitability.raster))-(studyarea+1)
+        if(cellRowCol[2] > (ncol(suitability.raster)-(studyarea+1))) cellRowCol[2] <- (ncol(suitability.raster))-(studyarea+1)
+        # steps <- ceiling((round(sqrt(studyarea),0))/(round(sqrt(samplesize),0)))*10 # need at least as many to evenly space out samples
+        out <- data.frame(Cells = c(cellFromRowCol(suitability.raster, cellRowCol[1], cellRowCol[2]), # top row, min(col) to max(col)
+                                cellFromRowCol(suitability.raster, cellRowCol[1]-1, cellRowCol[2]-1),
+                                cellFromRowCol(suitability.raster, cellRowCol[1]-1, cellRowCol[2]),
+                                cellFromRowCol(suitability.raster, cellRowCol[1]-1, cellRowCol[2]+1), # row above; 4
+                                cellFromRowCol(suitability.raster, cellRowCol[1], cellRowCol[2]-1),
+                                cellFromRowCol(suitability.raster, cellRowCol[1], cellRowCol[2]+1), # either side, same row; 6
+                                cellFromRowCol(suitability.raster, cellRowCol[1]+1, cellRowCol[2]-1),
+                                cellFromRowCol(suitability.raster, cellRowCol[1]+1, cellRowCol[2]),
+                                cellFromRowCol(suitability.raster, cellRowCol[1]+1, cellRowCol[2]+1)))
+        out
+      }
+  # while(i < length(suitability.raster)){
       if(rbinom(1, 1, getValues(suitability.raster)[i]) == 1){
         sampleout <- rbind(sampleout,xyFromCell(suitability.raster, i))
       }
