@@ -402,43 +402,40 @@ Sampling methods
 # test
 # suitability.raster <- predic_raster
 # samplesize <- 20
-# studyarea <- 50
+# studyarea <- 300
 
 ### systematic 
-systematic_sampling <- function(suitability.raster,  samplesize){
+systematic_sampling <- function(suitability.raster,  samplesize, studyarea){
   # systematic sampling to allow for Bernoulli process to reject some cells with high suitability and sometimes take cells with low suitability
   randcellRowCol <- c(ceiling(runif(1, min = 1, max = nrow(suitability.raster))),
                       ceiling(runif(1, min = 1, max = ncol(suitability.raster)))) # Row Col
-  randcell <- cellFromRowCol(suitability.raster,randcellRowCol[1],randcellRowCol[2]) # cell number that matches
-    # systematically sample the study area
-  evenstep <- ceiling(studyarea/(samplesize*100))
-  i <- evenstep
-  
+  if(randcellRowCol[1] > (nrow(suitability.raster)+(studyarea))) randcellRowCol[1] <- (nrow(suitability.raster))-(studyarea+1)
+  if(randcellRowCol[2] > (ncol(suitability.raster)+(studyarea))) randcellRowCol[2] <- (ncol(suitability.raster))-(studyarea+1)
+
+  # systematically sample the study area, row by row within the study area col
+  evenstep <- studyarea^2/(samplesize*100) 
   sampleout <- c()
-  # set the 'study area' of 50 x 50 cells so study area == 50
-      # Systematically sample and then use thinmax to get the samplesize
-      studyarea <- function(cellRowCol, suitability.raster, samplesize, studyarea){
-        # if(all(cellRowCol > 20))
-        if(cellRowCol[1] > (nrow(suitability.raster)-(studyarea+1))) cellRowCol[1] <- (nrow(suitability.raster))-(studyarea+1)
-        if(cellRowCol[2] > (ncol(suitability.raster)-(studyarea+1))) cellRowCol[2] <- (ncol(suitability.raster))-(studyarea+1)
-        # steps <- ceiling((round(sqrt(studyarea),0))/(round(sqrt(samplesize),0)))*10 # need at least as many to evenly space out samples
-        out <- data.frame(Cells = c(cellFromRowCol(suitability.raster, cellRowCol[1], cellRowCol[2]), # top row, min(col) to max(col)
-                                cellFromRowCol(suitability.raster, cellRowCol[1]-1, cellRowCol[2]-1),
-                                cellFromRowCol(suitability.raster, cellRowCol[1]-1, cellRowCol[2]),
-                                cellFromRowCol(suitability.raster, cellRowCol[1]-1, cellRowCol[2]+1), # row above; 4
-                                cellFromRowCol(suitability.raster, cellRowCol[1], cellRowCol[2]-1),
-                                cellFromRowCol(suitability.raster, cellRowCol[1], cellRowCol[2]+1), # either side, same row; 6
-                                cellFromRowCol(suitability.raster, cellRowCol[1]+1, cellRowCol[2]-1),
-                                cellFromRowCol(suitability.raster, cellRowCol[1]+1, cellRowCol[2]),
-                                cellFromRowCol(suitability.raster, cellRowCol[1]+1, cellRowCol[2]+1)))
-        out
-      }
-  # while(i < length(suitability.raster)){
-      if(rbinom(1, 1, getValues(suitability.raster)[i]) == 1){
-        sampleout <- rbind(sampleout,xyFromCell(suitability.raster, i))
-      }
-      i <- i + evenstep
-    }
+  # set the 'study area' as one side of square number of cells (i.e. study area of 50 x 50 cells so study area == 50)
+  # Systematically sample and then use thinmax to get the samplesize
+  # Find cell, move alnog row, move to cell of next selected row
+  
+  # r <- c <- cellFromRowCol(suitability.raster,randcellRowCol[1],randcellRowCol[2]) # cell number that matches the top left corner of the study area
+  randcellRow <- randcellRowCol[1]
+  while(all(randcellRow < c(randcellRowCol[1]+studyarea, nrow(suitability.raster)))){ # while still in a row that is in the study area
+      # Start at the first column each time
+      randcellCol <- randcellRowCol[2] 
+      # sample by row
+      while(all(randcellCol < c((randcellRowCol[2] + studyarea),ncol(suitability.raster)))){ # While in this row, still within a column of the study area length, assumes cells are numbered by row
+        c <- cellFromRowCol(suitability.raster, randcellRow, randcellCol) 
+        print(c)
+        if(rbinom(1, 1, getValues(suitability.raster)[c]) == 1){
+            sampleout <- rbind(sampleout,xyFromCell(suitability.raster, c))
+          }
+          randcellCol <- randcellCol + evenstep
+      } # once get to the last column in the study area, end and move to the next row
+    
+    randcellRow <- randcellRow + evenstep
+  }
   
   sampleout <- thin.max(sampleout, c("x","y"), samplesize) # spatial thinning
   sampleout
@@ -625,9 +622,9 @@ Sampling images
 ########### Systematic (true sample) ############
  
 for(x in 1:10){
-  samplesys1 <- systematic_sampling(predic_raster, 100)
+  samplesys1 <- systematic_sampling(predic_raster, 100, 50)
       
-  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_SystematicTrue",x,".jpg", sep=""),
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_NewSystematicTrue",x,".jpg", sep=""),
        width=145, height=100,units='mm', res=300)
   par(mar=c(2.1,2.1,2.1,1.1))
   plot(predic_raster, main = ""); points(samplesys1, pch=16, cex=0.25)
