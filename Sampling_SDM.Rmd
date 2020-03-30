@@ -81,6 +81,11 @@ thin.max <- function(x, cols, npoints){
 ```
 
 Systematic should either be removed or treated as spatially unbiased while simple random is both spatially and environmentally unbiased because environemtnal variables are spatially autocorrelated. 
+Systematic across a small area to mimic plots
+
+      tab8 -> tab3;
+      
+      {rank = same ; tab8; tab3;}
 
 DiagrammeR 
 ```{r}
@@ -104,6 +109,7 @@ grViz("digraph flowchart {
       tab13 [label = <Bio<SUB>11</SUB>>]
       tab14 [label = <Bio<SUB>12</SUB>>]
       tab15 [label = <Bio<SUB>19</SUB>>]
+      tab16 [label = <dummy>]
      
       # edge definitions with the node IDs
       tab1 -> tab3;
@@ -111,7 +117,6 @@ grViz("digraph flowchart {
       tab2 -> tab3;
       tab5 -> tab6;
       tab3 -> tab8;
-      tab8 -> tab3; 
       tab3 -> tab9;
       tab3 -> tab10;
       tab3 -> tab11;
@@ -120,10 +125,11 @@ grViz("digraph flowchart {
       tab13 -> tab2;
       tab14 -> tab2;
       tab15 -> tab2;
+      tab16 -> tab2;
+      tab8 -> tab4;
       tab9 -> tab4;
       tab10 -> tab4;
       tab11 -> tab4;
-      {rank = same ; tab8; tab3;}
       }
 
       [1]: 'Model organism (Claytonia rubra)'
@@ -133,7 +139,7 @@ grViz("digraph flowchart {
       [5]: 'Build SDM'
       [6]: 'Compare with true'
       [7]: 'Elevation'
-      [8]: c('Systematic (true sample)','Adaptive cluster','Convenience','Simple random')
+      [8]: c('Systematic','Adaptive cluster','Convenience','Simple random')
       ")
 
 
@@ -798,6 +804,13 @@ for(ss in c(3:10, 20, 30, 50, 100)){
   cluster1 <- adaptive_cluster(predic_raster, ss)
   plot(cluster1)
 }
+
+# Failed on 3/26/2020 at sample size 6, why?!, maybe all 50% suitable?
+lapply(c(6:10, 20, 30, 50, 100), function(sampsize){
+
+    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "systematic", reps = 100, samplesize = sampsize, pathstart = pathstart)
+    
+})
     
 ```
 
@@ -943,7 +956,7 @@ for(ss in c(3:10, 20,30,50,100)){ #
     
       design2true <- data.frame(true = getValues(predic_raster), V1 = getValues(r1), samplesize = ss)
       design2true[sample(1:nrow(design2true), 100000),]
-    }))
+    }))s
 
     p <- ggplot(r_design, aes(true, V1, colour = as.factor(samplesize)))+
       geom_point(alpha=0.05, size=0.1)+
