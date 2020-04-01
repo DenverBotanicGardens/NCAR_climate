@@ -1,0 +1,755 @@
+---
+title: "SeedHarvest"
+author: "Michelle DePrenger-Levin"
+date: "3/11/2020"
+output: html_document
+---
+
+```{r}
+
+require(DiagrammeR)
+library(ggplot2)
+```
+
+
+Graphical abstract  
+DAG ish  
+
+        tab1 [label = '@@1-1']
+        tab2 [label = '@@1-2']
+        
+        tab7 -> {tab1 tab2 tab3 tab4}
+      
+      ; {rank = same tab1 tab3} 
+      
+            subgraph cluster3 {
+        node [fixedsize = true, width = 5, rankdir = TB]
+        '@@5-1' -> '@@5-2' -> '@@5-3' {rank = same}
+      }
+```{r}
+
+grViz("digraph nicegraph {
+
+        
+      graph [compound = true, color = blue, rankdir = TB]
+        
+      # node definitions with substituted label text
+      node [fontname = Helvetica, fontcolor = darkslategray, shape = rectangle,  color = darkgoldenrod]        
+      
+      edge [color = grey, arrowhead = none]
+      
+      subgraph cluster0 {
+        node [fixedsize = true, width = 3, rankdir = TB]
+        '@@1-1' -> '@@1-2'; {rank = same '@@1-1' '@@1-2'};
+      }
+      
+      subgraph cluster1 {
+        node [fixedsize = true, width = 3]
+        edge[color = mediumturqoise, style=dotted, arrowhead = none];
+        '@@2-1' -> '@@2-2'; {rank = same '@@2-1' '@@2-2'};
+      }
+
+      subgraph cluster2 {
+        node [fixedsize = true, width = 3]
+        '@@3-1' -> '@@3-2'; {rank = same '@@3-1' '@@3-2'};
+      }
+      
+      tab1 [label = '@@4']
+       node [label = <MPM<SUB>1</SUB>>]
+      tab2
+       node [label = <MPM<SUB>2</SUB>>]
+      tab3
+       node [label = <MPM<SUB>i</SUB>>]
+      tab4
+      tab6 [label = '@@6']
+      tab7 [label = '@@5-1']
+      tab8 [label = '@@5-2']
+      tab9 [label = '@@5-3']
+      
+      
+      # edge definitions with the node IDs
+      edge[color = springgreen, arrowhead=none, dir = forw];
+      tab6 -> {tab2 tab3 tab4} [style = dashed, color = darkorange]; 
+      tab1 -> '@@1-1' [lhead = cluster0];
+      tab1 -> '@@2-1' [lhead = cluster1];
+      tab1 -> '@@3-1' [lhead = cluster2];
+      tab7 -> tab1;
+      tab8 -> tab1;
+      tab9 -> tab1;
+      }
+      
+      [1]: c('Environmental sensitivity','Life History')
+      [2]: c('Harvest Frequency','Harvest Intensity')
+      [3]: c('Fast-Slow continuum','Reproductive strategies')
+      [4]: 'Seed'
+      [5]: c('Cost','Benefit','Optimal')
+      [6]: 'Stochastic Projection'
+      ")
+```
+
+      tab6 -> {tab2 tab3 tab4} [style = dashed, color = darkorange]; 
+       {rank = same '@@3-1' '@@3-2'};
+       
+        node [rankdir = TB]
+        
+    in cluster0 
+                node [fixedsize = true, width = 3, rankdir = TB]
+```{r}
+
+grViz("digraph nicegraph {
+
+        
+      graph [compound = true, color = blue, rankdir = LR]
+        
+      # node definitions with substituted label text
+      node [fontname = Helvetica, fontcolor = darkslategray, shape = rectangle,  color = darkgoldenrod]        
+      
+      edge [color = grey, arrowhead = none]
+      
+
+      tab1 [label = '@@4-1']
+       node [label = <MPM<SUB>1</SUB>>]
+      tab2
+       node [label = <MPM<SUB>2...</SUB>>]
+      tab3
+       node [label = <MPM<SUB>i</SUB>>]
+      tab4
+      tab6 [label = '@@6']
+      tab7 [label = '@@5']
+      tab8 [label = '@@3-1']
+      tab9 [label = '@@3-2']
+      tab10 [style = filled fillcolor = gold label = '@@4-2']
+      tab11 [label = '@@2-1']
+      tab12 [label = '@@2-2']
+      tab13 [label = '@@1']
+      
+      
+      subgraph clusterPart1 {
+        label = 'Simulation model'
+
+      subgraph cluster1 {
+        node [fixedsize = true, width = 3]
+        edge[color = mediumturqoise, style=dotted, arrowhead = none];
+        tab11 -> tab12;
+        label = 'Harvest';
+      }
+      
+      subgraph cluster2 {
+        node [rankdir = TB];
+        edge[color = orange, arrowhead = icurve];
+        tab2 -> tab3 -> tab4;
+        label = 'Periodic Envrionment';
+      }
+      
+      }
+      
+      subgraph cluster3 {
+        node [rankdir = TB]
+      
+        label = 'Determinants of Fecundity Response';
+        tab8 -> tab9 - tab13;
+      }
+
+
+      # edge definitions with the node IDs
+       edge[color = springgreen, arrowhead=none, dir = forw];
+       tab6 -> tab2 [lhead = cluster2] [style = dashed, color = darkorange]; 
+       tab13 -> tab1 [ltail = cluster3];
+       tab11 -> tab1 [ltail = cluster1];
+       tab7 -> tab12 [lhead = cluster1] [style = dashed, color = red, arrowhead = tee];
+       tab13 -> tab9 [lhead = cluster3];
+       tab6 -> tab12 [lhead = cluster1];
+       tab11 -> tab10 [lhead = cluster1];
+       }
+      
+      [1]: 'Environmental sensitivity'
+      [2]: c('Frequency (% chance/year)','Intensity (% of seed/population)')
+      [3]: c('Fast-Slow continuum','Reproductive strategies')
+      [4]: c('Seed','Ex-situ collection')
+      [5]: 'Optimize'
+      [6]: 'Stochastic Projection'
+      ")
+```
+
+```{r}
+
+
+```
+
+
+
+
+Current state of recommendations 
+```{r}
+library(reshape2)
+plot <- data.frame(LifeHistory = seq(-4,0, length.out = 100),
+                   Intensity = 0.1,
+                   Frequency = 0.1)
+plot_long <- melt(plot, id="LifeHistory")
+
+ggplot(plot_long, aes(LifeHistory, value, colour=variable))+
+  geom_jitter(height = 0.01)+
+  geom_line()+
+  theme_bw()+
+  scale_y_continuous(limits = c(0,1))
+
+ggplot(plot_long, aes(LifeHistory, value, colour=variable))+
+  geom_jitter(height = 0.01)+
+  geom_line()+
+  theme_bw()+
+  scale_y_continuous(limits = c(0,1), labels = scales::percent_format(accuracy = 1))+
+  ylab("")+
+  stat_function(fun = function(x) exp(x), geom = "line", aes(colour = "Frequency"))+
+  # stat_function(fun=function(x) (x+3)^2, geom = "line", aes(colour = "Frequency"))+
+  stat_function(fun=function(x) sin(x+3)^2, geom = "line", aes(colour = "Intensity"))
+
+```
+
+1. Simulate growth rate (stochastic growth rate) given enviornemntal varaibility - time since fire, over time or over space vs. stochastic rates with 2+ matrices. Menges et al 2004 had 22 perennials. All had a seed or seedling stage. assumed seed dormancy in all. Random selection of matrices, not based on frequency of climate seen or order (no time since fire) - alternated matrices to preserve correlations between elements of the matrices - the life histories, matrix alternations produce more conservative risk assessment (Greenlee and Kaye 1997) --> all to estimate stochastic populaiton growth and then extinction risk. Should build in the change when account for density dependence. 
+Varied frequency = c(10,50,90); intensity = c(10,50,90%) of fecundity
+
+
+intensity = percent of seed harvested a year (represented in reduction of fertility term(s))
+frequency = probablity per year of harvest
+
+Test intensity keeping frequency constant; frequency keeping intensity constant; both as vary life history in fast-slow continuum (longevity), growth (retrogressive, progressive), and reproduction (time to maturity, iteroparity). 
+```{r}
+library(lattice)
+#Change in growth rate, lambda, for stochastic lambda doesn't result in meaninfgul deterministic growth rate, lambda. Lambda doesn't represent extinction risk since harvesting means populaiton is not in equilibrium. So want extinction risk.   Measure of time to extinction - no, measure of change in extinction risk due to harvest given projected changes in frequency of climate events. Population trajectory starting at various populaiton sizes, what is the change to the distribution of 'end' pop sizes you get at various harvest levels projecting climate as it is projected to be. 
+m <- matrix(runif(1000,min=0, max=1), nrow = 100)
+
+x = seq(1:100)
+y = seq(1:100)
+data <- expand.grid(X=x, Y=y)
+data$Z <- log((data$X^2) + (data$Y^2))-2
+levelplot(Z ~ X*Y, data=data, xlab="Frequency (Probabilty of harvest)", 
+          ylab="Intensity (Percent of reduction in fecundity)", 
+          main="Change in Extinction risk for species with XYZ life history",
+          col.regions=heat.colors(100))  
+
+
+```
+
+Extinction risk = change in projected populaiton size at some time in the future - what time? Doesn't this depend on generation time? so maybe by generation time into the future. 
+Simulations of stochastic growth, with environmental variability (or below) to get certainty that extinction risk isn't increased over X amount of time
+```{r}
+
+
+```
+
+
+
+
+
+# how to break apart MPM, see impacts through models, and put back together
+```{r}
+load("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter3/allhopsforanalysis.rdata")
+
+
+```
+
+
+# Code from Dan Doak
+```{r}
+# adding in damping ratio and lifespan after first stage. 
+
+# graphics.off()
+rm(list=ls())
+library(ggplot2)
+library(dplyr)
+library(popbio)
+library(MuMIn)
+library(binr)
+library(matrixStats)
+setwd("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter3")
+```
+
+### Load, manipulate, and sort data --------------
+```{r}
+ # load('BNdataforIPM.RData')
+ # write.csv(alldata,file='bistortdata.csv')
+
+allsdszs= as.numeric(read.csv('bulblingsizes.csv', header=FALSE)[,1])
+mnsldgsz=mean(allsdszs)
+sdsldgsz = sqrt(var(allsdszs))
+
+alldata=as.matrix(read.csv('BNdataforIPMsimple.csv', header=TRUE))
+#alldata has columns of: szs0, szs1, bulbils produced in yr 0
+alldata=as.data.frame(alldata)
+alldata=alldata[which(is.na(alldata[,1])==FALSE),]
+
+alldata$survival = 1
+alldata$survival[which(alldata$szs1==0)] = 0
+alldata$szs1[which(alldata$szs1==0)] = NA
+alldata=alldata[which(alldata$szs0 !=0),]
+
+bulblings_per_bulbil = 0.00676 # this is mean for allyrs and the 4 niwot pops, from 
+#data assembled for Sam analyses
+
+ggplot(alldata, aes(szs0, survival))+
+  geom_point()+
+  geom_smooth()+
+  theme_bw()
+```
+
+
+```{r}
+# define size of a bulbling as =sqrt(4.388*2*2) = 2
+bulblingsz=sqrt(4.388*4)
+# say that survival of bulblings is survial for plants of <= 2,2,size:
+alltinys=alldata[alldata$szs0<=bulblingsz,]
+surv_bulbings=sum(alltinys$survival)/length(alltinys$survival)
+```
+
+lifespan function
+```{r}
+####################################################
+lifespan <- function(nx){
+  nclasses=dim(nx)[1]
+  vec=c(100,rep(0,(nclasses-1)))
+  nx[1,]=0
+  jj=1
+  while (sum(vec)>1){
+    vec=nx%*%vec
+    jj=jj+1
+    #print(sum(vec))
+  }
+  return(jj)
+}#############################################
+```
+
+Set min and max sizes just outside of the emperical data
+```{r}
+minsize <- min(c(alldata[,1],alldata[,2]), na.rm=TRUE) -0.1
+#maxsize <- max(c(alldata[,1],alldata[,2]), na.rm=TRUE) +0.1
+maxsize=60 # this is set manually to not have a large category at end that has no plants.
+alldata[which(alldata[,1]>maxsize),1]=maxsize
+alldata[which(alldata[,2]>maxsize),2]=maxsize
+
+
+size=alldata
+colnames(size)=c('t0','t1','bulbs0','survival')
+
+size$reproyesno = size$bulbs0
+size$reproyesno[size$reproyesno >0]=1 # so, turn into yes no variable
+sizeforrepro=size
+sizeforrepro=sizeforrepro[sizeforrepro$reproyesno==1,]
+```
+
+
+
+#####new size density estimation for median size estimation
+```{r}
+pdfsz=density(size$t0, n=1024, cut=0)
+pdfsz2=cbind(pdfsz$x,pdfsz$y)
+#so, this is a set of smoothed values that can then be used with weightedMedian in the matrixStats package to get a 'good' median for each class.
+```
+
+
+### Specify what range of classes/bins to evaluate -----------------------
+```{r}
+bin.num <- c(3,4,5,6, 8, 10,seq(from = 15, to = 100, by = 10))
+#bin.num=20
+### Matrix Model ------------------------
+```
+
+
+## Estimate vital rates, populate matrix, for models with different numbers 
+## of classes/ bins   
+```{r}
+lambdas_matrix <- rep(NA, length(bin.num))
+dampratio_matrix = rep(NA, length(bin.num))
+lifespan_matrix=rep(NA, length(bin.num))
+
+mincounts=NULL
+
+for(i in 1:length(bin.num)){
+
+  ss=as.numeric(size$t0)
+  # vbin = bins(size$t0, target.bins=bin.num[i], max.breaks = bin.num[i]+1, exact.groups = F, verbose = F, errthresh = 0.1, minpts = NA)
+  # vec.bin <- bins.getvals(vbin)
+  # vec.bin[1] <- minsize
+  
+vec.bin = c(minsize, minsize+1:bin.num[i]*(maxsize-minsize)*(1/bin.num[i]))  
+nums=hist(ss,breaks=vec.bin, plot=FALSE)$counts 
+  mincounts=c(mincounts,min(nums))
+  
+if (min(nums)>2) {  
+  
+  ## Initialize storage
+  n.bin <- length(vec.bin)-1                  # this is a workaround
+  n <- rep(NA, n.bin)                         # count of indvs per bin
+  medians <- rep(NA, n.bin)                    # median size per bin for F
+  surv <- rep(NA, n.bin)                      # survivorship for each class
+  grow <- matrix(NA, n.bin, n.bin)            # store growth probabilites for each class
+  reproduction <- rep(NA, n.bin)
+  
+  totnums = 0 # this is just monitoring for errors
+  # bin, survival, growth
+  for(j in 1:(length(vec.bin)-1)){
+    # set limits for subset according to bin breaks
+    bounds <- c(vec.bin[j], vec.bin[j+1])
+    # subset data according to bounds
+    subset <- size[size$t0 > bounds[1] & size$t0 <= bounds[2],]
+    # store number of inviduals in this bin for future reference
+    n[j] <- length(subset$t0)
+    medians[j] <- median(subset$t0)
+    # calculate survivorship for this class
+    surv[j] <- sum(subset$survival) / length(subset$t0)
+    # store histo as object, to access counts per bin
+    histo <- hist(subset$t1, breaks = vec.bin, plot = FALSE)
+    # $counts returns the number of individuals of a certain size class
+    grow[,j] <- histo$counts/length(subset$t0[subset$survival==1]) 
+    reproduction[j] <- mean(subset$bulbs0) # bulbils produced per plant in start yr
+    
+    totnums = totnums + sum(histo$counts)
+  }
+  
+  # make a vector of the prob of seedling sizes: 
+  sdlggrow=hist(allsdszs , breaks = vec.bin, plot = FALSE)$counts/length(allsdszs)
+  
+  M1 <- matrix(NA, n.bin, n.bin)   # initiate projection matrix
+  M <- matrix(0, (n.bin+1), (n.bin+1))
+  # populate projection matrix
+
+  for(j in 1:length(surv)){
+    M1[,j] <- surv[j] * grow[,j]
+    M1[,j] <- (surv[j] * grow[,j])
+  }
+    
+    # add lines for the creation of bulblings and thier transition to first size class
+    M[2:(n.bin+1), 2:(n.bin+1)] = M1
+    M[2:(n.bin+1),1] = surv_bulbings*sdlggrow 
+    M[1,2:(n.bin+1)] = reproduction*bulblings_per_bulbil  
+  
+  
+  lambdas_matrix[i] <- lambda(M) # calls popbio f'n 'lambda'
+  dampratio_matrix[i]=damping.ratio(M)
+  lifespan_matrix[i] =lifespan(M)
+  
+  print(c(i,totnums)) 
+} else {
+  lambdas_matrix[i]=NA
+  dampratio_matrix[i] = NA
+  lifespan_matrix[i] = NA
+}
+}
+
+
+```
+
+
+#######################################
+######################################
+this is doing what you could also do with dredge, but that simpler here: getting a predictive model (as a function only of size in this case) for each demographic rate: survival, mean growth, variance in growth, prob of reproducing, and how much reproduction if reproducing. The code fits a few alternatives and chooses the best one for each rate, which will be used below. 
+
+### IPM with mean sizes-----------------------------------------------------
+```{r}
+# adding in columns
+size$t0sq <- size$t0^2           
+sizeforrepro$t0sq = sizeforrepro$t0^2
+# fitting functions for different vital rates (survival, growth, reproduction)
+# prob (survival): linear function of size, quadratic function of size
+sur_models <- list(glm(survival~ t0, family= "binomial",data = size),
+                   glm(survival~ t0 + t0sq , family= "binomial",data =size))
+# gives the value of the lowest AICc
+min_AIC <- min(AICc(sur_models[[1]], sur_models[[2]])$AICc)
+# gives you the info for the best-fit model
+bestsur <- sur_models[[which(min_AIC == AICc(sur_models[[1]], sur_models[[2]])$AICc)]] 
+
+# growth: linear function of size, quadratic function of size, power function (A+B*(size^C))
+growth_models <- list(nls(t1~ a+ b*t0, data = size, start=list(a= 1, b=1)),
+                      nls(t1~ a+ b*t0 + c*t0sq, data = size, start=list(a= 1, b=1,c=1)),
+                      nls(t1 ~ a + b*(t0^c), data= size, start=list(a= 1, b=1,c=1)))
+# gives the value of the lowest AICc
+min_AIC <- min(AICc(growth_models[[1]], growth_models[[2]],growth_models[[3]])$AICc)
+# gives you the info for the best-fit model
+bestgrowth <- growth_models[[which(min_AIC == AICc(growth_models[[1]], growth_models[[2]], growth_models[[3]])$AICc)]]
+
+# getting residuals of growth
+size$growth_residuals <- NA
+size$growth_residuals[which(!is.na(size$t1) & !is.na(size$t0))] <- summary(bestgrowth)$residuals^2
+
+
+reproyesno_models <- list(glm(reproyesno~ t0, family= "binomial",data = size),
+                   glm(reproyesno~ t0 + t0sq , family= "binomial",data =size))
+# gives the value of the lowest AICc
+min_AIC <- min(AICc(reproyesno_models[[1]], reproyesno_models[[2]])$AICc)
+# gives you the info for the best-fit model
+bestreproyesno <- reproyesno_models[[which(min_AIC == AICc(reproyesno_models[[1]], reproyesno_models[[2]])$AICc)]] 
+# yes/no repro: logistic: 
+
+# reproduction if reproducing: linear function of size, quadratic function of size, 
+rep_models <- list(lm(bulbs0~ t0, data = sizeforrepro),
+                    lm(bulbs0~ t0+ t0sq, data = sizeforrepro)) 
+min_AIC <- min(AICc(rep_models[[1]], rep_models[[2]])$AICc)# gives the value of the lowest AICc
+bestrep <- rep_models[[which(min_AIC == AICc(rep_models[[1]], rep_models[[2]])$AICc)]] # gives you the info for the best-fit model
+
+# variance in growth: uses best-fit model for growth: linear function of size, quadratic function of size, no intercept
+var_models <- list(glm(growth_residuals~ t0-1, data= size), glm(growth_residuals~ t0 + t0sq-1, data= size))
+min_AIC <- min(AICc(var_models[[1]], var_models[[2]])$AICc) # gives the value of the lowest AICc
+bestvar <- var_models[[which(min_AIC == AICc(var_models[[1]], var_models[[2]])$AICc)]] # gives you the info for the best-fit model
+
+# vary bin sizes
+
+lambdas_ipm_mean <- vector("numeric", length= length(bin.num))
+dampratio_mean = vector("numeric", length= length(bin.num))
+lifespan_mean = vector("numeric", length= length(bin.num))
+
+truebinsizes= matrix(0,length(bin.num),1)
+
+# everything below in this section is in a loop that varies how many bins (size classes) are used to make the model: this is what this code is for, but that is not something that you need to do, so don’t worry about this, except to know that you do need to define how many bins you will use. 
+
+for (i in 1:length(bin.num)){
+
+  # vbin = bins(size$t0, target.bins=bin.num[i], max.breaks = bin.num[i]+1, exact.groups = F, verbose = F,     errthresh = 0.1, minpts = NA)
+  # vec.bin <- bins.getvals(vbin)
+  # vec.bin[1] <- minsize
+  # vec.bin[length(vec.bin)]=maxsize
+  
+  vec.bin = c(minsize, minsize+1:bin.num[i]*(maxsize-minsize)*(1/bin.num[i])) 
+
+  # this is defining the size boundaries between classes, and the next uncommented line is getting the mid-bin sizes. 
+  #--- either do the first block to make medians the focal estimated size for each cat, or do the second line, to define as the mean of the breakpts:
+  # binmids =   rep(NA, length(vec.bin)-1) 
+  # for(jj in 1:(length(vec.bin)-1)){
+  #   # set limits for subset according to bin breaks
+  #   bounds <- c(vec.bin[jj], vec.bin[jj+1])
+  #   # subset data according to bounds
+  #   subset <- size[size$t0 >= bounds[1] & size$t0 < bounds[2],]
+  #   binmids[jj] <- median(subset$t0)
+  # }
+  
+  binmids <- 0.5*(vec.bin[2:length(vec.bin)] + vec.bin[1:(length(vec.bin)-1)])
+  #--------------------------------------------------------------------
+
+  ## This is the section that makes predictions of each vital rate for each size class. the ss loop (starting on line 310 "for (ss in 1:(n.bin))...) does this for the growth rates, which results in a matrix of values, as it is the probability of growing from each size to each other one. 
+  n.bin = length(binmids)
+  truebinsizes[i] = n.bin  
+  
+  # constructing matrix models
+  indata <- as.data.frame(cbind(binmids, binmids^2))
+  names(indata) <- c("t0", "t0sq")
+  
+  sur_vals <- predict(bestsur,indata, type='response')
+  reproyesnovals=predict(bestreproyesno, indata, type='response')
+  rep_vals <- predict(bestrep, indata, type='response')
+  rep_vals[rep_vals<0] <- 0
+  growth_vals <- predict(bestgrowth,indata, type='response')
+  var_vals <- predict(bestvar,indata, type='response')
+  gmx <- matrix(data=NA, nrow=n.bin, ncol=n.bin)
+   
+  sdlgszcdf=pnorm(vec.bin,mnsldgsz,sdsldgsz)
+  sdlgszprobs=sdlgszcdf[2:length(vec.bin)]-sdlgszcdf[1:(length(vec.bin)-1)]
+  sdlgszprobs=sdlgszprobs/sum(sdlgszprobs)
+  
+  # growth probs using cdf fn
+  for (ss in 1:(n.bin)) {
+    growcdf <- pnorm(vec.bin,growth_vals[ss],sqrt(var_vals[ss]))
+    grows <- growcdf[2:length(vec.bin)]-growcdf[1:(length(vec.bin)-1)]
+    if(sum(grows)>0){grows <- grows/sum(grows)
+                     gmx[,ss] <- grows} else {gmx[,ss] <- NA} 
+    # this if statement breaks the code (puts NA's into the matrix) if the sum of the PDF is zero (which happens if all the probability is outside of the size bounds)
+  } # end ss loop
+  
+  ## this makes the matrix of growth * survival rates. this is the entire matrix except the first row and the first column, which concern reproduction and new recruits
+  # make the surv*growth mx
+  survgmx <- gmx*t(matrix( rep(sur_vals,(n.bin)),(n.bin))) # survs* growth
+  reprow <- rep_vals*reproyesnovals #*bulblings_per_bulbil 
+ 
+  mx1 <- survgmx # growth and survival, without the repro
+  
+  mx <- matrix(0, (n.bin+1), (n.bin+1))
+  mx[2:(n.bin+1), 2:(n.bin+1)] = mx1
+   
+  ## these make the first row and column, with reproduction and then the size probabilities of the new bulblings. These are added in to make the final matrix
+  mx[2:(n.bin+1),1] = surv_bulbings*sdlgszprobs
+  mx[1,2:(n.bin+1)] = reprow*bulblings_per_bulbil  
+ 
+  ## these are just getting lambda and other outputs from the now-created matrix. 
+  lambdas_ipm_mean[i] <- Re(eigen(mx)$values[1])
+  dampratio_mean[i]= damping.ratio(mx)
+  lifespan_mean[i] =lifespan(mx)
+ print(i)
+}
+
+```
+#######################################
+######################################
+
+### IPM with median sizes-----------------------------------------------------
+```{r}
+# adding in columns
+size$t0sq <- size$t0^2           
+sizeforrepro$t0sq = sizeforrepro$t0^2
+# fitting functions for different vital rates (survival, growth, reproduction)
+# prob (survival): linear function of size, quadratic function of size
+sur_models <- list(glm(survival~ t0, family= "binomial",data = size),
+                   glm(survival~ t0 + t0sq , family= "binomial",data =size))
+# gives the value of the lowest AICc
+min_AIC <- min(AICc(sur_models[[1]], sur_models[[2]])$AICc)
+# gives you the info for the best-fit model
+bestsur <- sur_models[[which(min_AIC == AICc(sur_models[[1]], sur_models[[2]])$AICc)]] 
+
+# growth: linear function of size, quadratic function of size, power function (A+B*(size^C))
+growth_models <- list(nls(t1~ a+ b*t0, data = size, start=list(a= 1, b=1)),
+                      nls(t1~ a+ b*t0 + c*t0sq, data = size, start=list(a= 1, b=1,c=1)),
+                      nls(t1 ~ a + b*(t0^c), data= size, start=list(a= 1, b=1,c=1)))
+# gives the value of the lowest AICc
+min_AIC <- min(AICc(growth_models[[1]], growth_models[[2]],growth_models[[3]])$AICc)
+# gives you the info for the best-fit model
+bestgrowth <- growth_models[[which(min_AIC == AICc(growth_models[[1]], growth_models[[2]], growth_models[[3]])$AICc)]]
+
+# getting residuals of growth
+size$growth_residuals <- NA
+size$growth_residuals[which(!is.na(size$t1) & !is.na(size$t0))] <- summary(bestgrowth)$residuals^2
+
+
+reproyesno_models <- list(glm(reproyesno~ t0, family= "binomial",data = size),
+                          glm(reproyesno~ t0 + t0sq , family= "binomial",data =size))
+# gives the value of the lowest AICc
+min_AIC <- min(AICc(reproyesno_models[[1]], reproyesno_models[[2]])$AICc)
+# gives you the info for the best-fit model
+bestreproyesno <- reproyesno_models[[which(min_AIC == AICc(reproyesno_models[[1]], reproyesno_models[[2]])$AICc)]] 
+# yes/no repro: logistic: 
+
+# reproduction if reproducing: linear function of size, quadratic function of size, 
+rep_models <- list(lm(bulbs0~ t0, data = sizeforrepro),
+                   lm(bulbs0~ t0+ t0sq, data = sizeforrepro)) 
+min_AIC <- min(AICc(rep_models[[1]], rep_models[[2]])$AICc)# gives the value of the lowest AICc
+bestrep <- rep_models[[which(min_AIC == AICc(rep_models[[1]], rep_models[[2]])$AICc)]] # gives you the info for the best-fit model
+
+# variance in growth: uses best-fit model for growth: linear function of size, quadratic function of size, no intercept
+var_models <- list(glm(growth_residuals~ t0-1, data= size), glm(growth_residuals~ t0 + t0sq-1, data= size))
+min_AIC <- min(AICc(var_models[[1]], var_models[[2]])$AICc) # gives the value of the lowest AICc
+bestvar <- var_models[[which(min_AIC == AICc(var_models[[1]], var_models[[2]])$AICc)]] # gives you the info for the best-fit model
+
+# vary bin sizes
+
+lambdas_ipm_median <- vector("numeric", length= length(bin.num))
+dampratio_median <- vector("numeric", length= length(bin.num))
+lifespan_median = vector("numeric", length= length(bin.num))
+
+truebinsizes= matrix(0,length(bin.num),1)
+
+for (i in 1:length(bin.num)){
+
+ vec.bin = c(minsize, minsize+1:bin.num[i]*(maxsize-minsize)*(1/bin.num[i])) 
+  
+  nums=hist(size$t0,breaks=vec.bin, plot=FALSE)$counts 
+  
+  #--- either do the first block to make medians the focal estimated size for each cat, or do the second line, to define as the mean of the breakpts:
+  binmids =   rep(NA, length(vec.bin)-1)
+  for(jj in 1:(length(vec.bin)-1)){
+    # set limits for subset according to bin breaks
+    bounds <- c(vec.bin[jj], vec.bin[jj+1])
+    # subset data according to bounds
+    # subset <- size[size$t0 >= bounds[1] & size$t0 < bounds[2],]
+    # binmids[jj] <- median(subset$t0)
+    subsetszs <- pdfsz2[which(pdfsz2[,1] >= bounds[1] & pdfsz2[,1] < bounds[2]),]
+    binmids[jj] <- weightedMedian(subsetszs[,1],subsetszs[,2])
+    
+  }
+  
+  meanbinmids <- 0.5*(vec.bin[2:length(vec.bin)] + vec.bin[1:(length(vec.bin)-1)])
+  binmids[is.na(binmids)]=meanbinmids[is.na(binmids)]
+  # binmids[which(nums<=100)]=meanbinmids[which(nums<=100)]
+  
+  #--------------------------------------------------------------------
+  
+  
+  n.bin = length(binmids)
+  truebinsizes[i] = n.bin  
+  
+  # constructing matrix models
+  indata <- as.data.frame(cbind(binmids, binmids^2))
+  names(indata) <- c("t0", "t0sq")
+  
+  sur_vals <- predict(bestsur,indata, type='response')
+  reproyesnovals=predict(bestreproyesno, indata, type='response')
+  rep_vals <- predict(bestrep, indata, type='response')
+  rep_vals[rep_vals<0] <- 0
+  growth_vals <- predict(bestgrowth,indata, type='response')
+  var_vals <- predict(bestvar,indata, type='response')
+  gmx <- matrix(data=NA, nrow=n.bin, ncol=n.bin)
+  
+  sdlgszcdf=pnorm(vec.bin,mnsldgsz,sdsldgsz)
+  sdlgszprobs=sdlgszcdf[2:length(vec.bin)]-sdlgszcdf[1:(length(vec.bin)-1)]
+  sdlgszprobs=sdlgszprobs/sum(sdlgszprobs)
+  
+  # growth probs using cdf fn
+  for (ss in 1:(n.bin)) {
+    growcdf <- pnorm(vec.bin,growth_vals[ss],sqrt(var_vals[ss]))
+    grows <- growcdf[2:length(vec.bin)]-growcdf[1:(length(vec.bin)-1)]
+    if(sum(grows)>0){grows <- grows/sum(grows)
+    gmx[,ss] <- grows} else {gmx[,ss] <- NA} 
+    # this if statement breaks the code (puts NA's into the matrix) if the sum of the PDF is zero (which happens if all the probability is outside of the size bounds)
+  } # end ss loop
+  
+  # make the surv*growth mx
+  survgmx <- gmx*t(matrix( rep(sur_vals,(n.bin)),(n.bin))) # survs* growth
+  reprow <- rep_vals*reproyesnovals #*bulblings_per_bulbil 
+  
+  mx1 <- survgmx # growth and survival, without the repro
+  
+  mx <- matrix(0, (n.bin+1), (n.bin+1))
+  mx[2:(n.bin+1), 2:(n.bin+1)] = mx1
+  mx[2:(n.bin+1),1] = surv_bulbings*sdlgszprobs
+  
+  mx[1,2:(n.bin+1)] = reprow*bulblings_per_bulbil  
+  
+  
+    lambdas_ipm_median[i] <- Re(eigen(mx)$values[1])
+    dampratio_median[i]= damping.ratio(mx)
+    lifespan_median[i] =lifespan(mx)
+  print(i)
+}
+mxmedian=mx
+
+bistort.output.even <- as.data.frame(cbind(bin.num,lambdas_matrix, lambdas_ipm_mean,lambdas_ipm_median, dampratio_matrix,dampratio_mean,dampratio_median,lifespan_matrix,lifespan_mean,lifespan_median))
+names(bistort.output.even) <- c("bin.num", 'lam.mx','lam,mn','lam.med','damp.mx','damp.mn','damp.med','life.mx','life.mn','life.med')
+# save(bistort.output.even,file='bistortevenout.RData')
+
+```
+##########################################
+
+# plotting
+```{r}
+windows(4,8)
+par(mfrow=c(3,1))#,pty= "s")
+plot(truebinsizes,lambdas_matrix, type = 'b', xlab = "# of bins in model", main="bistorts with even breaks", col='blue', ylim=c(0.85,1.05))
+
+points(truebinsizes,lambdas_ipm_median, type = 'b', xlab = "# of bins in model", col ='red')
+linenames = expression(matrix,ipm)
+points(truebinsizes,lambdas_ipm_mean, type = 'b', xlab = "# of bins in model", col ='red', lty=3, pch=8)
+linenames = expression(matrix,ipm_median,ipm_mean)
+legend("bottomright",linenames, lty=1, lwd=2, col=c('blue','red','red'),pch=c(1,1,8), cex=1.2)
+```
+
+
+# plotting lifespan
+```{r}
+plot(truebinsizes,lifespan_matrix, type = 'b', xlab = "# of bins in model", main="bistorts with even breaks", col='blue', ylim=c(1,200))
+
+points(truebinsizes,lifespan_median, type = 'b', xlab = "# of bins in model", col ='red')
+linenames = expression(matrix,ipm)
+points(truebinsizes,lifespan_mean, type = 'b', xlab = "# of bins in model", col ='red', lty=3, pch=8)
+linenames = expression(matrix,ipm_median,ipm_mean)
+#legend("topright",linenames, lty=1, lwd=2, col=c('blue','red','red'),pch=c(1,1,8), cex=1.2)
+```
+
+# plotting dampingratio
+```{r}
+plot(truebinsizes,dampratio_matrix, type = 'b', xlab = "# of bins in model", main="bistorts with even breaks", col='blue', ylim=c(1,3))
+
+points(truebinsizes,dampratio_median, type = 'b', xlab = "# of bins in model", col ='red')
+linenames = expression(matrix,ipm)
+points(truebinsizes,dampratio_mean, type = 'b', xlab = "# of bins in model", col ='red', lty=3, pch=8)
+linenames = expression(matrix,ipm_median,ipm_mean)
+#legend("topright",linenames, lty=1, lwd=2, col=c('blue','red','red'),pch=c(1,1,8), cex=1.2)
+
+```
+
+
+
+

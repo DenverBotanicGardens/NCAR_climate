@@ -402,39 +402,40 @@ Sampling methods
 # test
 # suitability.raster <- predic_raster
 # samplesize <- 20
-# studyarea <- 300
+# studyarea <- 150
 
 ### systematic 
-systematic_sampling <- function(suitability.raster,  samplesize, studyarea){
+systematic_sampling <- function(suitability.raster,  samplesize, studyarea = 100){
   # systematic sampling to allow for Bernoulli process to reject some cells with high suitability and sometimes take cells with low suitability
-  randcellRowCol <- c(ceiling(runif(1, min = 1, max = nrow(suitability.raster))),
-                      ceiling(runif(1, min = 1, max = ncol(suitability.raster)))) # Row Col
-  if(randcellRowCol[1] > (nrow(suitability.raster)+(studyarea))) randcellRowCol[1] <- (nrow(suitability.raster))-(studyarea+1)
-  if(randcellRowCol[2] > (ncol(suitability.raster)+(studyarea))) randcellRowCol[2] <- (ncol(suitability.raster))-(studyarea+1)
-
-  # systematically sample the study area, row by row within the study area col
-  evenstep <- studyarea^2/(samplesize*100) 
   sampleout <- c()
-  # set the 'study area' as one side of square number of cells (i.e. study area of 50 x 50 cells so study area == 50)
-  # Systematically sample and then use thinmax to get the samplesize
-  # Find cell, move alnog row, move to cell of next selected row
-  
-  # r <- c <- cellFromRowCol(suitability.raster,randcellRowCol[1],randcellRowCol[2]) # cell number that matches the top left corner of the study area
-  randcellRow <- randcellRowCol[1]
-  while(all(randcellRow < c(randcellRowCol[1]+studyarea, nrow(suitability.raster)))){ # while still in a row that is in the study area
-      # Start at the first column each time
-      randcellCol <- randcellRowCol[2] 
-      # sample by row
-      while(all(randcellCol < c((randcellRowCol[2] + studyarea),ncol(suitability.raster)))){ # While in this row, still within a column of the study area length, assumes cells are numbered by row
-        c <- cellFromRowCol(suitability.raster, randcellRow, randcellCol) 
-        print(c)
-        if(rbinom(1, 1, getValues(suitability.raster)[c]) == 1){
-            sampleout <- rbind(sampleout,xyFromCell(suitability.raster, c))
-          }
-          randcellCol <- randcellCol + evenstep
-      } # once get to the last column in the study area, end and move to the next row
+  while(any(is.null(sampleout), nrow(sampleout) < samplesize)){
+      randcellRowCol <- c(ceiling(runif(1, min = 1, max = nrow(suitability.raster))),
+                          ceiling(runif(1, min = 1, max = ncol(suitability.raster)))) # Row Col
+      if(randcellRowCol[1] > (nrow(suitability.raster)-(studyarea))) randcellRowCol[1] <- (nrow(suitability.raster))-(studyarea+1)
+      if(randcellRowCol[2] > (ncol(suitability.raster)-(studyarea))) randcellRowCol[2] <- (ncol(suitability.raster))-(studyarea+1)
     
-    randcellRow <- randcellRow + evenstep
+      # systematically sample the study area, row by row within the study area col
+      evenstep <- 10 # floor(studyarea/(sqrt(samplesize) ))*10
+      # set the 'study area' as one side of square number of cells (i.e. study area of 50 x 50 cells so study area == 50)
+      # Systematically sample and then use thinmax to get the samplesize
+      # Find cell, move alnog row, move to cell of next selected row
+      
+      # r <- c <- cellFromRowCol(suitability.raster,randcellRowCol[1],randcellRowCol[2]) # cell number that matches the top left corner of the study area
+      randcellRow <- randcellRowCol[1]
+      while(all(randcellRow < c(randcellRowCol[1]+studyarea, nrow(suitability.raster)))){ # while still in a row that is in the study area
+          # Start at the first column each time
+          randcellCol <- randcellRowCol[2] 
+          # sample by row
+          while(all(randcellCol < c((randcellRowCol[2] + studyarea),ncol(suitability.raster)))){ # While in this row, still within a column of the study area length, assumes cells are numbered by row
+            c <- cellFromRowCol(suitability.raster, randcellRow, randcellCol) 
+            if(rbinom(1, 1, getValues(suitability.raster)[c]) == 1){
+                sampleout <- rbind(sampleout,xyFromCell(suitability.raster, c))
+              }
+              randcellCol <- randcellCol + evenstep
+          } # once get to the last column in the study area, end and move to the next row
+        
+        randcellRow <- randcellRow + evenstep
+      }
   }
   
   sampleout <- thin.max(sampleout, c("x","y"), samplesize) # spatial thinning
@@ -622,7 +623,7 @@ Sampling images
 ########### Systematic (true sample) ############
  
 for(x in 1:10){
-  samplesys1 <- systematic_sampling(predic_raster, 100, 50)
+  samplesys1 <- systematic_sampling(predic_raster, samplesize = 100, studyarea = 100)
       
   jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_NewSystematicTrue",x,".jpg", sep=""),
        width=145, height=100,units='mm', res=300)
@@ -706,7 +707,7 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
     sample_xy <- random_sampling(suitability.raster = true.dist,samplesize = samplesize)
   } 
   if(grepl(sampling_type, "systematic")){
-    sample_xy <- systematic_sampling(suitability.raster = true.dist, samplesize = samplesize)
+    sample_xy <- systematic_sampling(suitability.raster = true.dist, samplesize = samplesize, studyarea = 100)
   }
   if(grepl(sampling_type, "convenience")){
     sample_xy <- convenience_sampling(suitability.raster = true.dist, convenience.raster, samplesize = samplesize)
@@ -800,6 +801,7 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
 
 pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200314/"
 
+
 # 3:10, 
 lapply(c(20, 30, 50, 100), function(sampsize){
     maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "random", reps = 100, samplesize = sampsize, pathstart = pathstart)
@@ -829,6 +831,13 @@ lapply(c(6:10, 20, 30, 50, 100), function(sampsize){
 
     maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "systematic", reps = 100, samplesize = sampsize, pathstart = pathstart)
     
+})
+
+pathstart1 <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200330/"
+
+lapply(c(3:10,20,30,50,100), function(sampsize){
+  maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "systematic", reps = 100,samplesize = sampsize, 
+                  pathstart = pathstart1)
 })
     
 ```
