@@ -95,6 +95,99 @@ grViz("digraph nicegraph {
         
     in cluster0 
                 node [fixedsize = true, width = 3, rankdir = TB]
+                
+       tab6 -> tab12 [lhead = cluster1];
+       
+# Conceptional model - 
+```{r}
+
+grViz("digraph nicegraph {
+
+      graph [compound = true, color = blue, rankdir = TB]
+      # node definitions with substituted label text
+      node [fontname = Helvetica, fontcolor = darkslategray, shape = rectangle,  color = darkgoldenrod]   
+      tab1 [label = '@@4-1']
+      tab2 [label = <MPM<SUB>1</SUB>>]
+      tab3 [label = <MPM<SUB>2...</SUB>>]
+      tab4 [label = <MPM<SUB>i</SUB>>]
+      tab6 [label = '@@6']
+      tab7 [label = '@@5']
+      tab8 [label = '@@3-1']
+      tab9 [label = '@@3-2']
+      tab10 [style = filled fillcolor = gold label = '@@4-2']
+      tab11 [label = '@@2-1']
+      tab12 [label = '@@2-2']
+      tab13 [label = '@@1'] 
+      # Case study
+      tab5 [label = '@@7-1']
+      tab14 [label = '@@7-2']
+      tab15 [label = '@@7-3']
+      # Generalizaion
+      tab16 [label = '@@8-1']
+      tab17 [label = '@@8-2']
+
+      # edge definitions with the node IDs
+       edge[color = springgreen, arrowhead=none, dir = forw];
+       
+      subgraph cluster0 {
+        label = 'Simulation model';
+ 
+      subgraph cluster2 {
+        node [rankdir = TB]
+        edge[color = orange, arrowhead = icurve];
+        tab2 -> tab3 -> tab4;
+        label = 'Periodic Envrionment';
+      }
+        tab7 -> tab11 [lhead = cluster1] [style = dashed, color = red, arrowhead = tee];
+        tab6 -> tab2 [lhead = cluster2] [style = dashed, color = darkorange]; 
+
+      subgraph cluster1 {
+        node [fixedsize = true, width = 3]
+        edge[color = mediumturqoise, style=dotted, arrowhead = none];
+        tab11 -> tab12;
+        label = 'Harvest';
+      }
+      }
+      
+      subgraph cluster3 {
+        node [rankdir = TB];
+        label = 'Determinants of Fecundity Response';
+        tab8 -> tab9 -> tab13;
+      }
+      
+      subgraph cluster4 {
+        node [rankdir = TB];
+        label = 'Case Studies';
+        tab5 -> tab14 -> tab15
+      }
+      
+      subgraph cluster5 {
+        node [rankdir = TB];
+        label = 'Generalization';
+        style = filled;
+        color = lightgrey;
+        tab16 -> tab17
+      }
+      
+       tab1 -> tab13 [lhead = cluster3] [style = dashed, color = red, arrowhead = normal, dir = back];
+       tab2 -> tab1 [ltail = cluster2] [style = dashed, color = red, arrowhead = normal];
+       tab10 -> tab11 [lhead = cluster0] [style = dashed, color = red, arrowhead = normal, dir = back];
+       tab8 -> tab5 [ltail = cluster5];
+       tab16 -> tab8 [ltail = cluster5];
+       }
+      
+      [1]: 'Environmental sensitivity'
+      [2]: c('Frequency (% chance/year)','Intensity (% of seed/population)')
+      [3]: c('Fast-Slow continuum','Reproductive strategies')
+      [4]: c('Seed','Ex-situ collection')
+      [5]: 'Change in Extinction Risk'
+      [6]: 'Stochastic Projection'
+      [7]: c('Annual','Short lived perennial','long lived perennial')
+      [8]: c('Theoretic response to life length','Theoretic response to climate change')
+      ")
+```
+
+# Simulation model
 ```{r}
 
 grViz("digraph nicegraph {
@@ -120,14 +213,16 @@ grViz("digraph nicegraph {
        
       subgraph cluster0 {
         label = 'Simulation model';
-
+ 
       subgraph cluster1 {
         node [fixedsize = true, width = 3]
         edge[color = mediumturqoise, style=dotted, arrowhead = none];
         tab11 -> tab12;
         label = 'Harvest';
       }
-      
+        tab12 -> tab7 [ltail = cluster1] [style = dashed, color = red, arrowhead = tee];
+        tab6 -> tab2 [lhead = cluster2] [style = dashed, color = darkorange]; 
+
       subgraph cluster2 {
         node [rankdir = TB]
         edge[color = orange, arrowhead = icurve];
@@ -143,12 +238,8 @@ grViz("digraph nicegraph {
         tab8 -> tab9 -> tab13;
       }
 
-       tab6 -> tab2 [lhead = cluster2] [style = dashed, color = darkorange]; 
        tab13 -> tab1 [ltail = cluster3];
-       tab11 -> tab1 [ltail = cluster0];
-       tab7 -> tab12 [lhead = cluster1] [style = dashed, color = red, arrowhead = tee];
-       tab13 -> tab9 [lhead = cluster3];
-       tab6 -> tab12 [lhead = cluster1];
+       tab2 -> tab1 [ltail = cluster2];
        tab11 -> tab10 [ltail = cluster0];
        }
       
@@ -160,7 +251,6 @@ grViz("digraph nicegraph {
       [6]: 'Stochastic Projection'
       ")
 ```
-
 
 ```{r}
 
