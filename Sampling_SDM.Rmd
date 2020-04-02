@@ -351,26 +351,6 @@ jpeg("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/U
 dev.off()
         
 
-# jpeg("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig1_abioticvars.jpg",
-#      width=170, height=100,units='mm', res=300)
-#   
-# par(mfrow=c(1,2))      
-# # layout(matrix(c(1,2), 1,2, byrow = TRUE), widths = c(3,3), heights = c(1,1))
-# # layout.show(2)
-# # plot 1
-# par(mar=c(2.1,2.1,1.1,2.1))
-# plot(predic_raster)
-# mtext("a)", side=3, line=0, adj=0)
-# 
-# # plot 2
-# plot(rasterstack_norm)
-# mtext("b)", side=3, line=3, adj= -0.1)
-# 
-# dev.off()
-        
-
-
-
 ```
 
 
@@ -408,11 +388,33 @@ Sampling methods
 systematic_sampling <- function(suitability.raster,  samplesize, studyarea = 100){
   # systematic sampling to allow for Bernoulli process to reject some cells with high suitability and sometimes take cells with low suitability
   sampleout <- c()
+  studyareabox <- c()
+  b <- 0
   while(any(is.null(sampleout), nrow(sampleout) < samplesize)){
+    b <- b+1
       randcellRowCol <- c(ceiling(runif(1, min = 1, max = nrow(suitability.raster))),
                           ceiling(runif(1, min = 1, max = ncol(suitability.raster)))) # Row Col
       if(randcellRowCol[1] > (nrow(suitability.raster)-(studyarea))) randcellRowCol[1] <- (nrow(suitability.raster))-(studyarea+1)
       if(randcellRowCol[2] > (ncol(suitability.raster)-(studyarea))) randcellRowCol[2] <- (ncol(suitability.raster))-(studyarea+1)
+      
+      # Study area box
+      studyareabox1 <- data.frame(do.call(rbind, 
+                              list(xyFromCell(suitability.raster, 
+                                 cellFromRowCol(suitability.raster, randcellRowCol[1],
+                                                randcellRowCol[2])),
+                            xyFromCell(suitability.raster, 
+                                 cellFromRowCol(suitability.raster, randcellRowCol[1]+studyarea,
+                                                randcellRowCol[2])),
+                            xyFromCell(suitability.raster, 
+                                 cellFromRowCol(suitability.raster, randcellRowCol[1],
+                                                randcellRowCol[2]+studyarea)),
+                            xyFromCell(suitability.raster, 
+                                 cellFromRowCol(suitability.raster, randcellRowCol[1]+studyarea,
+                                                randcellRowCol[2]+studyarea))
+                            )), BoxNum = b)
+      names(studyareabox1)[1:2] <- c("BoxX","BoxY")
+      
+      studyareabox <- rbind(studyareabox, studyareabox1)
     
       # systematically sample the study area, row by row within the study area col
       evenstep <- 10 # floor(studyarea/(sqrt(samplesize) ))*10
@@ -439,7 +441,7 @@ systematic_sampling <- function(suitability.raster,  samplesize, studyarea = 100
   }
   
   sampleout <- thin.max(sampleout, c("x","y"), samplesize) # spatial thinning
-  sampleout
+  list(sampleout,studyareabox)
 }
 
 
@@ -628,13 +630,25 @@ for(x in 1:10){
   jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_NewSystematicTrue",x,".jpg", sep=""),
        width=145, height=100,units='mm', res=300)
   par(mar=c(2.1,2.1,2.1,1.1))
-  plot(predic_raster, main = ""); points(samplesys1, pch=16, cex=0.25)
+  plot(predic_raster, main = ""); points(samplesys1[[1]], pch=16, cex=0.25)
+  boxes <- split(samplesys1[[2]], samplesys1[[2]]$BoxNum)
+  sur <- 0.1
+  for(i in 1:length(boxes)){
+    # x1, x2 and y1, y2
+    lines(c(boxes[[i]]$BoxX[1], boxes[[i]]$BoxX[2]), c(boxes[[i]]$BoxY[1], boxes[[i]]$BoxY[2]), type='l', col="grey50")
+    lines(c(boxes[[i]]$BoxX[1], boxes[[i]]$BoxX[3]), c(boxes[[i]]$BoxY[1], boxes[[i]]$BoxY[3]), type='l', col="grey50")
+    lines(c(boxes[[i]]$BoxX[3], boxes[[i]]$BoxX[4]), c(boxes[[i]]$BoxY[3], boxes[[i]]$BoxY[4]), type='l', col="grey50")
+    lines(c(boxes[[i]]$BoxX[2], boxes[[i]]$BoxX[4]), c(boxes[[i]]$BoxY[2], boxes[[i]]$BoxY[4]), type='l', col="grey50")
+  }
+  
   mtext("d)", side=3, line=0.5, adj=-0.1)
   mtext("Systematic sampling (n = 100)", side=3, line=0, adj=0.5, cex=1.15)
   
   dev.off()
   }
+```
 
+```{r}
 
 ############ Simple random ###############
 
