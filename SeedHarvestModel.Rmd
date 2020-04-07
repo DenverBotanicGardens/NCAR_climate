@@ -45,22 +45,23 @@ grViz("digraph nicegraph {
        edge[color = springgreen, arrowhead=none, dir = forw];
        
       subgraph cluster0 {
+        graph [color = cornflowerblue, rankdir = LR]
         label = 'Simulation model';
- 
-      subgraph cluster2 {
-        node [rankdir = TB]
-        edge[color = orange, arrowhead = icurve];
-        tab2 -> tab3 -> tab4;
-        label = 'Periodic Envrionment';
-      }
-        tab7 -> tab11 [lhead = cluster1] [style = dashed, color = red, arrowhead = tee];
-        tab6 -> tab2 [lhead = cluster2] [style = dashed, color = darkorange]; 
-
+       
       subgraph cluster1 {
         node [fixedsize = true, width = 3]
         edge[color = mediumturqoise, style=dotted, arrowhead = none];
         tab11 -> tab12;
         label = 'Harvest';
+      }
+        tab7 -> tab11 [lhead = cluster1] [style = dashed, color = red, arrowhead = tee];
+        tab6 -> tab2 [lhead = cluster2] [style = dashed, color = darkorange]; 
+
+      subgraph cluster2 {
+        node [rankdir = TB]
+        edge[color = orange, arrowhead = icurve];
+        tab2 -> tab3 -> tab4;
+        label = 'Periodic Envrionment';
       }
       }
       
@@ -84,11 +85,12 @@ grViz("digraph nicegraph {
         tab16 -> tab17
       }
       
-       tab1 -> tab13 [lhead = cluster3] [style = dashed, color = red, arrowhead = normal, dir = back];
-       tab2 -> tab1 [ltail = cluster2] [style = dashed, color = red, arrowhead = normal];
-       tab10 -> tab11 [lhead = cluster0] [style = dashed, color = red, arrowhead = normal, dir = back];
+       tab1 -> tab13 [lhead = cluster4, ltail = cluster3] [style = dashed, color = red, arrowhead = normal, dir = back];
+       tab2 -> tab1 [lhead = cluster2] [style = dashed, color = red, arrowhead = normal];
+       tab10 -> tab11 [ltail = cluster0] [style = dashed, color = red, arrowhead = normal, dir = back];
        tab8 -> tab5 [ltail = cluster5];
        tab16 -> tab8 [ltail = cluster5];
+       tab11 -> tab2 [lhead = cluster2, ltail = cluster1];
        }
       
       [1]: 'Environmental sensitivity'
@@ -167,13 +169,6 @@ grViz("digraph nicegraph {
       ")
 ```
 
-```{r}
-
-
-```
-
-
-
 
 Current state of recommendations 
 ```{r}
@@ -233,6 +228,61 @@ Simulations of stochastic growth, with environmental variability (or below) to g
 
 ```
 
+AsMi
+```{r}
+currentyr <- as.numeric(format(as.Date(Sys.Date(),format="%Y-%m-%d"), "%Y"))-1
+rawdatapath <- paste("Q:/Research/All_Projects_by_Species/Astragalus SPECIES/Astragalus_microcymbus/Asmi_Excel/Yearly Summaries/", 
+                     currentyr,"_asmi/RawData_",
+                     currentyr, ".csv", collapse = '', sep = '')
+asmi.raw <- read.csv(path.expand(rawdatapath), na.strings = "na")
+
+# All lengths not recorded, change to zero
+asmi.raw$length[is.na(asmi.raw$length)] <- 0
+# For plots that didn't start in 1995 !!! All new plants are listed as seedlings in 2014 and none should
+table(asmi.raw$AsMi_plot_id[asmi.raw$AsMi_site_id==1], 
+      asmi.raw$status[asmi.raw$AsMi_site_id==1], 
+      asmi.raw$year[asmi.raw$AsMi_site_id==1])
+table(asmi.raw$AsMi_plot_id[asmi.raw$AsMi_site_id==2], 
+      asmi.raw$status[asmi.raw$AsMi_site_id==2], 
+      asmi.raw$year[asmi.raw$AsMi_site_id==2])
+
+# Site 26 had two plots added later; Plots 238 and 300 were added in 1996 with no seedlings! good!;  plot 598 was added in 2004, no seedlings, good!  
+table(asmi.raw$AsMi_plot_id[asmi.raw$AsMi_plot_id %in% c(238,300,598)], 
+      asmi.raw$status[asmi.raw$AsMi_plot_id %in% c(238,300,598)],
+      asmi.raw$year[asmi.raw$AsMi_plot_id %in% c(238,300,598)])
+# Need to change all the seedling in 2014 for sites 1 and 2 to approraite other thing
+asmi.raw$status[asmi.raw$AsMi_site_id<3 & asmi.raw$year == 2014 & asmi.raw$flower == 0] <- "vegetative"
+asmi.raw$status[asmi.raw$AsMi_site_id<3 & asmi.raw$year == 2014 & asmi.raw$flower == 1] <- "reproductive"
+# No longer adding climate data to the database
+asmi.raw <- asmi.raw[,grep(paste(c("Temp","Rain","Snow","Aug.Jul"),collapse="|"), names(asmi.raw),
+                           value = TRUE, invert = TRUE)]
+table(asmi.raw$year, asmi.raw$AsMi_site_id)
+table(asmi.raw$year, asmi.raw$AsMi_plot_id)
+table(asmi.raw$Browsing...Status)
+table(asmi.raw$AsMi_plot_id,asmi.raw$AsMi_site_id)
+
+#reset factors for fence
+asmi.raw$fence <- factor(asmi.raw$fence)
+table(asmi.raw$fence)
+asmi.raw[asmi.raw$length>90 & !is.na(asmi.raw$length),] 
+asmi.raw$length[asmi.raw$length == 921] <- 21
+asmi.raw[asmi.raw$status=="vegetative" & asmi.raw$fruit>0,]
+# wrongAsMidataid <- asmi.raw$AsMi_data_id[asmi.raw$status=="vegetative" & asmi.raw$fruit>0]
+# asmi.raw$flower[asmi.raw$AsMi_data_id %in% wrongAsMidataid] <- 1
+# asmi.raw$status[asmi.raw$AsMi_data_id %in% wrongAsMidataid] <- "reproductive"
+# asmi.raw[asmi.raw$AsMi_data_id %in% wrongAsMidataid,]
+# Years of study
+length(1995:currentyr)
+
+```
+
+```{r}
+asmi.all <- asmi.raw[order(asmi.raw$AsMi_site_id, 
+                           asmi.raw$AsMi_tag_id, asmi.raw$year),]
+stages <- c("seedling", "vegetative", "reproductive", "dormant","dead") 
+asmi.all$status <- ordered(asmi.all$status, levels = stages)
+head(asmi.all)
+```
 
 
 
