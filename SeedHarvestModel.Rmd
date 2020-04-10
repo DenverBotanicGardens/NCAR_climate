@@ -284,9 +284,6 @@ asmi.all$status <- ordered(asmi.all$status, levels = stages)
 head(asmi.all)
 ```
 
-
-
-
 # how to break apart MPM, see impacts through models, and put back together
 ```{r}
 load("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter3/allhopsforanalysis.rdata")
@@ -294,26 +291,26 @@ load("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/U
 
 ```
 
-
 # Code from Dan Doak
 ```{r}
 # adding in damping ratio and lifespan after first stage. 
 
 # graphics.off()
-rm(list=ls())
+# rm(list=ls())
 library(ggplot2)
 library(dplyr)
 library(popbio)
 library(MuMIn)
 library(binr)
 library(matrixStats)
-setwd("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter3")
 ```
 
 ### Load, manipulate, and sort data --------------
 ```{r}
  # load('BNdataforIPM.RData')
  # write.csv(alldata,file='bistortdata.csv')
+
+setwd("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter3")
 
 allsdszs= as.numeric(read.csv('bulblingsizes.csv', header=FALSE)[,1])
 mnsldgsz=mean(allsdszs)
@@ -364,6 +361,7 @@ lifespan <- function(nx){
 }#############################################
 ```
 
+
 Set min and max sizes just outside of the emperical data
 ```{r}
 minsize <- min(c(alldata[,1],alldata[,2]), na.rm=TRUE) -0.1
@@ -382,13 +380,45 @@ sizeforrepro=size
 sizeforrepro=sizeforrepro[sizeforrepro$reproyesno==1,]
 ```
 
-
-
 #####new size density estimation for median size estimation
 ```{r}
 pdfsz=density(size$t0, n=1024, cut=0)
 pdfsz2=cbind(pdfsz$x,pdfsz$y)
 #so, this is a set of smoothed values that can then be used with weightedMedian in the matrixStats package to get a 'good' median for each class.
+```
+
+```{r}
+asmi.all <- asmi.all[!is.na(asmi.all$AsMi_data_id),]
+
+asmi.all$length[asmi.all$status %in% c("dead","dormant")] <- NA
+asmi.all$flower[asmi.all$status %in% c("dead","dormant")] <- NA
+asmi.all$fruit[asmi.all$status %in% c("dead","dormant")] <- NA
+asmi.all$browsing[asmi.all$status %in% c("dead","dormant")] <- NA
+
+asmi.all[asmi.all$length==0 & !is.na(asmi.all$length),] # 24 rows where status is seedling or veg but length and all others are zero. 
+asmi.all$length[asmi.all$length==0 & !is.na(asmi.all$length)] <- NA 
+asmi.all$status[asmi.all$length==0 & !is.na(asmi.all$length)] <- "dead" # some _might_ be dormant
+
+# Get AsMi to szs at time 0 and size at time 1, but I'll keep year since it matters the climate that year
+asmi.alldata <- subset(merge(asmi.all[,c(2:9,12:15)], asmi.all[,c(2:9,12:15)], 
+                             by = c("AsMi_tag_id","AsMi_plot_id","AsMi_site_id","tag_no","fence")),
+                       year.x == year.y-1)
+
+names(asmi.alldata) <- c("TagID","Plot","Site","tag",
+                         "fence","Year_t","szs0","fl_t",
+                         "fr_t","br_t","brstatus_t","stage",
+                         "year_t1","szs1","fl_t1","fr_t1",
+                         "br_t1","brstatus_t1","fate")
+asmi.alldata[is.na(asmi.alldata$szs0),]
+asmi.alldata[asmi.alldata$fate %in% c("dormant","dead"),]
+asmi.alldata[asmi.alldata$stage == "dead",]
+asmi.alldata$survival <- 1
+asmi.alldata$survival[asmi.alldata$fate == "dead"] <- 0
+asmi.alldata[asmi.alldata$szs1 == 0 &!is.na(asmi.alldata$szs1),]
+
+# Set min and max sizes just outside of the emperical data
+asmiminsize <- min(c(asmi.alldata$szs0, asmi.alldata$szs1), na.rm=TRUE) -0.1
+asmimaxsize <- max(c(asmi.alldata$szs0, asmi.alldata$szs1), na.rm=TRUE) +0.1
 ```
 
 
