@@ -27,7 +27,7 @@ library(virtualspecies)
 
 # SDM
 library(rJava)
-
+library(maxnet)
 library(dismo)
 
 # Mapping
@@ -309,20 +309,19 @@ names(rasterstack_norm) <- c("Elevation","Bio1","Bio11","Bio12","Bio19","dummy")
 
 ```
 
-
+     See Royle, J. A., R. B. Chandler, C. Yackulic, and J. D. Nichols. 2012. Likelihood analysis of species occurrence probability from presence-only data for modelling species distributions. Methods in Ecology and Evolution 3:545-554. 
 e^Xlinearmodel/1+e^linear model so that it's [0-1] of the probability of y|x 
 Create my own glm for comparison with maxent
 ```{r}
 
+# actual covariates
 predic_raster <- rasterstack_norm[[1]]
 
+# linear predictor 
 lm1 <- as.formula(~ getValues(rasterstack_norm[[1]])*1 + getValues(rasterstack_norm[[2]])*2.5 - getValues(rasterstack_norm[[3]])*6 +
                     getValues(rasterstack_norm[[4]])*4 - getValues(rasterstack_norm[[5]])*5 + getValues(rasterstack_norm[[6]])*.005)
 
-
-identical(length(predic_raster),length(exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]])))))
-
-# predic_raster[] <- exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]])))
+# 
 predic_raster <- setValues(predic_raster, as.vector(exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]])))))
 
 plot(predic_raster)
@@ -1246,6 +1245,43 @@ model1 <- ElevationResampled_bioclim[]*x
 r_suitability <- stackApply(rasterstack3_z, indices = 1:6, function(x) )
 
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+# install.packages("remotes")
+# remotes::install_github("rspatial/disdat")
+library(disdat)
+
+
+```
+
+
+```{r}
+
+# install.packages("maxlike")
+library(maxlike)
+
+```
+
+
+
+
 
 
 
