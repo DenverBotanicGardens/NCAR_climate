@@ -12,6 +12,7 @@ output: html_document
 
 rm(list=ls())
 
+# install.packages("maxnet")
 
 # Sys.setenv(JAVA_HOME="C:/Program Files (x86)/Java/jre1.8.0_241/lib/") # for 64-bit version
 # install.packages("rJava")
@@ -303,8 +304,9 @@ plot(scale(rasterstack_norm[[1]]), main="scaled normalized")
 names(rasterstack_norm) <- c("Elevation","Bio1","Bio11","Bio12","Bio19","dummy")
 
 # for(i in 1:6){
-#     writeRaster(rasterstack_norm[[i]], paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/rasterstack_normalized,",i,".tif",sep=""), overwrite=TRUE)
+#     writeRaster(rasterstack_norm[[i]], paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/rasterstack_normalized",i,".tif",sep=""), overwrite=TRUE)
 # }
+
 
 
 ```
@@ -316,20 +318,100 @@ Create my own glm for comparison with maxent
 
 # actual covariates
 predic_raster <- rasterstack_norm[[1]]
+predic_raster_quad <- rasterstack_norm[[1]]
 
 # linear predictor 
-lm1 <- as.formula(~ getValues(rasterstack_norm[[1]])*1 + getValues(rasterstack_norm[[2]])*2.5 - getValues(rasterstack_norm[[3]])*6 +
-                    getValues(rasterstack_norm[[4]])*4 - getValues(rasterstack_norm[[5]])*5 + getValues(rasterstack_norm[[6]])*.005)
+lm1 <- as.formula(~ -1 + getValues(rasterstack_norm[[1]])*1 + getValues(rasterstack_norm[[2]])*2.5 -
+                    getValues(rasterstack_norm[[3]])*6 + getValues(rasterstack_norm[[4]])*4 -
+                    getValues(rasterstack_norm[[5]])*5 + getValues(rasterstack_norm[[6]])*.005)
 
-# 
+# Should I include exponentials to better match maxent?
+b <- c(0.5, 1, -1,
+          2.5, -2.5,
+          6, 6,
+          4, -4,
+          5, -5,
+          0.005, 0.005)
+lm2 <- as.formula(~ b[1] + getValues(rasterstack_norm[[1]])*b[2] + b[3]*(getValues(rasterstack_norm[[1]])^2) + 
+                    b[4]*getValues(rasterstack_norm[[2]]) + b[5]*(getValues(rasterstack_norm[[2]])^2) -
+                    b[6]*getValues(rasterstack_norm[[3]]) - b[7]*(getValues(rasterstack_norm[[3]])^2) + 
+                    b[8]*getValues(rasterstack_norm[[4]]) + b[9]*(getValues(rasterstack_norm[[4]])^2) -
+                    b[10]*getValues(rasterstack_norm[[5]]) + b[11]*(getValues(rasterstack_norm[[5]])^2) + 
+                    b[12]*getValues(rasterstack_norm[[6]]) + b[13]*(getValues(rasterstack_norm[[6]])^2))
+
+#  suitability data
+# Occurrence probability
 predic_raster <- setValues(predic_raster, as.vector(exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]])))))
 
 plot(predic_raster)
+
+# with quadratic 
+predic_raster_quad <- setValues(predic_raster_quad, as.vector(exp(as.formula(lm2[[2]]))/(1+exp(as.formula(lm2[[2]])))))
+
+plot(predic_raster)
+plot(predic_raster_quad)
+
+# try it with quadratic
+predic_raster <- predic_raster_quad
 
 # normalize response
 predic_raster <- calc(predic_raster, function(x){
     (x-min(getValues(predic_raster)))/(max(getValues(predic_raster))-min(getValues(predic_raster)))
 })
+
+
+
+# generate presence-absence data
+y <- predic_raster
+y <- setValues(y, as.vector(rbinom(length(y), 1, getValues(predic_raster))))
+
+# keep presence-only data
+plot(y)
+data <- lapply(1:6, function(x) rasterstack_norm[[x]][y==1])
+
+b
+# define the neg log-likelihood
+lik <- function(parm){
+    beta0 <- parm[1] # -1 intercept
+    beta1 <- parm[2] # Elevation
+    beta2 <- parm[3] # Elevation^2
+    beta3 <- parm[4] # Bio1
+    beta4 <- parm[5] # Bio1^2
+    beta5 <- parm[6] # Bio11
+    beta6 <- parm[7] # Bio11^2
+    beta7 <- parm[8]   # Bio12
+    beta8 <- parm[9]   # Bio12^2
+    beta9 <- parm[10]  # Bio19
+    beta10 <- parm[11] # Bio19^2
+    beta11 <- parm[12] # dummy
+    beta12 <- parm[13] # dummy^2
+  gridpsi <- exp(beta0 + beta1*getValues(rasterstack_norm[[1]]) + beta2*getValues(rasterstack_norm[[1]])^2 + 
+                   beta3*getValues(rasterstack_norm[[2]]) + beta4*(getValues(rasterstack_norm[[2]])^2) -
+                   beta5*getValues(rasterstack_norm[[3]]) - beta6*(getValues(rasterstack_norm[[3]])^2) + 
+                   beta7*getValues(rasterstack_norm[[4]]) + beta8*(getValues(rasterstack_norm[[4]])^2) -
+                   beta9*getValues(rasterstack_norm[[5]]) - beta10*(getValues(rasterstack_norm[[5]])^2) + 
+                   beta11*getValues(rasterstack_norm[[6]]) + beta12*(getValues(rasterstack_norm[[6]])^2))/
+    (1 + exp(beta0 + beta1*getValues(rasterstack_norm[[1]]) + beta2*getValues(rasterstack_norm[[1]])^2 + 
+                   beta3*getValues(rasterstack_norm[[2]]) + beta4*(getValues(rasterstack_norm[[2]])^2) -
+                   beta5*getValues(rasterstack_norm[[3]]) - beta6*(getValues(rasterstack_norm[[3]])^2) + 
+                   beta7*getValues(rasterstack_norm[[4]]) + beta8*(getValues(rasterstack_norm[[4]])^2) -
+                   beta9*getValues(rasterstack_norm[[5]]) - beta10*(getValues(rasterstack_norm[[5]])^2) + 
+                   beta11*getValues(rasterstack_norm[[6]]) + beta12*(getValues(rasterstack_norm[[6]])^2)))
+  
+  datapsi <- exp(beta0 + beta1*rasterstack_norm[[1]][y==1] + rasterstack_norm[[2]][y==1]*beta2 -
+                    rasterstack_norm[[3]][y==1]*beta3 + rasterstack_norm[[4]][y==1]*beta4 -
+                    rasterstack_norm[[5]][y==1]*beta5 + rasterstack_norm[[6]][y==1]*beta6)/
+    (1 + exp(beta0 + beta1*rasterstack_norm[[1]][y==1] + rasterstack_norm[[2]][y==1]*beta2 -
+                    rasterstack_norm[[3]][y==1]*beta3 + rasterstack_norm[[4]][y==1]*beta4 -
+                    rasterstack_norm[[5]][y==1]*beta5 + rasterstack_norm[[6]][y==1]*beta6))
+  # -1 and the presence-only sample joint likelihood, the sum of probabilities of presences over the likelihood over the study space
+  -1*sum(log(datapsi/(sum(gridpsi))))
+}
+
+# minimize it
+out <- nlm(lik, c(rep(0,7)), hessian=TRUE)
+out$estimate
+
 ```
 
 ```{r}
@@ -735,6 +817,7 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
     # occtrain <- sample_xy[fold != 1,]
     # xm <- maxent(x = rasterstack, p = occtrain,  args=c(
     xm <- maxent(x = rasterstack, p = sample_xy, args=c(
+      "outputformat=logistic",
   # 'maximumbackground=10000',
   'defaultprevalence=1.00',
   # 'betamultiplier=0.5',
