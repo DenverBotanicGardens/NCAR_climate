@@ -398,19 +398,26 @@ lik <- function(parm){
                    beta9*getValues(rasterstack_norm[[5]]) - beta10*(getValues(rasterstack_norm[[5]])^2) + 
                    beta11*getValues(rasterstack_norm[[6]]) + beta12*(getValues(rasterstack_norm[[6]])^2)))
   
-  datapsi <- exp(beta0 + beta1*rasterstack_norm[[1]][y==1] + rasterstack_norm[[2]][y==1]*beta2 -
-                    rasterstack_norm[[3]][y==1]*beta3 + rasterstack_norm[[4]][y==1]*beta4 -
-                    rasterstack_norm[[5]][y==1]*beta5 + rasterstack_norm[[6]][y==1]*beta6)/
-    (1 + exp(beta0 + beta1*rasterstack_norm[[1]][y==1] + rasterstack_norm[[2]][y==1]*beta2 -
-                    rasterstack_norm[[3]][y==1]*beta3 + rasterstack_norm[[4]][y==1]*beta4 -
-                    rasterstack_norm[[5]][y==1]*beta5 + rasterstack_norm[[6]][y==1]*beta6))
+  datapsi <- exp(beta0 + beta1*rasterstack_norm[[1]][y == 1] + beta2*rasterstack_norm[[1]][y == 1]^2 + 
+                   beta3*rasterstack_norm[[2]][y == 1] + beta4*(rasterstack_norm[[2]][y == 1]^2) -
+                   beta5*rasterstack_norm[[3]][y == 1] - beta6*(rasterstack_norm[[3]][y == 1]^2) + 
+                   beta7*rasterstack_norm[[4]][y == 1] + beta8*(rasterstack_norm[[4]][y == 1]^2) -
+                   beta9*rasterstack_norm[[5]][y == 1] - beta10*(rasterstack_norm[[5]][y == 1]^2) + 
+                   beta11*rasterstack_norm[[6]][y == 1] + beta12*(rasterstack_norm[[6]][y == 1]^2))/
+    (1 + exp(beta0 + beta1*rasterstack_norm[[1]][y == 1] + beta2*rasterstack_norm[[1]][y == 1]^2 + 
+                   beta3*rasterstack_norm[[2]][y == 1] + beta4*(rasterstack_norm[[2]][y == 1]^2) -
+                   beta5*rasterstack_norm[[3]][y == 1] - beta6*(rasterstack_norm[[3]][y == 1]^2) + 
+                   beta7*rasterstack_norm[[4]][y == 1] + beta8*(rasterstack_norm[[4]][y == 1]^2) -
+                   beta9*rasterstack_norm[[5]][y == 1] - beta10*(rasterstack_norm[[5]][y == 1]^2) + 
+                   beta11*rasterstack_norm[[6]][y == 1] + beta12*rasterstack_norm[[6]][y == 1]^2))
   # -1 and the presence-only sample joint likelihood, the sum of probabilities of presences over the likelihood over the study space
   -1*sum(log(datapsi/(sum(gridpsi))))
 }
 
-# minimize it
-out <- nlm(lik, c(rep(0,7)), hessian=TRUE)
+# minimize it with nlm() non-linear minimization
+out <- nlm(lik, c(rep(0,13)), hessian=TRUE)
 out$estimate
+b
 
 ```
 
