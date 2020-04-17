@@ -424,6 +424,19 @@ out <- nlm(lik, c(rep(0,13)), hessian=TRUE)
 out$estimate
 b
 
+
+# minimize with sampling
+outsamp <- nlm(lik, c(rep(0,13)), hessian=TRUE)
+outsamp$estimate
+
+paramsout <- do.call(rbind, lapply(1:2, function(x){
+  out <- nlm(lik, c(rep(0,13)), hessian=TRUE)
+  out$estimate
+}))
+
+paramsout
+b
+
 ```
 
 
