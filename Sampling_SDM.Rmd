@@ -398,7 +398,37 @@ lik <- function(parm){
                    beta9*getValues(rasterstack_norm[[5]]) - beta10*(getValues(rasterstack_norm[[5]])^2) + 
                    beta11*getValues(rasterstack_norm[[6]]) + beta12*(getValues(rasterstack_norm[[6]])^2)))
   
-  datapsi <- exp(beta0 + beta1*rasterstack_norm[[1]][y == 1] + beta2*rasterstack_norm[[1]][y == 1]^2 + 
+  y_1 <- do.call(cbind,lapply(1:6, function(x){ 
+    rasterstack_norm[[x]][y==1]
+    }))
+  y_1 <- y_1[sample(1:nrow(y_1),2000),]
+  
+  datapsi <- exp(beta0 + beta1*y_1[,1] + beta2*y_1[,1]^2 + 
+                   beta3*y_1[,2] + beta4*(y_1[,2]^2) -
+                   beta5*y_1[,3] - beta6*(y_1[,3]^2) + 
+                   beta7*y_1[,4] + beta8*(y_1[,4]^2) -
+                   beta9*y_1[,5] - beta10*(y_1[,5]^2) + 
+                   beta11*y_1[,6] + beta12*(y_1[,6]^2))/
+    (1 + exp(beta0 + beta1*y_1[,1] + beta2*y_1[,1]^2 + 
+                   beta3*y_1[,2] + beta4*(y_1[,2]^2) -
+                   beta5*y_1[,3] - beta6*(y_1[,3]^2) + 
+                   beta7*y_1[,4] + beta8*(y_1[,4]^2) -
+                   beta9*y_1[,5] - beta10*(y_1[,5]^2) + 
+                   beta11*y_1[,6] + beta12*y_1[,6]^2))
+  # -1 and the presence-only sample joint likelihood, the sum of probabilities of presences over the likelihood over the study space
+  -1*sum(log(datapsi/(sum(gridpsi))))
+}
+
+# minimize it with nlm() non-linear minimization
+out <- nlm(lik, c(rep(0,13)), hessian=TRUE)
+out$estimate
+b
+
+```
+
+
+
+datapsi <- exp(beta0 + beta1*rasterstack_norm[[1]][y == 1] + beta2*rasterstack_norm[[1]][y == 1]^2 + 
                    beta3*rasterstack_norm[[2]][y == 1] + beta4*(rasterstack_norm[[2]][y == 1]^2) -
                    beta5*rasterstack_norm[[3]][y == 1] - beta6*(rasterstack_norm[[3]][y == 1]^2) + 
                    beta7*rasterstack_norm[[4]][y == 1] + beta8*(rasterstack_norm[[4]][y == 1]^2) -
@@ -410,16 +440,8 @@ lik <- function(parm){
                    beta7*rasterstack_norm[[4]][y == 1] + beta8*(rasterstack_norm[[4]][y == 1]^2) -
                    beta9*rasterstack_norm[[5]][y == 1] - beta10*(rasterstack_norm[[5]][y == 1]^2) + 
                    beta11*rasterstack_norm[[6]][y == 1] + beta12*rasterstack_norm[[6]][y == 1]^2))
-  # -1 and the presence-only sample joint likelihood, the sum of probabilities of presences over the likelihood over the study space
-  -1*sum(log(datapsi/(sum(gridpsi))))
-}
+                   
 
-# minimize it with nlm() non-linear minimization
-out <- nlm(lik, c(rep(0,13)), hessian=TRUE)
-out$estimate
-b
-
-```
 
 ```{r}
 jpeg("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig1a_abioticvars.jpg",
