@@ -321,21 +321,22 @@ predic_raster <- rasterstack_norm[[1]]
 predic_raster_quad <- rasterstack_norm[[1]]
 
 # linear predictor 
-lm1 <- as.formula(~ -1 + getValues(rasterstack_norm[[1]])*1 + getValues(rasterstack_norm[[2]])*2.5 -
-                    getValues(rasterstack_norm[[3]])*6 + getValues(rasterstack_norm[[4]])*4 -
-                    getValues(rasterstack_norm[[5]])*5 + getValues(rasterstack_norm[[6]])*.005)
+betas <- c(0.5, 1,2.5,-7,4,-5,0.005)
+lm1 <- as.formula(~ betas[1] + getValues(rasterstack_norm[[1]])*betas[2] + getValues(rasterstack_norm[[2]])*betas[3] +
+                    getValues(rasterstack_norm[[3]])*betas[4] + getValues(rasterstack_norm[[4]])*betas[5] +
+                    getValues(rasterstack_norm[[5]])*betas[6] + getValues(rasterstack_norm[[6]])*betas[7])
 
 # Should I include exponentials to better match maxent?
-b <- c(0.5, 1, -1,
-          2.5, -2.5,
-          6, 6,
+b <- c(0.5, 1, 1,
+          2.5, 2.5,
+          -7, -7,
           4, -4,
-          5, -5,
+          -5, 5,
           0.005, 0.005)
 lm2 <- as.formula(~ b[1] + getValues(rasterstack_norm[[1]])*b[2] + b[3]*(getValues(rasterstack_norm[[1]])^2) + 
-                    b[4]*getValues(rasterstack_norm[[2]]) + b[5]*(getValues(rasterstack_norm[[2]])^2) -
-                    b[6]*getValues(rasterstack_norm[[3]]) - b[7]*(getValues(rasterstack_norm[[3]])^2) + 
-                    b[8]*getValues(rasterstack_norm[[4]]) + b[9]*(getValues(rasterstack_norm[[4]])^2) -
+                    b[4]*getValues(rasterstack_norm[[2]]) + b[5]*(getValues(rasterstack_norm[[2]])^2) +
+                    b[6]*getValues(rasterstack_norm[[3]]) + b[7]*(getValues(rasterstack_norm[[3]])^2) + 
+                    b[8]*getValues(rasterstack_norm[[4]]) + b[9]*(getValues(rasterstack_norm[[4]])^2) +
                     b[10]*getValues(rasterstack_norm[[5]]) + b[11]*(getValues(rasterstack_norm[[5]])^2) + 
                     b[12]*getValues(rasterstack_norm[[6]]) + b[13]*(getValues(rasterstack_norm[[6]])^2))
 
@@ -343,21 +344,22 @@ lm2 <- as.formula(~ b[1] + getValues(rasterstack_norm[[1]])*b[2] + b[3]*(getValu
 # Occurrence probability
 predic_raster <- setValues(predic_raster, as.vector(exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]])))))
 
-plot(predic_raster)
-
 # with quadratic 
 predic_raster_quad <- setValues(predic_raster_quad, as.vector(exp(as.formula(lm2[[2]]))/(1+exp(as.formula(lm2[[2]])))))
 
 plot(predic_raster)
 plot(predic_raster_quad)
+```
 
-# try it with quadratic
-predic_raster <- predic_raster_quad
+```{r}
 
-# normalize response
-predic_raster <- calc(predic_raster, function(x){
-    (x-min(getValues(predic_raster)))/(max(getValues(predic_raster))-min(getValues(predic_raster)))
-})
+# # try it with quadratic
+# predic_raster <- predic_raster_quad
+# 
+# # normalize response
+# predic_raster <- calc(predic_raster, function(x){
+#     (x-min(getValues(predic_raster)))/(max(getValues(predic_raster))-min(getValues(predic_raster)))
+# })
 
 
 # define the neg log-likelihood
@@ -376,16 +378,16 @@ lik <- function(parm){
     beta11 <- parm[12] # dummy
     beta12 <- parm[13] # dummy^2
   gridpsi <- exp(beta0 + beta1*getValues(rasterstack_norm[[1]]) + beta2*getValues(rasterstack_norm[[1]])^2 + 
-                   beta3*getValues(rasterstack_norm[[2]]) + beta4*(getValues(rasterstack_norm[[2]])^2) -
-                   beta5*getValues(rasterstack_norm[[3]]) - beta6*(getValues(rasterstack_norm[[3]])^2) + 
-                   beta7*getValues(rasterstack_norm[[4]]) + beta8*(getValues(rasterstack_norm[[4]])^2) -
-                   beta9*getValues(rasterstack_norm[[5]]) - beta10*(getValues(rasterstack_norm[[5]])^2) + 
+                   beta3*getValues(rasterstack_norm[[2]]) + beta4*(getValues(rasterstack_norm[[2]])^2) +
+                   beta5*getValues(rasterstack_norm[[3]]) + beta6*(getValues(rasterstack_norm[[3]])^2) + 
+                   beta7*getValues(rasterstack_norm[[4]]) + beta8*(getValues(rasterstack_norm[[4]])^2) +
+                   beta9*getValues(rasterstack_norm[[5]]) + beta10*(getValues(rasterstack_norm[[5]])^2) + 
                    beta11*getValues(rasterstack_norm[[6]]) + beta12*(getValues(rasterstack_norm[[6]])^2))/
     (1 + exp(beta0 + beta1*getValues(rasterstack_norm[[1]]) + beta2*getValues(rasterstack_norm[[1]])^2 + 
-                   beta3*getValues(rasterstack_norm[[2]]) + beta4*(getValues(rasterstack_norm[[2]])^2) -
-                   beta5*getValues(rasterstack_norm[[3]]) - beta6*(getValues(rasterstack_norm[[3]])^2) + 
-                   beta7*getValues(rasterstack_norm[[4]]) + beta8*(getValues(rasterstack_norm[[4]])^2) -
-                   beta9*getValues(rasterstack_norm[[5]]) - beta10*(getValues(rasterstack_norm[[5]])^2) + 
+                   beta3*getValues(rasterstack_norm[[2]]) + beta4*(getValues(rasterstack_norm[[2]])^2) +
+                   beta5*getValues(rasterstack_norm[[3]]) + beta6*(getValues(rasterstack_norm[[3]])^2) + 
+                   beta7*getValues(rasterstack_norm[[4]]) + beta8*(getValues(rasterstack_norm[[4]])^2) +
+                   beta9*getValues(rasterstack_norm[[5]]) + beta10*(getValues(rasterstack_norm[[5]])^2) + 
                    beta11*getValues(rasterstack_norm[[6]]) + beta12*(getValues(rasterstack_norm[[6]])^2)))
   
   datapsi <- exp(beta0 + beta1*y_1[,1] + beta2*y_1[,1]^2 + 
@@ -417,33 +419,126 @@ for(i in 1:100){
   paramsout_sim[[i]] <- diff
 }
 
-# The lapply must be pulling things from the global environment and not the repeated sampling of occurrences. 
-# paramsout_sim <- lapply(1:2, function(x){
-#   print(paste("Rep",x))
-#   # generate presence-absence data
-#   y <- predic_raster
-#   y <- setValues(y, as.vector(rbinom(length(y), 1, getValues(predic_raster))))
-#   plot(y)
-#     # or y_1 is the sample from the sampling alogorithm
-#   # keep resence-only data
-#   y_1 <- do.call(cbind,lapply(1:6, function(i){
-#     rasterstack_norm[[i]][y==1]
-#     }))
-#   y_1 <- y_1[base::sample(1:nrow(y_1),2000),]
-#   out <-  nlm(lik, c(rep(0,13)), hessian=TRUE)
-#   rm(y)
-#   rm(y_1)
-#   report <- out$estimate
-#   report-b
-# })
+# save(paramsout_sim, file = "C:/Users/DePrengm/Desktop/Params_100.rda")
+# save(paramsout_sim, file = "C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/paramsLogLikelihood.Rda")
+
+for(i in 1:13){
+  hist(do.call(rbind,paramsout_sim)[,i], breaks = 15, main = paste("Beta",0:12,sep="")[i])
+}
+```
+
+Updated exponentials and sampling
+```{r}
+# Should I include exponentials to better match maxent?
+b <- c(0.5, 1, 1,
+          2.5, 2.5,
+          -7, -7,
+          4, -4,
+          -5, 5,
+          0.005, 0.005)
+lm2 <- as.formula(~ b[1] + getValues(rasterstack_norm[[1]])*b[2] + b[3]*(getValues(rasterstack_norm[[1]])^2) + 
+                    b[4]*getValues(rasterstack_norm[[2]]) + b[5]*(getValues(rasterstack_norm[[2]])^2) +
+                    b[6]*getValues(rasterstack_norm[[3]]) + b[7]*(getValues(rasterstack_norm[[3]])^2) + 
+                    b[8]*getValues(rasterstack_norm[[4]]) + b[9]*(getValues(rasterstack_norm[[4]])^2) +
+                    b[10]*getValues(rasterstack_norm[[5]]) + b[11]*(getValues(rasterstack_norm[[5]])^2) + 
+                    b[12]*getValues(rasterstack_norm[[6]]) + b[13]*(getValues(rasterstack_norm[[6]])^2))
+
+#  suitability data
+# with quadratic 
+predic_raster_quad <- setValues(predic_raster_quad, as.vector(exp(as.formula(lm2[[2]]))/(1+exp(as.formula(lm2[[2]])))))
+plot(predic_raster_quad)
+
+# try it with quadratic
+predic_raster <- predic_raster_quad
+
+# normalize response
+predic_raster <- calc(predic_raster, function(x){
+    (x-min(getValues(predic_raster)))/(max(getValues(predic_raster))-min(getValues(predic_raster)))
+})
+
+
+# define the neg log-likelihood
+lik <- function(parm){
+    beta0 <- parm[1] # -1 intercept
+    beta1 <- parm[2] # Elevation
+    beta2 <- parm[3] # Elevation^2
+    beta3 <- parm[4] # Bio1
+    beta4 <- parm[5] # Bio1^2
+    beta5 <- parm[6] # Bio11
+    beta6 <- parm[7] # Bio11^2
+    beta7 <- parm[8]   # Bio12
+    beta8 <- parm[9]   # Bio12^2
+    beta9 <- parm[10]  # Bio19
+    beta10 <- parm[11] # Bio19^2
+    beta11 <- parm[12] # dummy
+    beta12 <- parm[13] # dummy^2
+  gridpsi <- exp(beta0 + beta1*getValues(rasterstack_norm[[1]]) + beta2*getValues(rasterstack_norm[[1]])^2 + 
+                   beta3*getValues(rasterstack_norm[[2]]) + beta4*(getValues(rasterstack_norm[[2]])^2) +
+                   beta5*getValues(rasterstack_norm[[3]]) + beta6*(getValues(rasterstack_norm[[3]])^2) + 
+                   beta7*getValues(rasterstack_norm[[4]]) + beta8*(getValues(rasterstack_norm[[4]])^2) +
+                   beta9*getValues(rasterstack_norm[[5]]) + beta10*(getValues(rasterstack_norm[[5]])^2) + 
+                   beta11*getValues(rasterstack_norm[[6]]) + beta12*(getValues(rasterstack_norm[[6]])^2))/
+    (1 + exp(beta0 + beta1*getValues(rasterstack_norm[[1]]) + beta2*getValues(rasterstack_norm[[1]])^2 + 
+                   beta3*getValues(rasterstack_norm[[2]]) + beta4*(getValues(rasterstack_norm[[2]])^2) +
+                   beta5*getValues(rasterstack_norm[[3]]) + beta6*(getValues(rasterstack_norm[[3]])^2) + 
+                   beta7*getValues(rasterstack_norm[[4]]) + beta8*(getValues(rasterstack_norm[[4]])^2) +
+                   beta9*getValues(rasterstack_norm[[5]]) + beta10*(getValues(rasterstack_norm[[5]])^2) + 
+                   beta11*getValues(rasterstack_norm[[6]]) + beta12*(getValues(rasterstack_norm[[6]])^2)))
+  
+  datapsi <- exp(beta0 + beta1*y_1[,1] + beta2*y_1[,1]^2 + 
+                   beta3*y_1[,2] + beta4*(y_1[,2]^2) +
+                   beta5*y_1[,3] + beta6*(y_1[,3]^2) + 
+                   beta7*y_1[,4] + beta8*(y_1[,4]^2) +
+                   beta9*y_1[,5] + beta10*(y_1[,5]^2) + 
+                   beta11*y_1[,6] + beta12*(y_1[,6]^2))/
+    (1 + exp(beta0 + beta1*y_1[,1] + beta2*y_1[,1]^2 + 
+                   beta3*y_1[,2] + beta4*(y_1[,2]^2) +
+                   beta5*y_1[,3] + beta6*(y_1[,3]^2) + 
+                   beta7*y_1[,4] + beta8*(y_1[,4]^2) +
+                   beta9*y_1[,5] + beta10*(y_1[,5]^2) + 
+                   beta11*y_1[,6] + beta12*y_1[,6]^2))
+  # -1 and the presence-only sample joint likelihood, the sum of probabilities of presences over the likelihood over the study space
+  -1*sum(log(datapsi/(sum(gridpsi)))) # log of zero!!?? but shouldn't be zero in the sums. - Doesn't seem to be here the warning "NA/Inf replaced by maximum positive value"
+}
+
+paramsout_sim <- list()
+# loop through binomial process (Bernoulli) to get sample across entire study area
+for(i in 1:10){
+  y <- predic_raster
+  y <- setValues(y, as.vector(rbinom(length(y), 1, getValues(predic_raster))))
+  y_1 <- do.call(cbind,lapply(1:6, function(i){
+    rasterstack_norm[[i]][y==1]
+    }))
+  out <-  nlm(lik, c(rep(0,13)), print.level = 2, hessian=TRUE)
+  diff <- out$estimate-b
+  paramsout_sim[[i]] <- diff
+}
 
 # save(paramsout_sim, file = "C:/Users/DePrengm/Desktop/Params_100.rda")
-save(paramsout_sim, file = "C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_NewSystematicTrue1.jpg")
+# save(paramsout_sim, file = "C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/paramsLogLikelihood.Rda")
 
 for(i in 1:13){
   hist(do.call(rbind,paramsout_sim)[,i], breaks = 15, main = paste("Beta",0:12,sep="")[i])
 }
 
+paramsout_sim_sampled <- list()
+# loop through binomial process (Bernoulli) to get sample across entire study area
+for(i in 1:100){
+  y <- predic_raster
+  y <- setValues(y, as.vector(rbinom(length(y), 1, getValues(predic_raster))))
+  y_1 <- do.call(cbind,lapply(1:6, function(i){
+    rasterstack_norm[[i]][y==1]
+    }))
+  y_1 <- y_1[base::sample(1:nrow(y_1),2000),]
+  out <-  nlm(lik, c(rep(0,13)), print.level = 2, hessian=TRUE)
+  diff <- out$estimate-b
+  paramsout_sim_sampled[[i]] <- diff
+}
+
+
+for(i in 1:13){
+  hist(do.call(rbind,paramsout_sim_sampled)[,i], breaks = 15, main = paste("Beta",0:12,sep="")[i])
+}
 ```
 
 
@@ -908,7 +1003,7 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
     # occtest <- sample_xy[fold == 1,]
     # occtrain <- sample_xy[fold != 1,]
     # xm <- maxent(x = rasterstack, p = occtrain,  args=c(
-    xm <- maxent(x = rasterstack, p = sample_xy, args=c(
+    xm <- maxnet::maxnet(x = rasterstack, p = sample_xy, args=c(
       "outputformat=logistic",
   # 'maximumbackground=10000',
   'defaultprevalence=1.00',
@@ -916,7 +1011,7 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
   # 'pictures=true',
   # 'randomtestpoints=30',
   'linear=true',
-  'quadratic=false',
+  'quadratic=true',
   'product=false',
   'threshold=false',
   'hinge=false',
