@@ -360,16 +360,6 @@ predic_raster <- calc(predic_raster, function(x){
 })
 
 
-
-# generate presence-absence data
-y <- predic_raster
-y <- setValues(y, as.vector(rbinom(length(y), 1, getValues(predic_raster))))
-
-# keep presence-only data
-plot(y)
-data <- lapply(1:6, function(x) rasterstack_norm[[x]][y==1])
-
-b
 # define the neg log-likelihood
 lik <- function(parm){
     beta0 <- parm[1] # -1 intercept
@@ -398,11 +388,6 @@ lik <- function(parm){
                    beta9*getValues(rasterstack_norm[[5]]) - beta10*(getValues(rasterstack_norm[[5]])^2) + 
                    beta11*getValues(rasterstack_norm[[6]]) + beta12*(getValues(rasterstack_norm[[6]])^2)))
   
-  y_1 <- do.call(cbind,lapply(1:6, function(x){ 
-    rasterstack_norm[[x]][y==1]
-    }))
-  y_1 <- y_1[sample(1:nrow(y_1),2000),]
-  
   datapsi <- exp(beta0 + beta1*y_1[,1] + beta2*y_1[,1]^2 + 
                    beta3*y_1[,2] + beta4*(y_1[,2]^2) -
                    beta5*y_1[,3] - beta6*(y_1[,3]^2) + 
@@ -416,8 +401,61 @@ lik <- function(parm){
                    beta9*y_1[,5] - beta10*(y_1[,5]^2) + 
                    beta11*y_1[,6] + beta12*y_1[,6]^2))
   # -1 and the presence-only sample joint likelihood, the sum of probabilities of presences over the likelihood over the study space
-  -1*sum(log(datapsi/(sum(gridpsi))))
+  -1*sum(log(datapsi/(sum(gridpsi)))) # log of zero!!?? but shouldn't be zero in the sums. - Doesn't seem to be here the warning "NA/Inf replaced by maximum positive value"
 }
+
+paramsout_sim <- list()
+# loop through binomial process (Bernoulli) to get sample across entire study area
+for(i in 1:100){
+  y <- predic_raster
+  y <- setValues(y, as.vector(rbinom(length(y), 1, getValues(predic_raster))))
+  y_1 <- do.call(cbind,lapply(1:6, function(i){
+    rasterstack_norm[[i]][y==1]
+    }))
+  out <-  nlm(lik, c(rep(0,13)), print.level = 2, hessian=TRUE)
+  diff <- out$estimate-b
+  paramsout_sim[[i]] <- diff
+}
+
+# The lapply must be pulling things from the global environment and not the repeated sampling of occurrences. 
+# paramsout_sim <- lapply(1:2, function(x){
+#   print(paste("Rep",x))
+#   # generate presence-absence data
+#   y <- predic_raster
+#   y <- setValues(y, as.vector(rbinom(length(y), 1, getValues(predic_raster))))
+#   plot(y)
+#     # or y_1 is the sample from the sampling alogorithm
+#   # keep resence-only data
+#   y_1 <- do.call(cbind,lapply(1:6, function(i){
+#     rasterstack_norm[[i]][y==1]
+#     }))
+#   y_1 <- y_1[base::sample(1:nrow(y_1),2000),]
+#   out <-  nlm(lik, c(rep(0,13)), hessian=TRUE)
+#   rm(y)
+#   rm(y_1)
+#   report <- out$estimate
+#   report-b
+# })
+
+# save(paramsout_sim, file = "C:/Users/DePrengm/Desktop/Params_100.rda")
+save(paramsout_sim, file = "C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_NewSystematicTrue1.jpg")
+
+for(i in 1:13){
+  hist(do.call(rbind,paramsout_sim)[,i], breaks = 15, main = paste("Beta",0:12,sep="")[i])
+}
+
+```
+
+
+
+```{r}
+# generate presence-absence data
+y <- predic_raster
+y <- setValues(y, as.vector(rbinom(length(y), 1, getValues(predic_raster))))
+
+# keep presence-only data
+plot(y)
+data <- lapply(1:6, function(x) rasterstack_norm[[x]][y==1])
 
 # minimize it with nlm() non-linear minimization
 out <- nlm(lik, c(rep(0,13)), hessian=TRUE)
@@ -428,14 +466,26 @@ b
 # minimize with sampling
 outsamp <- nlm(lik, c(rep(0,13)), hessian=TRUE)
 outsamp$estimate
+b
 
-paramsout <- do.call(rbind, lapply(1:2, function(x){
+# nlm seems to cause the "NA/Inf replaced by maximum positive value" warnings
+# <http://people.missouristate.edu/songfengzheng/Teaching/MTH541/MLE-R.pdf> says the warning does not matter. Why? 
+paramsout <- lapply(1:10, function(x){
   out <- nlm(lik, c(rep(0,13)), hessian=TRUE)
   out$estimate
-}))
+})
 
-paramsout
+paste("Beta",0:12,sep="")
 b
+diffs <- lapply(paramsout, function(x) x-b)
+
+for(i in 1:13){
+  hist(do.call(rbind,diffs)[,i], breaks = 15)
+}
+hist(do.call(rbind,diffs)[,1], breaks = 15)
+
+
+# difference from model fit and true value, historgram of differences - centered on zero non-biased. 
 
 ```
 
