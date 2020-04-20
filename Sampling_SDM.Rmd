@@ -586,20 +586,6 @@ hist(do.call(rbind,diffs)[,1], breaks = 15)
 
 
 
-datapsi <- exp(beta0 + beta1*rasterstack_norm[[1]][y == 1] + beta2*rasterstack_norm[[1]][y == 1]^2 + 
-                   beta3*rasterstack_norm[[2]][y == 1] + beta4*(rasterstack_norm[[2]][y == 1]^2) -
-                   beta5*rasterstack_norm[[3]][y == 1] - beta6*(rasterstack_norm[[3]][y == 1]^2) + 
-                   beta7*rasterstack_norm[[4]][y == 1] + beta8*(rasterstack_norm[[4]][y == 1]^2) -
-                   beta9*rasterstack_norm[[5]][y == 1] - beta10*(rasterstack_norm[[5]][y == 1]^2) + 
-                   beta11*rasterstack_norm[[6]][y == 1] + beta12*(rasterstack_norm[[6]][y == 1]^2))/
-    (1 + exp(beta0 + beta1*rasterstack_norm[[1]][y == 1] + beta2*rasterstack_norm[[1]][y == 1]^2 + 
-                   beta3*rasterstack_norm[[2]][y == 1] + beta4*(rasterstack_norm[[2]][y == 1]^2) -
-                   beta5*rasterstack_norm[[3]][y == 1] - beta6*(rasterstack_norm[[3]][y == 1]^2) + 
-                   beta7*rasterstack_norm[[4]][y == 1] + beta8*(rasterstack_norm[[4]][y == 1]^2) -
-                   beta9*rasterstack_norm[[5]][y == 1] - beta10*(rasterstack_norm[[5]][y == 1]^2) + 
-                   beta11*rasterstack_norm[[6]][y == 1] + beta12*rasterstack_norm[[6]][y == 1]^2))
-                   
-
 
 ```{r}
 jpeg("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig1a_abioticvars.jpg",
@@ -887,11 +873,10 @@ convenience_sampling <- function(suitability.raster, convenience.raster, samples
 
 ```
 
-Sampling images
+Sampling images 
+### NO NO NO NO
 ```{r}
 
-########### Systematic (true sample) ############
- 
 for(x in 1:10){
   samplesys1 <- systematic_sampling(predic_raster, samplesize = 100, studyarea = 100)
       
@@ -969,7 +954,8 @@ for(x in 1:10){
 
 Maxent compared to the 'true' distribution
 # Maxent function  
-  Background points are sampled randomly from the cells that are not NA in the first predictor variable, unless background points are specified with argument a.
+  Background points are sampled randomly from the cells that are not NA in the first predictor variable, unless background points are specified with argument a. 
+  If keep maxent old, through dismo, use this
 ```{r}
 #test 
 rasterstack <- rasterstack_norm
@@ -1073,6 +1059,106 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
 # response(xm)
 
 ```
+
+
+If use the new Maxent from maxnet::maxnet where Phillips addresses complaints of Royle et al 2012, use this:    
+```{r}
+maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","systematic","convenience","cluster"),
+                            convenience.raster = p_norm,
+                            reps = 100, samplesize, pathstart = pathstart){
+  if(grepl(sampling_type, "random")){
+    sample_xy <- random_sampling(suitability.raster = true.dist,samplesize = samplesize)
+  } 
+  if(grepl(sampling_type, "systematic")){
+    sample_xy <- systematic_sampling(suitability.raster = true.dist, samplesize = samplesize, studyarea = 100)
+  }
+  if(grepl(sampling_type, "convenience")){
+    sample_xy <- convenience_sampling(suitability.raster = true.dist, convenience.raster, samplesize = samplesize)
+  }
+  if(grepl(sampling_type, "cluster")){
+    sample_xy <- adaptive_cluster(suitability.raster = true.dist, samplesize = samplesize)
+  }
+  
+  p <- c(rep(1, samplesize),rep(0, 300))
+  data <- data.frame(raster::extract(rasterstack, sample_xy))
+  background <- sampleRandom(rasterstack,300)
+  data <- rbind(data,background)
+  
+  for(r in 1:reps){
+    xm <- maxnet::maxnet(x = rasterstack, p = sample_xy, args=c(
+      "outputformat=logistic",
+  # 'maximumbackground=10000',
+  'defaultprevalence=1.00',
+  # 'betamultiplier=0.5',
+  # 'pictures=true',
+  # 'randomtestpoints=30',
+  'linear=true',
+  'quadratic=true',
+  'product=false',
+  'threshold=false',
+  'hinge=false',
+  # 'threads=2',
+  'responsecurves=true',
+  'jackknife=true',
+  'askoverwrite=false'
+))
+    # write.csv(data.frame(sample_xy, fold), paste(pathstart,"maxentOcc",sampling_type,"rep",r,".csv",sep=""))    
+    write.csv(sample_xy, paste(pathstart,"maxentOcc",sampling_type,"rep",r,"SampleSize",samplesize,".csv",sep=""))
+    save(xm, file = paste(pathstart, "maxent",sampling_type,"rep",r,"SampleSize",samplesize,".Rda",sep=""))
+    
+    gc()
+    ncores <- detectCores()-1
+    cl = parallel::makeCluster(ncores)
+    doParallel::registerDoParallel(cl,ncores)
+    
+    # compute indices for data splitting
+    rows <- 1:nrow(rasterstack)
+    split <- sort(rows%%ncores)+1
+    outname <- paste(pathstart,"Predictmaxent",sampling_type,"rep",r,sep="")
+    
+    #predict with subsets of predictor dataset
+    foreach(i = unique(split), .combine = c) %dopar% {
+      rows_sub <- rows[split==i]
+      sub <- raster::crop(rasterstack, raster::extent(rasterstack, min(rows_sub), max(rows_sub),
+                                                      1, ncol(rasterstack)))
+      raster::predict(sub, xm, filename = paste(outname, i, sep="_"), overwrite = TRUE)
+    }
+    
+    # Do I care? Do I need to get the AUC? I don't think I care
+    # random background data
+    # bg <- randomPoints(rasterstack, 300)
+    # e <- evaluate(xm, p=occtest, a=bg, x=rasterstack)
+    # save(e, file = paste(pathstart, "evaluate", sampling_type,"rep",r,".Rda",sep=""))
+    # 
+    rm(xm)
+    gc()
+    stopCluster(cl)
+  }
+  
+   lapply(1:reps, function(k){
+    resultpath <- list.files(path = pathstart, 
+                             pattern = paste("Predictmaxent",sampling_type,"rep",k,"_",sep=""), 
+                             full.names=TRUE)
+    rastout <- lapply(resultpath, function(x){
+      raster(x)
+      })
+    rastout$filename <- paste(pathstart,"ProbTiff",sampling_type,"Rep",k,"SampleSize",samplesize,".tif", sep="")
+    rastout$overwrite <- TRUE
+    m <- do.call(merge, rastout)
+  })
+}
+
+# 
+# plot(xm)
+# r <- response(xm, var="bio19_12")
+# plot(r, type = "l")
+# response(xm)
+
+
+```
+
+
+
 
 <https://www.youtube.com/watch?v=42rSg60Rk-k&feature=youtu.be&fbclid=IwAR3AvdVB3U7YVI0aVrfm-KYGQm0Vnfo_W3udZL2YoH0h5vQjxQjp6_Kde7A>
 <https://www.youtube.com/watch?v=2vgX7QoyPJo&feature=youtu.be&fbclid=IwAR2mvP8p9LDdz1LefrCwjcMMXi1l_uLI1m-1-sIiydHqHyIpMwcooSoz6lc> 
