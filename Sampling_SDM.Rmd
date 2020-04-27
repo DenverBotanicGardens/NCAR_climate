@@ -6,6 +6,12 @@ output: html_document
 ---
 
 ```{r}
+save.image(file = "C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/maxent_sampling.Rda")
+
+```
+
+
+```{r}
 # install.packages("installr")
 # require(installr)
 # updateR()
@@ -30,6 +36,7 @@ library(virtualspecies)
 library(rJava)
 library(maxnet)
 library(dismo)
+# library(MIAmaxent)
 
 # Mapping
 library(rgeos)
@@ -326,7 +333,7 @@ lm1 <- as.formula(~ betas[1] + getValues(rasterstack_norm[[1]])*betas[2] + getVa
                     getValues(rasterstack_norm[[3]])*betas[4] + getValues(rasterstack_norm[[4]])*betas[5] +
                     getValues(rasterstack_norm[[5]])*betas[6] + getValues(rasterstack_norm[[6]])*betas[7])
 
-# Should I include exponentials to better match maxent?
+# I should include exponentials to better match maxent?
 b <- c(0.5, 1, 1,
           2.5, 2.5,
           -7, -7,
@@ -350,6 +357,8 @@ predic_raster_quad <- setValues(predic_raster_quad, as.vector(exp(as.formula(lm2
 plot(predic_raster)
 plot(predic_raster_quad)
 ```
+
+
 
 ```{r}
 
@@ -405,6 +414,23 @@ lik <- function(parm){
   # -1 and the presence-only sample joint likelihood, the sum of probabilities of presences over the likelihood over the study space
   -1*sum(log(datapsi/(sum(gridpsi)))) # log of zero!!?? but shouldn't be zero in the sums. - Doesn't seem to be here the warning "NA/Inf replaced by maximum positive value"
 }
+
+
+# Maxent does regularization for each of the EV depending on the types allowed (product, hinge, threshold, linear...) This is the penalty factor
+lregtable <- list(c(0,10,30,100), c(1,1,0.2,0.05))
+y <- predic_raster
+y <- setValues(y, as.vector(rbinom(length(y), 1, getValues(predic_raster))))
+y_1 <- do.call(cbind,lapply(1:6, function(i){
+  rasterstack_norm[[i]][y==1]
+  }))
+np <- nrow(y_1)
+ classregularization <- sapply(1:6, function(n) {
+      t <- lregtable
+      approx(t[[1]], t[[2]], np, rule=2)$y
+   }) / sqrt(np)
+p <- length(y)
+weights <- nrow(y_1)+(1-nrow(y_1))*100
+lambda <- 10^(seq(4,0,length.out=200))*sum(classregularization)/length(classregularization)*sum(p)/sum(weights)
 
 paramsout_sim <- list()
 # loop through binomial process (Bernoulli) to get sample across entire study area
@@ -989,7 +1015,7 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
     # occtest <- sample_xy[fold == 1,]
     # occtrain <- sample_xy[fold != 1,]
     # xm <- maxent(x = rasterstack, p = occtrain,  args=c(
-    xm <- maxnet::maxnet(x = rasterstack, p = sample_xy, args=c(
+    xm <- dismo::maxent(x = rasterstack, p = sample_xy, args=c(
       "outputformat=logistic",
   # 'maximumbackground=10000',
   'defaultprevalence=1.00',
@@ -1066,42 +1092,43 @@ If use the new Maxent from maxnet::maxnet where Phillips addresses complaints of
 maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","systematic","convenience","cluster"),
                             convenience.raster = p_norm,
                             reps = 100, samplesize, pathstart = pathstart){
-  if(grepl(sampling_type, "random")){
-    sample_xy <- random_sampling(suitability.raster = true.dist,samplesize = samplesize)
-  } 
-  if(grepl(sampling_type, "systematic")){
-    sample_xy <- systematic_sampling(suitability.raster = true.dist, samplesize = samplesize, studyarea = 100)
-  }
-  if(grepl(sampling_type, "convenience")){
-    sample_xy <- convenience_sampling(suitability.raster = true.dist, convenience.raster, samplesize = samplesize)
-  }
-  if(grepl(sampling_type, "cluster")){
-    sample_xy <- adaptive_cluster(suitability.raster = true.dist, samplesize = samplesize)
-  }
-  
-  p <- c(rep(1, samplesize),rep(0, 300))
-  data <- data.frame(raster::extract(rasterstack, sample_xy))
-  background <- sampleRandom(rasterstack,300)
-  data <- rbind(data,background)
-  
-  for(r in 1:reps){
-    xm <- maxnet::maxnet(x = rasterstack, p = sample_xy, args=c(
-      "outputformat=logistic",
-  # 'maximumbackground=10000',
-  'defaultprevalence=1.00',
-  # 'betamultiplier=0.5',
-  # 'pictures=true',
-  # 'randomtestpoints=30',
-  'linear=true',
-  'quadratic=true',
-  'product=false',
-  'threshold=false',
-  'hinge=false',
-  # 'threads=2',
-  'responsecurves=true',
-  'jackknife=true',
-  'askoverwrite=false'
-))
+  for(r in 1:reps){  
+    
+    if(grepl(sampling_type, "random")){
+      sample_xy <- random_sampling(suitability.raster = true.dist,samplesize = samplesize)
+    } 
+    if(grepl(sampling_type, "systematic")){
+      sample_xy <- systematic_sampling(suitability.raster = true.dist, samplesize = samplesize, studyarea = 100)
+    }
+    if(grepl(sampling_type, "convenience")){
+      sample_xy <- convenience_sampling(suitability.raster = true.dist, convenience.raster, samplesize = samplesize)
+    }
+    if(grepl(sampling_type, "cluster")){
+      sample_xy <- adaptive_cluster(suitability.raster = true.dist, samplesize = samplesize)
+    }
+    
+    # Maxnet
+    p <- c(rep(1, samplesize),rep(0, 300))
+    data <- data.frame(raster::extract(rasterstack, sample_xy))
+    background <- sampleRandom(rasterstack,300)
+    data <- rbind(data,background)
+    mod <- maxnet(p, data, maxnet.formula(p, data, classes = "lq")) # using glmnet for fit; where do I put type = "link",
+    # plot(mod, "Elevation")
+    mod$betas  # nonzero coefficients of the fitted model; selects model$beta[,200] and then of those, the ones that are not zero (this is where model reduction happens!!)
+    mod$alpha # might be the LN linear normalizer discussed in Royle et al. 2012
+    mod$penalty.factor
+    LN <- -1*max(mod$betas*sapply(names(mod$betas), function(n){ 
+      mod$featuremaxs[names(mod$featuremaxs)==n]
+      }))
+    # + mod$betas*sapply(names(mod$betas), function(n){
+    #       mod$penalty.factor[names(mod$penalty.factor)==n]
+    #     })) # not like this, aren't the same. 
+    LN
+    predict(mod, )
+    
+    #MIAmaxent
+    
+    
     # write.csv(data.frame(sample_xy, fold), paste(pathstart,"maxentOcc",sampling_type,"rep",r,".csv",sep=""))    
     write.csv(sample_xy, paste(pathstart,"maxentOcc",sampling_type,"rep",r,"SampleSize",samplesize,".csv",sep=""))
     save(xm, file = paste(pathstart, "maxent",sampling_type,"rep",r,"SampleSize",samplesize,".Rda",sep=""))
@@ -1123,13 +1150,6 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
                                                       1, ncol(rasterstack)))
       raster::predict(sub, xm, filename = paste(outname, i, sep="_"), overwrite = TRUE)
     }
-    
-    # Do I care? Do I need to get the AUC? I don't think I care
-    # random background data
-    # bg <- randomPoints(rasterstack, 300)
-    # e <- evaluate(xm, p=occtest, a=bg, x=rasterstack)
-    # save(e, file = paste(pathstart, "evaluate", sampling_type,"rep",r,".Rda",sep=""))
-    # 
     rm(xm)
     gc()
     stopCluster(cl)
@@ -1146,6 +1166,7 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
     rastout$overwrite <- TRUE
     m <- do.call(merge, rastout)
   })
+}
 }
 
 # 
