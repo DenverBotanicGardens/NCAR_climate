@@ -359,6 +359,17 @@ plot(predic_raster_quad)
 ```
 
 
+```{r}
+jpeg("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig1a_quadsuitability.jpg",
+     width=123, height=100,units='mm', res=300) 
+
+plot(predic_raster_quad)
+mtext("a)", side=3, line=0, adj=0)
+
+dev.off()
+```
+
+
 
 ```{r}
 
@@ -900,11 +911,10 @@ convenience_sampling <- function(suitability.raster, convenience.raster, samples
 ```
 
 Sampling images 
-### NO NO NO NO
 ```{r}
 
 for(x in 1:10){
-  samplesys1 <- systematic_sampling(predic_raster, samplesize = 100, studyarea = 100)
+  samplesys1 <- systematic_sampling(predic_raster_quad, samplesize = 100, studyarea = 100)
       
   jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_NewSystematicTrue",x,".jpg", sep=""),
        width=145, height=100,units='mm', res=300)
@@ -932,7 +942,7 @@ for(x in 1:10){
 ############ Simple random ###############
 
 for(x in 1:10){
-  random1 <- random_sampling(predic_raster, 100)
+  random1 <- random_sampling(predic_raster_quad, 100)
   
   jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_simplerandom",x,".jpg", sep=""),
        width=145, height=100,units='mm', res=300)
@@ -997,11 +1007,13 @@ true.dist <- predic_raster
 maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","systematic","convenience","cluster"),
                             convenience.raster = p_norm,
                             reps = 100, samplesize, pathstart = pathstart){
+
+for(r in 1:reps){
   if(grepl(sampling_type, "random")){
     sample_xy <- random_sampling(suitability.raster = true.dist,samplesize = samplesize)
   } 
   if(grepl(sampling_type, "systematic")){
-    sample_xy <- systematic_sampling(suitability.raster = true.dist, samplesize = samplesize, studyarea = 100)
+    sample_xy <- systematic_sampling(suitability.raster = true.dist, samplesize = samplesize, studyarea = 100)[[1]]
   }
   if(grepl(sampling_type, "convenience")){
     sample_xy <- convenience_sampling(suitability.raster = true.dist, convenience.raster, samplesize = samplesize)
@@ -1010,31 +1022,26 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
     sample_xy <- adaptive_cluster(suitability.raster = true.dist, samplesize = samplesize)
   }
   
-  for(r in 1:reps){
-    # fold <- kfold(sample_xy, k=5) # withold 20% of the sample for testing; or just use whole sample and test with random background?
-    # occtest <- sample_xy[fold == 1,]
-    # occtrain <- sample_xy[fold != 1,]
-    # xm <- maxent(x = rasterstack, p = occtrain,  args=c(
-    xm <- dismo::maxent(x = rasterstack, p = sample_xy, args=c(
-      "outputformat=logistic",
-  # 'maximumbackground=10000',
-  'defaultprevalence=1.00',
-  # 'betamultiplier=0.5',
-  # 'pictures=true',
-  # 'randomtestpoints=30',
-  'linear=true',
-  'quadratic=true',
-  'product=false',
-  'threshold=false',
-  'hinge=false',
-  # 'threads=2',
-  'responsecurves=true',
-  'jackknife=true',
-  'askoverwrite=false'
-))
-    # write.csv(data.frame(sample_xy, fold), paste(pathstart,"maxentOcc",sampling_type,"rep",r,".csv",sep=""))    
-    write.csv(sample_xy, paste(pathstart,"maxentOcc",sampling_type,"rep",r,"SampleSize",samplesize,".csv",sep=""))
+  xm <- dismo::maxent(x = rasterstack, p = sample_xy, args=c(
+    "outputformat=logistic",
+    # 'maximumbackground=10000',
+    'defaultprevalence=1.00',
+    'betamultiplier=0',
+    # 'pictures=true',
+    # 'randomtestpoints=30',
+    'linear=true',
+    'quadratic=true',
+    'product=false',
+    'threshold=false',
+    'hinge=false',
+    # 'threads=2',
+    'responsecurves=true',
+    'jackknife=true',
+    'askoverwrite=false'
+    ))
+  write.csv(sample_xy, paste(pathstart,"maxentOcc",sampling_type,"rep",r,"SampleSize",samplesize,".csv",sep=""))
     save(xm, file = paste(pathstart, "maxent",sampling_type,"rep",r,"SampleSize",samplesize,".Rda",sep=""))
+    
     
     gc()
     ncores <- detectCores()-1
@@ -1054,12 +1061,6 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
       raster::predict(sub, xm, filename = paste(outname, i, sep="_"), overwrite = TRUE)
     }
     
-    # Do I care? Do I need to get the AUC? I don't think I care
-    # random background data
-    # bg <- randomPoints(rasterstack, 300)
-    # e <- evaluate(xm, p=occtest, a=bg, x=rasterstack)
-    # save(e, file = paste(pathstart, "evaluate", sampling_type,"rep",r,".Rda",sep=""))
-    # 
     rm(xm)
     gc()
     stopCluster(cl)
@@ -1080,16 +1081,29 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
 
 # 
 # plot(xm)
-# r <- response(xm, var="bio19_12")
+# r <- response(xm, var="Elevation")
 # plot(r, type = "l")
+# 
 # response(xm)
 
+contribs <- xm@results[grep("contribution", dimnames(xm@results)[[1]])]
+names(contribs) <- dimnames(xm@results)[[1]][grep("contribution", dimnames(xm@results)[[1]])]
 ```
 
 
 If use the new Maxent from maxnet::maxnet where Phillips addresses complaints of Royle et al 2012, use this:    
 ```{r}
-maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","systematic","convenience","cluster"),
+
+# testing
+rasterstack <- rasterstack_norm
+sampling_type <- "system"
+samplesize <- 100
+pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations/"
+true.dist <- predic_raster
+reps <- 2
+# sampling_type <- "ra"
+
+maxnet_sampling <- function(rasterstack, true.dist, sampling_type = c("random","systematic","convenience","cluster"),
                             convenience.raster = p_norm,
                             reps = 100, samplesize, pathstart = pathstart){
   for(r in 1:reps){  
@@ -1098,7 +1112,7 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
       sample_xy <- random_sampling(suitability.raster = true.dist,samplesize = samplesize)
     } 
     if(grepl(sampling_type, "systematic")){
-      sample_xy <- systematic_sampling(suitability.raster = true.dist, samplesize = samplesize, studyarea = 100)
+      sample_xy <- systematic_sampling(suitability.raster = true.dist, samplesize = samplesize, studyarea = 100)[[1]]
     }
     if(grepl(sampling_type, "convenience")){
       sample_xy <- convenience_sampling(suitability.raster = true.dist, convenience.raster, samplesize = samplesize)
@@ -1112,7 +1126,8 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
     data <- data.frame(raster::extract(rasterstack, sample_xy))
     background <- sampleRandom(rasterstack,300)
     data <- rbind(data,background)
-    mod <- maxnet(p, data, maxnet.formula(p, data, classes = "lq")) # using glmnet for fit; where do I put type = "link",
+    mod <- maxnet(p, data, regmult = 0.001, # yelled at zero but set small to keep all features
+                  maxnet.formula(p, data, classes = "lq")) # using glmnet for fit; where do I put type = "link",
     # plot(mod, "Elevation")
     mod$betas  # nonzero coefficients of the fitted model; selects model$beta[,200] and then of those, the ones that are not zero (this is where model reduction happens!!)
     mod$alpha # might be the LN linear normalizer discussed in Royle et al. 2012
@@ -1124,7 +1139,6 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
     #       mod$penalty.factor[names(mod$penalty.factor)==n]
     #     })) # not like this, aren't the same. 
     LN
-    predict(mod, )
     
     #MIAmaxent
     
@@ -1188,15 +1202,15 @@ maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
 
 # pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations/"
 # pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200313/"
-
-pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200314/"
+# pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200314/"
+pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200427/"
 
 
 # 3:10, 
-lapply(c(20, 30, 50, 100), function(sampsize){
+lapply(c(3:10, 20, 30, 50, 100), function(sampsize){
     maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "random", reps = 100, samplesize = sampsize, pathstart = pathstart)
     
-    # maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "system", reps = 10, samplesize = 100, pathstart = pathstart)
+    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "system", reps = 10, samplesize = 100, pathstart = pathstart)
     
     maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "convenience", reps = 100, samplesize = sampsize, pathstart = pathstart)
     
@@ -1238,7 +1252,7 @@ lapply(c(3:10,20,30,50,100), function(sampsize){
 # Pattern: correlation to the true distribution  
 ```{r}
 
-# c(3:10, 20,30,50,100)
+# c(3:10, 20,30,50,100) -> switch to 3, 10, 20... instead of 3:10
 for(ss in c(3:10, 20,30,50,100)){
   
   r_random <- raster(list.files(path = pathstart, 
@@ -1579,17 +1593,19 @@ load(modelstoload[1])
 maxModels <- lapply(modelstoload, function(x) load(x))
 response(xm) # response curve shapes
 plot(xm) # variable contriubtion
-var.importance <- data.frame(Var = row.names(xm@results), xm@results)[7:12,]
+contribs <- xm@results[grep("contribution", dimnames(xm@results)[[1]])]
+names(contribs) <- dimnames(xm@results)[[1]][grep("contribution", dimnames(xm@results)[[1]])]
+# var.importance <- data.frame(Var = row.names(xm@results), xm@results)[7:12,]
 
 # evaluate models
-evalstoload <- list.files(path = pathstart,
-                           pattern = "evaluate",
-                           full.names = TRUE)
-evalModels <- lapply(evalstoload, function(x) load(x))
-
-load(evalstoload[1])
-threshold(e)  # can get prevalence and other measures for thresholds
-plot(e, 'ROC')
+# evalstoload <- list.files(path = pathstart,
+#                            pattern = "evaluate",
+#                            full.names = TRUE)
+# evalModels <- lapply(evalstoload, function(x) load(x))
+# 
+# load(evalstoload[1])
+# threshold(e)  # can get prevalence and other measures for thresholds
+# plot(e, 'ROC')
 ```
 
 
