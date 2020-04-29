@@ -253,12 +253,6 @@ clruspdf <- SpatialPointsDataFrame(coords = clru[,c("decimalLongitude","decimalL
                                      proj4string = CRS("+proj=longlat +datum=WGS84"))
 
 ```
-SDMtune
-```{r}
-# install.packages("SDMtune")
-library(SDMtune)
-```
-
 
 # Virtual species 
 <http://borisleroy.com/files/virtualspecies-tutorial.html>
@@ -429,8 +423,8 @@ lik <- function(parm){
 
 # Maxent does regularization for each of the EV depending on the types allowed (product, hinge, threshold, linear...) This is the penalty factor
 lregtable <- list(c(0,10,30,100), c(1,1,0.2,0.05))
-y <- predic_raster
-y <- setValues(y, as.vector(rbinom(length(y), 1, getValues(predic_raster))))
+y <- predic_raster_quad
+y <- setValues(y, as.vector(rbinom(length(y), 1, getValues(predic_raster_quad))))
 y_1 <- do.call(cbind,lapply(1:6, function(i){
   rasterstack_norm[[i]][y==1]
   }))
@@ -446,8 +440,8 @@ lambda <- 10^(seq(4,0,length.out=200))*sum(classregularization)/length(classregu
 paramsout_sim <- list()
 # loop through binomial process (Bernoulli) to get sample across entire study area
 for(i in 1:100){
-  y <- predic_raster
-  y <- setValues(y, as.vector(rbinom(length(y), 1, getValues(predic_raster))))
+  y <- predic_raster_quad
+  y <- setValues(y, as.vector(rbinom(length(y), 1, getValues(predic_raster_quad))))
   y_1 <- do.call(cbind,lapply(1:6, function(i){
     rasterstack_norm[[i]][y==1]
     }))
@@ -628,7 +622,7 @@ hist(do.call(rbind,diffs)[,1], breaks = 15)
 jpeg("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig1a_abioticvars.jpg",
      width=173, height=105,units='mm', res=300)
         par(mar=c(2.1,2.1,1.1,2.1))
-        plot(predic_raster)
+        plot(predic_raster_quad)
         mtext("a)", side=3, line=0, adj=0)
  
 dev.off()
@@ -645,33 +639,11 @@ dev.off()
 ```
 
 
-Pattern and process figures
-```{r}
-
-
-jpeg("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Pattern_compare.jpg",
-     width=175, height=175,units='mm', res=300)
-
-plot(1:10, 1:10, type="l", lwd=2, yaxt="n", xaxt="n", ylab="Biased Sampling", xlab="True sampling (systematic)")
-mtext("Pixel-based distance from true", side=1, line=0.5)
-mtext("Pixel-based distance from true", side=2, line=0.5)
-# polygon(c(1,1,8.9), c(2.1,9.9,9.9), col=rgb(.15,0,.5,.25))
-arrows(4.9,5.1,3.5,6.5,lwd=1, col='red')
-arrows(5.1,4.9,6.5,3.5, col='red')
-text("sampling method outperformed systematic", x = 2, y=7.5, adj = 0, cex= 0.95)
-text("sampling method underperformed systematic", x = 9, y = 2, adj = 1, cex=0.95)
-# across sample size? colored dots by sample size? yes maybe
-
-dev.off()
-```
-
-
-
 # Sampling functions
 Sampling methods
 ```{r}
 # test
-# suitability.raster <- predic_raster
+# suitability.raster <- predic_raster_quad
 # samplesize <- 20
 # studyarea <- 150
 
@@ -802,7 +774,7 @@ surroundingcells <- function(cellRowCol, suitability.raster){
 }
 
 # Test
-# suitability.raster <- predic_raster
+# suitability.raster <- predic_raster_quad
 # samplesize <- 20
 # rm(suitability.raster);rm(samplesize)
 
@@ -919,7 +891,7 @@ for(x in 1:10){
   jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_NewSystematicTrue",x,".jpg", sep=""),
        width=145, height=100,units='mm', res=300)
   par(mar=c(2.1,2.1,2.1,1.1))
-  plot(predic_raster, main = ""); points(samplesys1[[1]], pch=16, cex=0.25)
+  plot(predic_raster_quad, main = ""); points(samplesys1[[1]], pch=16, cex=0.25)
   boxes <- split(samplesys1[[2]], samplesys1[[2]]$BoxNum)
   sur <- 0.1
   for(i in 1:length(boxes)){
@@ -947,7 +919,7 @@ for(x in 1:10){
   jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_simplerandom",x,".jpg", sep=""),
        width=145, height=100,units='mm', res=300)
   par(mar=c(2.1,2.1,2.1,1.1))
-  plot(predic_raster, main = ""); points(random1, pch=16, cex=0.25)
+  plot(predic_raster_quad, main = ""); points(random1, pch=16, cex=0.25)
   mtext("a)", side=3, line=0.5, adj=-0.1)
   mtext("Simple random sampling (n = 100)", side=3, line=0, adj=0.5, cex=1.15)
   
@@ -956,13 +928,13 @@ for(x in 1:10){
 
 ############ Adaptive Cluster ###############
 for(x in 1:10){
-  cluster1 <- adaptive_cluster(predic_raster, 100)
+  cluster1 <- adaptive_cluster(predic_raster_quad, 100)
   print(nrow(cluster1))
     
   jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_AdaptiveCluster",x,".jpg", sep=""),
        width=145, height=100,units='mm', res=300)
   par(mar=c(2.1,2.1,2.1,1.1))
-  plot(predic_raster, main = ""); points(cluster1, pch=16, cex=0.25)
+  plot(predic_raster_quad, main = ""); points(cluster1, pch=16, cex=0.25)
     mtext("b)", side=3, line=0.5, adj=-0.1)
   mtext("Adaptive cluster sampling (n = 100)", side=3, line=0, adj=0.5, cex=1.15)
   
@@ -971,13 +943,13 @@ for(x in 1:10){
 
 ############ Convenience (based on samples from 1990, 2000, and 2010) ##########
 for(x in 1:10){
-  conve1 <- convenience_sampling(predic_raster, p_norm, 100)
+  conve1 <- convenience_sampling(predic_raster_quad, p_norm, 100)
   print(nrow(conve1))
     
   jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_Convenience",x,".jpg", sep=""),
        width=145, height=100,units='mm', res=300)
   par(mar=c(2.1,2.1,2.1,1.1))
-  plot(predic_raster, main = ""); points(conve1, pch=16, cex=0.25)
+  plot(predic_raster_quad, main = ""); points(conve1, pch=16, cex=0.25)
   contour(p_norm, levels = c(0,0.25,0.5,0.75,1), add=TRUE)
   mtext("c)", side=3, line=0.5, adj=-0.1)
 
@@ -992,19 +964,20 @@ Maxent compared to the 'true' distribution
 # Maxent function  
   Background points are sampled randomly from the cells that are not NA in the first predictor variable, unless background points are specified with argument a. 
   If keep maxent old, through dismo, use this
+  ## found in one rhistory from one drive, will attempt to update!
 ```{r}
+
 #test 
 rasterstack <- rasterstack_norm
 # sampling_type <- "system"
-# pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations/"
-true.dist <- predic_raster
+true.dist <- predic_raster_quad
 # reps <- 2
-# sampling_type <- "ra"
 # rm(rasterstack); rm(true.dist); rm(sampling_type)
 
 # rasterstack = predictor variables; true.dist = true distribution of suitability; conveience.raster = the raster of density of all herbarium collections sampled from three different years, could be roads or trails
 
-maxent_sampling <- function(rasterstack, true.dist, sampling_type = c("random","systematic","convenience","cluster"),
+maxent_sampling <- function(rasterstack, true.dist, 
+                            sampling_type = c("random","systematic","convenience","cluster"),
                             convenience.raster = p_norm,
                             reps = 100, samplesize, pathstart = pathstart){
 
@@ -1051,8 +1024,8 @@ for(r in 1:reps){
     # compute indices for data splitting
     rows <- 1:nrow(rasterstack)
     split <- sort(rows%%ncores)+1
-    outname <- paste(pathstart,"Predictmaxent",sampling_type,"rep",r,sep="")
-    
+    outname <- paste(pathstart,"SampleSize",samplesize,"maxent",sampling_type,"rep",r,sep="")
+
     #predict with subsets of predictor dataset
     foreach(i = unique(split), .combine = c) %dopar% {
       rows_sub <- rows[split==i]
@@ -1067,8 +1040,8 @@ for(r in 1:reps){
   }
   
    lapply(1:reps, function(k){
-    resultpath <- list.files(path = pathstart, 
-                             pattern = paste("Predictmaxent",sampling_type,"rep",k,"_",sep=""), 
+    resultpath <- list.files(path = pathstart,
+                             pattern = paste("SampleSize",samplesize,"maxent",sampling_type,"rep",k,"_",sep=""),
                              full.names=TRUE)
     rastout <- lapply(resultpath, function(x){
       raster(x)
@@ -1077,6 +1050,14 @@ for(r in 1:reps){
     rastout$overwrite <- TRUE
     m <- do.call(merge, rastout)
   })
+   
+   # delete the .gri and .grd files 
+    finished <- list.files(path = pathstart, pattern = "\\.gri$", full.names = TRUE)
+    finished
+    lapply(finished, function(x) unlink(x))
+    finished2 <- list.files(path = pathstart, pattern = "\\.grd$", full.names = TRUE)
+    lapply(finished2, function(x) unlink(x))
+   
 }
 
 # 
@@ -1098,10 +1079,8 @@ If use the new Maxent from maxnet::maxnet where Phillips addresses complaints of
 rasterstack <- rasterstack_norm
 sampling_type <- "system"
 samplesize <- 100
-pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations/"
-true.dist <- predic_raster
+true.dist <- predic_raster_quad
 reps <- 2
-# sampling_type <- "ra"
 
 maxnet_sampling <- function(rasterstack, true.dist, sampling_type = c("random","systematic","convenience","cluster"),
                             convenience.raster = p_norm,
@@ -1181,7 +1160,7 @@ maxnet_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
     m <- do.call(merge, rastout)
   })
 }
-}
+
 
 # 
 # plot(xm)
@@ -1199,51 +1178,21 @@ maxnet_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
 <https://www.youtube.com/watch?v=2vgX7QoyPJo&feature=youtu.be&fbclid=IwAR2mvP8p9LDdz1LefrCwjcMMXi1l_uLI1m-1-sIiydHqHyIpMwcooSoz6lc> 
 
 ```{r}
-
-# pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations/"
-# pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200313/"
-# pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200314/"
 pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200427/"
 
 
 # 3:10, 
-lapply(c(3:10, 20, 30, 50, 100), function(sampsize){
-    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "random", reps = 100, samplesize = sampsize, pathstart = pathstart)
+lapply(c(3,10, 20, 30, 50, 100), function(sampsize){
+    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "random", reps = 10, samplesize = sampsize, pathstart = pathstart)
     
-    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "system", reps = 10, samplesize = 100, pathstart = pathstart)
+    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "system", reps = 10, samplesize = 100, pathstart = pathstart)
     
-    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "convenience", reps = 100, samplesize = sampsize, pathstart = pathstart)
+    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "convenience", reps = 10, samplesize = sampsize, pathstart = pathstart)
     
-    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "cluster", reps = 100, samplesize = sampsize, pathstart = pathstart)
+    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "cluster", reps = 10, samplesize = sampsize, pathstart = pathstart)
 })
 
 
-# errors unknown, NA by coercion??
-lapply(c(6:10, 20,30,50,100), function(sampsize){
-  maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "systematic", reps = 100, samplesize = sampsize, pathstart = pathstart)
-})
-
-# failed at cluster sample size 20 rep 85...
-
-for(ss in c(3:10, 20, 30, 50, 100)){
-  cluster1 <- adaptive_cluster(predic_raster, ss)
-  plot(cluster1)
-}
-
-# Failed on 3/26/2020 at sample size 6, why?!, maybe all 50% suitable?
-lapply(c(6:10, 20, 30, 50, 100), function(sampsize){
-
-    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "systematic", reps = 100, samplesize = sampsize, pathstart = pathstart)
-    
-})
-
-pathstart1 <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200330/"
-
-lapply(c(3:10,20,30,50,100), function(sampsize){
-  maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster, sampling_type = "systematic", reps = 100,samplesize = sampsize, 
-                  pathstart = pathstart1)
-})
-    
 ```
 
 
@@ -1252,25 +1201,50 @@ lapply(c(3:10,20,30,50,100), function(sampsize){
 # Pattern: correlation to the true distribution  
 ```{r}
 
+# testing
+ss <-30
+pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200428/"
+
 # c(3:10, 20,30,50,100) -> switch to 3, 10, 20... instead of 3:10
-for(ss in c(3:10, 20,30,50,100)){
+for(ss in c(3,10, 20,30,50,100)){
   
-  r_random <- raster(list.files(path = pathstart, 
-                                    pattern = paste("ProbTiffrandomRep", sample(1:100,1),"SampleSize",ss, ".tif", sep=""),
-                                    full.names = TRUE))
-  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/random2true_samplesize",ss,".jpg", sep=""),
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/random2true_samplesize",ss,".jpg", sep=""),
        width=173, height=105,units='mm', res=300)
-  
-  plot(getValues(predic_raster), getValues(r_random), 
-       xlim = c(0,1), ylim = c(0,1), pch=16, cex=0.25, xlab="True Distribution", ylab="Random sampling",main=paste("Suitability by Pixel, Sample Size",ss))
-for(i in 1:5){
+
+plot(seq(0,1,length.out = 10), seq(0,1,length.out = 10), type = "l", col="blue", lwd=1.5,
+   xlab="True Distribution", ylab="Random sampling",main=paste("Suitability by Pixel, Sample Size",ss))
+
+lapply(1:10, function(i){
   r_random <- raster(list.files(path = pathstart, 
-                                    pattern = paste("ProbTiffrandomRep", sample(1:100,1),"SampleSize",ss, ".tif", sep=""),
+                                    pattern = paste("ProbTiffrandomRep", i,"SampleSize",ss, ".tif", sep=""),
                                     full.names = TRUE))
-  points(getValues(predic_raster), getValues(r_random), pch=16, cex=0.5, col = rgb(i/(i+1),0,i/(i+5),0.05))
-}
+  sampleof <- sample(1:length(r_random), 1000)
+    # add loess local regression line
+  # ls <- loess(getValues(r_random)[sampleof] ~ getValues(predic_raster_quad)[sampleof])
+  # pr.loess <- predict(ls)
+  # pr.loess
+  model <- lm(getValues(r_random)[sampleof] ~ getValues(predic_raster_quad)[sampleof] +
+                I(getValues(predic_raster_quad)[sampleof]^2))
+  # myPred <- predict(model)
+  # ix <- sort(getValues(predic_raster_quad)[sampleof], index.return=T)$ix
+  # lines(getValues(predic_raster_quad)[sampleof][ix], myPred, col=rgb(0,1/i,1/i,0.75), lwd=1)
+  # abline(lm(getValues(r_random)[sampleof] ~ getValues(predic_raster_quad)[sampleof]),
+  #        col=rgb(0,1/i,1/i,0.75), lty = i)
+  
+  })
+  
+# plot(seq(0,1,length.out = 10), seq(0,1,length.out = 10), type = "l", col="red", 
+#      xlab="True Distribution", ylab="Random sampling",main=paste("Suitability by Pixel, Sample Size",ss))
+# # lapply(lines, function(l) lines(l~getValues(predic_raster_quad)[sampleof], col = rgb(0,0.3,0.5,0.5)))
+# lapply(lines, function(x){
+#   myPred <- predict(x)
+#   ix <- sort()
+# })
+
   dev.off()
 }
+
+```
 
 # systematic
 for(ss in c(3:10, 20,30,50,100)){
@@ -1281,13 +1255,13 @@ for(ss in c(3:10, 20,30,50,100)){
   jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/systematic2true_samplesize",ss,".jpg", sep=""),
        width=173, height=105,units='mm', res=300)
   
-  plot(getValues(predic_raster), getValues(r_systematic), 
+  plot(getValues(predic_raster_quad), getValues(r_systematic), 
        xlim = c(0,1), ylim = c(0,1), pch=16, cex=0.25, xlab="True Distribution", ylab="Systematic sampling",main=paste("Suitability by Pixel, Sample Size",ss))
 for(i in 1:5){
   r_systematic <- raster(list.files(path = pathstart, 
                                     pattern = paste("ProbTiffsystematicRep", sample(1:100,1),"SampleSize",ss, ".tif", sep=""),
                                     full.names = TRUE))
-  points(getValues(predic_raster), getValues(r_systematic), pch=16, cex=0.5, col = rgb(i/(i+1),0,i/(i+5),0.05))
+  points(getValues(predic_raster_quad), getValues(r_systematic), pch=16, cex=0.5, col = rgb(i/(i+1),0,i/(i+5),0.05))
 }
   dev.off()
 }
@@ -1302,13 +1276,13 @@ for(ss in c(3:10,20,30,50,100)){
   jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/cluster2true_samplesize",ss,".jpg", sep=""),
        width=153, height=105,units='mm', res=300)
   
-  plot(getValues(predic_raster), getValues(r_clust), 
+  plot(getValues(predic_raster_quad), getValues(r_clust), 
        xlim = c(0,1), ylim = c(0,1), pch=16, cex=0.25, xlab="True Distribution", ylab="Adaptive Cluster sampling",main=paste("Suitability by Pixel, Sample Size",ss))
 for(i in 1:5){
   r_clust <- raster(list.files(path = pathstart, 
                                     pattern = paste("ProbTiffclusterRep",sample(1:80,1),"SampleSize",ss, ".tif", sep=""),
                                     full.names = TRUE))
-  points(getValues(predic_raster), getValues(r_clust), pch=16, cex=0.25, col = rgb(i/(i+1),i/(i+i),i/(i+5),0.05))
+  points(getValues(predic_raster_quad), getValues(r_clust), pch=16, cex=0.25, col = rgb(i/(i+1),i/(i+i),i/(i+5),0.05))
 }
   dev.off()
 }
@@ -1322,13 +1296,13 @@ for(ss in c(3:10,20,30,50,100)){
   jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/convenience2true_samplesize",ss,".jpg", sep=""),
        width=153, height=105,units='mm', res=300)
   
-  plot(getValues(predic_raster), getValues(r_clust), 
+  plot(getValues(predic_raster_quad), getValues(r_clust), 
        xlim = c(0,1), ylim = c(0,1), pch=16, cex=0.25, xlab="True Distribution", ylab="Convenience sampling",main=paste("Suitability by Pixel, Sample Size",ss))
 for(i in 1:5){
   r_clust <- raster(list.files(path = pathstart, 
                                     pattern = paste("ProbTiffconvenienceRep",sample(1:80,1),"SampleSize",ss, ".tif", sep=""),
                                     full.names = TRUE))
-  points(getValues(predic_raster), getValues(r_clust), pch=16, cex=0.25, col = rgb(i/(i+1),i/(i+i),i/(i+5),0.05))
+  points(getValues(predic_raster_quad), getValues(r_clust), pch=16, cex=0.25, col = rgb(i/(i+1),i/(i+i),i/(i+5),0.05))
 }
   dev.off()
 }
@@ -1351,7 +1325,7 @@ random2true <- lapply(c(10, 20,30,50,100), function(ss){
   # jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/random2true_samplesize",ss,".jpg", sep=""),
        # width=173, height=105,units='mm', res=300)
 
-  random2true <- data.frame(true = getValues(predic_raster), random = getValues(r_random), samplesize = ss)
+  random2true <- data.frame(true = getValues(predic_raster_quad), random = getValues(r_random), samplesize = ss)
 
   
   plot <- ggplot(random2true, aes(true, random, colour = as.factor(samplesize)))+
@@ -1386,7 +1360,7 @@ for(ss in c(3:10, 20,30,50,100)){ #
                                         pattern = paste("ProbTiff", sampd, "Rep", s,"SampleSize",ss, ".tif", sep=""),
                                         full.names = TRUE))
     
-      design2true <- data.frame(true = getValues(predic_raster), V1 = getValues(r1), samplesize = ss)
+      design2true <- data.frame(true = getValues(predic_raster_quad), V1 = getValues(r1), samplesize = ss)
       design2true[sample(1:nrow(design2true), 100000),]
     }))s
 
@@ -1427,7 +1401,7 @@ for(i in 1:5){
   r_random <- raster(list.files(path = pathstart, 
                                     pattern = paste("ProbTiffrandomRep", sample(1:100,1),"SampleSize",ss, ".tif", sep=""),
                                     full.names = TRUE))
-  points(getValues(predic_raster), getValues(r_random), pch=16, cex=0.5, col = rgb(i/(i+1),0,i/(i+5),0.05))
+  points(getValues(predic_raster_quad), getValues(r_random), pch=16, cex=0.5, col = rgb(i/(i+1),0,i/(i+5),0.05))
 }
   # dev.off()
 # }
@@ -1464,19 +1438,19 @@ repsXsamplesize <- lapply(c(3:10, 20, 30, 50, 100), function(x){
 # Histogram of each alone as correlation to true
 Cor2True <- do.call(rbind, lapply(1:(length(c(3:10, 20,30,50,100))), function(ss){
   systemcor <- do.call(rbind,lapply(1:100, function(i){
-    corout <- cor(getValues(repsXsamplesize[[ss]][[i]][[1]]), getValues(predic_raster), method = "pearson")
+    corout <- cor(getValues(repsXsamplesize[[ss]][[i]][[1]]), getValues(predic_raster_quad), method = "pearson")
     corout
   }))
   randomcor <- do.call(rbind,lapply(1:100, function(i){
-    corout <- cor(getValues(repsXsamplesize[[ss]][[i]][[2]]), getValues(predic_raster), method = "pearson")
+    corout <- cor(getValues(repsXsamplesize[[ss]][[i]][[2]]), getValues(predic_raster_quad), method = "pearson")
     corout
   }))
   conveniencecor <- do.call(rbind,lapply(1:100, function(i){
-    corout <- cor(getValues(repsXsamplesize[[ss]][[i]][[3]]), getValues(predic_raster), method = "pearson")
+    corout <- cor(getValues(repsXsamplesize[[ss]][[i]][[3]]), getValues(predic_raster_quad), method = "pearson")
     corout
   }))
   clustercor <- do.call(rbind,lapply(1:100, function(i){
-    corout <- cor(getValues(repsXsamplesize[[ss]][[i]][[4]]), getValues(predic_raster), method = "pearson")
+    corout <- cor(getValues(repsXsamplesize[[ss]][[i]][[4]]), getValues(predic_raster_quad), method = "pearson")
     corout
   }))
   data.frame(systemcor, randomcor, conveniencecor, clustercor, SampleSize = ss)
@@ -1527,10 +1501,10 @@ true_random <- lapply(1:100, function(x){
           rsimprand <- raster(list.files(path = pathstart, 
                                   pattern = paste("ProbTiffrandomRep", sample(1:10,1), ".tif", sep=""),
                                   full.names = TRUE))
-          cor_True_System <- layerStats(stack(rtrue, predic_raster), 'pearson', na.rm=TRUE)  # non-parameteric, not normally distributied and relationship not linear
+          cor_True_System <- layerStats(stack(rtrue, predic_raster_quad), 'pearson', na.rm=TRUE)  # non-parameteric, not normally distributied and relationship not linear
           cor_True_System$`pearson correlation coefficient`
           
-          cor_True_Random <- layerStats(stack(rsimprand, predic_raster), 'pearson', na.rm=TRUE)  # non-parameteric, not normally distributied and relationship not linear
+          cor_True_Random <- layerStats(stack(rsimprand, predic_raster_quad), 'pearson', na.rm=TRUE)  # non-parameteric, not normally distributied and relationship not linear
           cor_True_Random$`pearson correlation coefficient`
           
           out <- data.frame(True = cor_True_System$`pearson correlation coefficient`[2], Random = cor_True_Random$`pearson correlation coefficient`[2])
@@ -1556,10 +1530,10 @@ cluster_random <- do.call(rbind,lapply(1:100, function(x){
           rsimprand <- raster(list.files(path = pathstart, 
                                   pattern = paste("ProbTiffrandomRep", sample(1:10,1), ".tif", sep=""),
                                   full.names = TRUE))
-          cor_True_System <- layerStats(stack(rclust, predic_raster), 'pearson', na.rm=TRUE)  # non-parameteric, not normally distributied and relationship not linear
+          cor_True_System <- layerStats(stack(rclust, predic_raster_quad), 'pearson', na.rm=TRUE)  # non-parameteric, not normally distributied and relationship not linear
           cor_True_System$`pearson correlation coefficient`
           
-          cor_True_Random <- layerStats(stack(rsimprand, predic_raster), 'pearson', na.rm=TRUE)  # non-parameteric, not normally distributied and relationship not linear
+          cor_True_Random <- layerStats(stack(rsimprand, predic_raster_quad), 'pearson', na.rm=TRUE)  # non-parameteric, not normally distributied and relationship not linear
           cor_True_Random$`pearson correlation coefficient`
           
           out <- data.frame(Cluster = cor_True_System$`pearson correlation coefficient`[2], Random = cor_True_Random$`pearson correlation coefficient`[2])
