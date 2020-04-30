@@ -888,7 +888,7 @@ Sampling images
 for(x in 1:10){
   samplesys1 <- systematic_sampling(predic_raster_quad, samplesize = 100, studyarea = 100)
       
-  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_NewSystematicTrue",x,".jpg", sep=""),
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/Fig2_NewSystematicTrue",x,".jpg", sep=""),
        width=145, height=100,units='mm', res=300)
   par(mar=c(2.1,2.1,2.1,1.1))
   plot(predic_raster_quad, main = ""); points(samplesys1[[1]], pch=16, cex=0.25)
@@ -916,7 +916,7 @@ for(x in 1:10){
 for(x in 1:10){
   random1 <- random_sampling(predic_raster_quad, 100)
   
-  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_simplerandom",x,".jpg", sep=""),
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/Fig2_simplerandom",x,".jpg", sep=""),
        width=145, height=100,units='mm', res=300)
   par(mar=c(2.1,2.1,2.1,1.1))
   plot(predic_raster_quad, main = ""); points(random1, pch=16, cex=0.25)
@@ -931,7 +931,7 @@ for(x in 1:10){
   cluster1 <- adaptive_cluster(predic_raster_quad, 100)
   print(nrow(cluster1))
     
-  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_AdaptiveCluster",x,".jpg", sep=""),
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/Fig2_AdaptiveCluster",x,".jpg", sep=""),
        width=145, height=100,units='mm', res=300)
   par(mar=c(2.1,2.1,2.1,1.1))
   plot(predic_raster_quad, main = ""); points(cluster1, pch=16, cex=0.25)
@@ -946,7 +946,7 @@ for(x in 1:10){
   conve1 <- convenience_sampling(predic_raster_quad, p_norm, 100)
   print(nrow(conve1))
     
-  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/Fig2_Convenience",x,".jpg", sep=""),
+  jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/Fig2_Convenience",x,".jpg", sep=""),
        width=145, height=100,units='mm', res=300)
   par(mar=c(2.1,2.1,2.1,1.1))
   plot(predic_raster_quad, main = ""); points(conve1, pch=16, cex=0.25)
@@ -1317,188 +1317,7 @@ rm(p)
 
 ```
 
-
-```{r}
-
-library(MASS)
-library("RColorBrewer")
-library(dplyr)
-library(gtable)
-
-random2true <- lapply(c(10, 20,30,50,100), function(ss){
-  
-  r_random <- raster(list.files(path = pathstart, 
-                                    pattern = paste("ProbTiffrandomRep", sample(1:100,1),"SampleSize",ss, ".tif", sep=""),
-                                    full.names = TRUE))
-  # jpeg(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/random2true_samplesize",ss,".jpg", sep=""),
-       # width=173, height=105,units='mm', res=300)
-
-  random2true <- data.frame(true = getValues(predic_raster_quad), random = getValues(r_random), samplesize = ss)
-
-  
-  plot <- ggplot(random2true, aes(true, random, colour = as.factor(samplesize)))+
-    stat_density2d(aes(fill = ..level..), alpha = 0.3, geom = "polygon")+
-    scale_fill_continuous(low = "grey", high = colors()[ss], space = "Lab",
-                          name = paste("samplesize =", ss))+
-    scale_color_discrete(guide = FALSE)+
-    expand_limits(x = c(0,1), y = c(0,1))+
-    theme_bw()
-  
-  out <- list(sample_n(random2true, size = 100000), plot)
-  out
-})
-```
-
-```{r}
-
-
-for(i in 1:5){
-  print(random2true[[i]][[2]])
-}
-
-```
-
-```{r}
-
-for(ss in c(3:10, 20,30,50,100)){ #
-  for(sampd in c("random", "cluster", "systematic", "convenience")){
-    
-    r_design <- do.call(rbind,lapply(sample(1:100, 10), function(s){
-      r1 <- raster(list.files(path = pathstart, 
-                                        pattern = paste("ProbTiff", sampd, "Rep", s,"SampleSize",ss, ".tif", sep=""),
-                                        full.names = TRUE))
-    
-      design2true <- data.frame(true = getValues(predic_raster_quad), V1 = getValues(r1), samplesize = ss)
-      design2true[sample(1:nrow(design2true), 100000),]
-    }))s
-
-    p <- ggplot(r_design, aes(true, V1, colour = as.factor(samplesize)))+
-      geom_point(alpha=0.05, size=0.1)+
-      stat_density2d(aes(fill = ..level..), alpha = 0.3, geom = "polygon", n = 500)+
-      scale_fill_continuous(low = "grey", high = colors()[30], space = "Lab",
-                            name = paste("samplesize =", ss))+
-      scale_color_discrete(guide = FALSE)+
-      expand_limits(x = c(0,1), y = c(0,1))+
-      theme_bw()+ 
-      ylab(paste(sampd))+
-      geom_abline(intercept = 0, slope = 1)
-    
-    # ggsave(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/", 
-    ggsave(paste("Q:/Research/MEDL_folder/Dissertation/SDM_SamplingDesign/Figures/",
-                 sampd, "2true_density_samplesize",ss,".jpg", sep=""),
-           plot = p,
-           width=173, height=105,units='mm')
-  }
-}
-
-```
-
-
-```{r}  
-  ggplot(random2true, aes(true, random, colour = as.factor(samplesize)))+
-    geom_point(pch=16, alpha = 0.25)+
-    expand_limits(x = c(0,1), y = c(0,1))+
-    xlab("True Distribution")+
-    ylab("Random sampling")+
-    stat_density2d(aes(fill = ..level..), alpha = 0.5, geom = "polygon", data = random2true)+
-    scale_fill_viridis_c()+
-    theme_bw()
-    
-    
-for(i in 1:5){
-  r_random <- raster(list.files(path = pathstart, 
-                                    pattern = paste("ProbTiffrandomRep", sample(1:100,1),"SampleSize",ss, ".tif", sep=""),
-                                    full.names = TRUE))
-  points(getValues(predic_raster_quad), getValues(r_random), pch=16, cex=0.5, col = rgb(i/(i+1),0,i/(i+5),0.05))
-}
-  # dev.off()
-# }
-```
-
-
-
-```{r}
-
-
-# c("system","random","convenience","cluster")
-
-# Sample from the replicates with replacement; ProbTiffsystematicRep100SampleSize3
-repsXsamplesize <- lapply(c(3:10, 20, 30, 50, 100), function(x){
-  reps <- lapply(1:100, function(rep){
-      system <- raster(list.files(path = pathstart, 
-                                  pattern = paste("ProbTiffsystematicRep", sample(1:10,1), "SampleSize", x,".tif", sep=""),
-                                  full.names = TRUE))
-      random <-  raster(list.files(path = pathstart, 
-                                  pattern = paste("ProbTiffrandomRep", sample(1:10,1), "SampleSize", x,".tif", sep=""),
-                                  full.names = TRUE))
-      convenience <-  raster(list.files(path = pathstart, 
-                                  pattern = paste("ProbTiffconvenienceRep", sample(1:10,1), "SampleSize", x,".tif", sep=""),
-                                  full.names = TRUE))
-      cluster <-  raster(list.files(path = pathstart, 
-                                  pattern = paste("ProbTiffclusterRep", sample(1:10,1), "SampleSize", x,".tif", sep=""),
-                                  full.names = TRUE))
-      out<- list(system, random, convenience, cluster)
-      out
-      })
-  reps
-})
-
-# Histogram of each alone as correlation to true
-Cor2True <- do.call(rbind, lapply(1:(length(c(3:10, 20,30,50,100))), function(ss){
-  systemcor <- do.call(rbind,lapply(1:100, function(i){
-    corout <- cor(getValues(repsXsamplesize[[ss]][[i]][[1]]), getValues(predic_raster_quad), method = "pearson")
-    corout
-  }))
-  randomcor <- do.call(rbind,lapply(1:100, function(i){
-    corout <- cor(getValues(repsXsamplesize[[ss]][[i]][[2]]), getValues(predic_raster_quad), method = "pearson")
-    corout
-  }))
-  conveniencecor <- do.call(rbind,lapply(1:100, function(i){
-    corout <- cor(getValues(repsXsamplesize[[ss]][[i]][[3]]), getValues(predic_raster_quad), method = "pearson")
-    corout
-  }))
-  clustercor <- do.call(rbind,lapply(1:100, function(i){
-    corout <- cor(getValues(repsXsamplesize[[ss]][[i]][[4]]), getValues(predic_raster_quad), method = "pearson")
-    corout
-  }))
-  data.frame(systemcor, randomcor, conveniencecor, clustercor, SampleSize = ss)
-})
-)
-  
-# ggplot(Cor2True, aes(systemcor, color = as.factor(SampleSize)))+
-#   geom_freqpoly(position = "dodge", na.rm = TRUE)+
-#   scale_color_manual(values=colors()[sample(1:600, 12)],
-#                     name="Systematic sampling\nSample Size",
-#                     breaks=c(1:12),
-#                     labels=c(3:10,20,30,50,100))+
-#   theme_bw()
-
-
-
-ggplot(Cor2True, aes(systemcor, fill = as.factor(SampleSize)))+
-  geom_histogram(position = "dodge", na.rm = TRUE, binwidth = 0.15)+
-  expand_limits(x = c(-1,1))+
-  scale_fill_manual(values=rainbow(12),
-                    name="Systematic sampling\nSample Size",
-                    breaks=c(1:12),
-                    labels=c(3:10,20,30,50,100))+
-  theme_bw()
-
-
-ggplot(Cor2True, aes(randomcor, fill = as.factor(SampleSize)))+
-  geom_histogram(position = "dodge", na.rm = TRUE, binwidth = 0.15)+ #
-  expand_limits(x = c(-1,1))+
-  scale_fill_manual(values=rainbow(12),
-                    name="Systematic sampling\nSample Size",
-                    breaks=c(1:12),
-                    labels=c(3:10,20,30,50,100))+
-  theme_bw()
-``` 
-
-
-
-
-
+Pattern distilled down to a correlation
 ```{r}
 true_random <- lapply(1:100, function(x){
       
@@ -1563,31 +1382,35 @@ ggplot(cluster_random, aes(Cluster, Random))+
 # Process: variable importance
 ```{r}
 
-modelstoload <- unlist(lapply(c("random","system"), function(x){
+modelstoload <- unlist(lapply(c("random","system","cluster","convenience"), function(x){
   resultpath <- list.files(path = pathstart,
                            pattern = paste("^","maxent",x,"rep",sep=""),
                            full.names = TRUE)
   }))
 
+maxModels <- do.call(rbind,lapply(modelstoload, function(x){ 
+  load(x)
+  contribs <- xm@results[grep("contribution", dimnames(xm@results)[[1]])]
+  names(contribs) <- dimnames(xm@results)[[1]][grep("contribution",
+                                                    dimnames(xm@results)[[1]])]
+  out <- data.frame(SampleDesign =  strsplit(gsub("maxent", "",
+                                                  strsplit(x,"rep")[[1]][1]),"/")[[1]][11],
+                    SampleSize = gsub("[^[:digit:],]", "", strsplit(x, "SampleSize")[[1]][2]),
+                    feature = names(contribs), contribs)
+  out
+  }))
 
-load(modelstoload[1])
+maxModels$SampleSize <- factor(maxModels$SampleSize, levels = c("3","10","20","30","50","100"))
+maxModels$feature <- factor(maxModels$feature, levels = c("Bio11.contribution","Bio19.contribution",
+                                                          "Bio12.contribution","Bio1.contribution",
+                                                          "Elevation.contribution","dummy.contribution"))
+p1 <- ggplot(maxModels, aes(x = feature, y = contribs, colour = SampleDesign))+
+  facet_wrap(~SampleSize)+
+  geom_jitter()+
+  geom_boxplot()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-maxModels <- lapply(modelstoload, function(x) load(x))
-response(xm) # response curve shapes
-plot(xm) # variable contriubtion
-contribs <- xm@results[grep("contribution", dimnames(xm@results)[[1]])]
-names(contribs) <- dimnames(xm@results)[[1]][grep("contribution", dimnames(xm@results)[[1]])]
-# var.importance <- data.frame(Var = row.names(xm@results), xm@results)[7:12,]
-
-# evaluate models
-# evalstoload <- list.files(path = pathstart,
-#                            pattern = "evaluate",
-#                            full.names = TRUE)
-# evalModels <- lapply(evalstoload, function(x) load(x))
-# 
-# load(evalstoload[1])
-# threshold(e)  # can get prevalence and other measures for thresholds
-# plot(e, 'ROC')
+ggsave()
 ```
 
 
@@ -1596,31 +1419,6 @@ names(contribs) <- dimnames(xm@results)[[1]][grep("contribution", dimnames(xm@re
 ```{r}
 
 ```
-
-
-# JAGS or make a gibbs sampler?   
-Just raster stack glm with the enviornmental variable relationships. 
-```{r}
-# The distribution of suitable values by layer
-ana_rast <- stack(rasterstack3_z, clru1_z[[3]])
-# x <- calc(ana_rast, function(x) if(ana_rast[[7]]>0.3) lm(x~time))
-
-# Distribution in suitable 
-for(i in names(ana_rast)[-7]){
-  hist(ana_rast[[i]][ana_rast[[7]]>0.3], main=paste(i))
-}
-for(i in names(ana_rast)[-7]){
-  hist(ana_rast[[i]][ana_rast[[7]]>0.5], main=paste(i))
-}
-# Take the central tendancy as alpha and the SD as var? those are the first step to estimate those parameters from the random sample? Then take the output from those as the input 
-
-# if beta then dbeta(ElevationResampled_bioclim, $alpha, $beta, ncp = based on derivation as a Poisson mixture of betas Johnson et al 1995)
-model1 <- ElevationResampled_bioclim[]*x
-
-r_suitability <- stackApply(rasterstack3_z, indices = 1:6, function(x) )
-
-```
-
 
 
 
@@ -1656,94 +1454,5 @@ library(maxlike)
 
 
 
-
-
-
-
-
-
-Cite Abdi, Abdulhakim M., et al. "The El Niño–La Niña cycle and recent trends in supply 
- and demand of net primary productivity in African drylands." Climatic Change 138.1-2 (2016): 111-125. 
- https://link.springer.com/article/10.1007/s10584-016-1730-1  
-Don't know if I need this 
-<https://www.hakimabdi.com/blog/test-pixelwise-correlation-between-two-time-series-of-gridded-satellite-data-in-r?fbclid=IwAR0aWWWwKX6IQUhEpzT1saT2yXtHPpwFmesC6eKXRbtMaGoGSdffZc35kWw>
-```{r}
-gridcorts <- function(rasterstack, method, type=c("corel","pval","both")){
-  # Values for (layers, ncell, ncol, nrow, method, crs, extent) come straight from the input raster stack
-  # e.g. nlayers(rasterstack), ncell(rasterstack)... etc.
-  print(paste("Start Gridcorts:",Sys.time()))
-  print("Loading parameters")
-  layers=nlayers(rasterstack);ncell=ncell(rasterstack);
-  ncol=ncol(rasterstack);nrow=nrow(rasterstack);crs=crs(rasterstack);
-  extent=extent(rasterstack);pb = txtProgressBar(min = 0, max = ncell, initial = 0)
-  print("Done loading parameters")
-  mtrx <- as.matrix(rasterstack,ncol=layers)
-  empt <- matrix(nrow=ncell, ncol=2)
-  print("Initiating loop operation")
-  if (type == "corel"){
-    for (i in 1:ncell){
-      setTxtProgressBar(pb,i)
-      if (all(is.na(mtrx[i,1:(layers/2)])) | all(is.na(mtrx[i,((layers/2)+1):layers]))){ 
-        empt[i,1] <- NA 
-      } else 
-        if (sum(!is.na(mtrx[i,1:(layers/2)]/mtrx[i,((layers/2)+1):layers])) < 4 ){
-          empt[i,1] <- NA 
-        } else 
-          empt[i,1] <- as.numeric(cor.test(mtrx[i,1:(layers/2)], mtrx[i,((layers/2)+1):layers],method=method)$estimate)
-    }
-    print("Creating empty raster")
-    corel <- raster(nrows=nrow,ncols=ncol,crs=crs)
-    extent(corel) <- extent
-    print("Populating correlation raster")
-    values(corel) <- empt[,1]
-    print(paste("Ending Gridcorts on",Sys.time()))
-    corel
-  } 
-  else
-    if (type == "pval"){
-      for (i in 1:ncell){
-        setTxtProgressBar(pb,i)
-        if (all(is.na(mtrx[i,1:(layers/2)])) | all(is.na(mtrx[i,((layers/2)+1):layers]))){ 
-          empt[i,2] <- NA 
-        } else 
-          if (sum(!is.na(mtrx[i,1:(layers/2)]/mtrx[i,((layers/2)+1):layers])) < 4 ){
-            empt[i,2] <- NA 
-          } else 
-            empt[i,2] <- as.numeric(cor.test(mtrx[i,1:(layers/2)], mtrx[i,((layers/2)+1):layers],method=method)$p.value)
-      }
-      pval <- raster(nrows=nrow,ncols=ncol,crs=crs)
-      extent(pval) <- extent
-      print("Populating significance raster")
-      values(pval) <- empt[,2]
-      print(paste("Ending Gridcorts on",Sys.time()))
-      pval
-    }
-  else
-    if (type == "both"){
-      for (i in 1:ncell){
-        setTxtProgressBar(pb,i)
-        if (all(is.na(mtrx[i,1:(layers/2)])) | all(is.na(mtrx[i,((layers/2)+1):layers]))){ 
-          empt[i,] <- NA 
-        } else 
-          if (sum(!is.na(mtrx[i,1:(layers/2)]/mtrx[i,((layers/2)+1):layers])) < 4 ){
-            empt[i,] <- NA 
-          } else {
-            empt[i,1] <- as.numeric(cor.test(mtrx[i,1:(layers/2)], mtrx[i,((layers/2)+1):layers],method=method)$estimate) 
-            empt[i,2] <- as.numeric(cor.test(mtrx[i,1:(layers/2)], mtrx[i,((layers/2)+1):layers],method=method)$p.value)
-          }
-      }
-      c <- raster(nrows=nrow,ncols=ncol,crs=crs)
-      p <- raster(nrows=nrow,ncols=ncol,crs=crs)
-      print("Populating raster brick")
-      values(c) <- empt[,1]
-      values(p) <- empt[,2]
-      brk <- brick(c,p)
-      extent(brk) <- extent
-      names(brk) <- c("Correlation","Pvalue")
-      print(paste("Ending Gridcorts on",Sys.time()))
-      brk
-    }
-}
-```
 
 
