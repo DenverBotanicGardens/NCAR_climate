@@ -312,11 +312,78 @@ names(rasterstack_norm) <- c("Elevation","Bio1","Bio11","Bio12","Bio19","dummy")
 
 ```
 
+
+
+Wilson 2011 
+None of these take into account spatially how close they are to each other in addition to how close the values are...
+```{r}
+# install.packages("LaplacesDemon")
+library(LaplacesDemon)
+# Kullback-Leibler Divergence 
+intrinsicdisc <- do.call(rbind,apply(combn(1:6,2), 2, function(x){
+  klds <- KLD(getValues(rasterstack_norm[[x[1]]]),getValues(rasterstack_norm[[x[2]]]))
+  out <- data.frame(Compar = paste(names(rasterstack_norm[[x[1]]]),
+                                   names(rasterstack_norm[[x[2]]]),
+                                   sep="-"),
+                                   IntrinsicDisc = klds$intrinsic.discrepancy)
+  out
+}))
+
+# measure of the information gain in moving from a prior distribution to a posterior distribution; mutual informaiton content, divergence is the value reated by adding the two complementary measures. 
+intrinsicdisc[order(intrinsicdisc$IntrinsicDisc),]
+
+# Hellinger distance, between two random samples
+# install.packages("statip")
+library(statip)
+HellingerDist <- do.call(rbind,apply(combn(1:6,2), 2, function(x){
+  hell <- hellinger(getValues(rasterstack_norm[[x[1]]]),getValues(rasterstack_norm[[x[2]]]))
+  out <- data.frame(Compar = paste(names(rasterstack_norm[[x[1]]]),
+                                   names(rasterstack_norm[[x[2]]]),
+                                   sep="-"),
+                                   IHDist = hell)
+  out
+}))
+
+# smallest distance between bio1 and bio11
+HellingerDist[order(HellingerDist$IHDist),]
+
+# Euclidean distance normalized 
+EuclideanDist <- do.call(rbind,apply(combn(1:6,2), 2, function(x){
+  Edist <- sqrt(sum(((getValues(rasterstack_norm[[x[1]]])/
+                        sum(getValues(rasterstack_norm[[x[1]]])))-
+                        (getValues(rasterstack_norm[[x[2]]])/
+                           sum(getValues(rasterstack_norm[[x[2]]])))
+                     )^2))
+  out <- data.frame(Compar = paste(names(rasterstack_norm[[x[1]]]),
+                                   names(rasterstack_norm[[x[2]]]),
+                                   sep="-"),
+                                   NormEucldist = Edist)
+  out
+}))
+
+EuclideanDist[order(EuclideanDist$NormEucldist),]
+
+
+# Correlation
+Corr <- do.call(rbind,apply(combn(1:6,2), 2, function(x){
+  Corr <- cor(getValues(rasterstack_norm[[x[1]]]),getValues(rasterstack_norm[[x[2]]]))
+  out <- data.frame(Compar = paste(names(rasterstack_norm[[x[1]]]),
+                                   names(rasterstack_norm[[x[2]]]),
+                                   sep="-"),
+                                   cor = Corr)
+  out
+}))
+
+Corr[order(abs(Corr$cor)),]
+
+
+```
+
+
      See Royle, J. A., R. B. Chandler, C. Yackulic, and J. D. Nichols. 2012. Likelihood analysis of species occurrence probability from presence-only data for modelling species distributions. Methods in Ecology and Evolution 3:545-554. 
 e^Xlinearmodel/1+e^linear model so that it's [0-1] of the probability of y|x 
 Create my own glm for comparison with maxent
 ```{r}
-
 # actual covariates
 predic_raster <- rasterstack_norm[[1]]
 predic_raster_quad <- rasterstack_norm[[1]]
@@ -1406,11 +1473,15 @@ maxModels$feature <- factor(maxModels$feature, levels = c("Bio11.contribution","
                                                           "Elevation.contribution","dummy.contribution"))
 p1 <- ggplot(maxModels, aes(x = feature, y = contribs, colour = SampleDesign))+
   facet_wrap(~SampleSize)+
-  geom_jitter()+
+  geom_jitter(width = 0.02)+
   geom_boxplot()+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  ylab("")+
+  xlab("")+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
 
-ggsave()
+ggsave("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/Process_fig.jpg",
+       p1, width = 400, height=100, units="mm", dpi=300)
 ```
 
 
