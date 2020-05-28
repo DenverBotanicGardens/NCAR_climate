@@ -26,6 +26,8 @@ rm(list=ls())
 
 library(diagram)
 library(ggplot2)
+# library(ggpubr)
+library(gridExtra)
 
 require(DiagrammeR)
 
@@ -222,23 +224,12 @@ grViz("digraph flowchart {
 ```
 
 
-
-```{r}
-colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
-
-colocounties <- spTransform(colocounties.UTM,CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
-coElev_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled_bioclim.tif")
-coAspect_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/AspectResampled_bioclim.tif")
-# COplus_ruggedInt50.tif
-coRugged_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/RuggedResampled_bioclim.tif")
-bio1_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio1Resampled_bioclim.tif")
-bio12_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled_bioclim.tif")
-rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
-```
-
-
 ### Skip ###
 Use maxent, and then refine the relatonships of environment and points  
+Virtual species 
+<http://borisleroy.com/files/virtualspecies-tutorial.html>
+virtual species based on Claytonia rubra   
+
 ```{r}
 clru <- read.csv("C:/Users/DePrengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Claytonia rubra_SEINet/occurrences.csv")
 
@@ -254,10 +245,18 @@ clruspdf <- SpatialPointsDataFrame(coords = clru[,c("decimalLongitude","decimalL
 
 ```
 
-# Virtual species 
-<http://borisleroy.com/files/virtualspecies-tutorial.html>
-virtual species based on Claytonia rubra   
 ```{r}
+colocounties.UTM <- readOGR(dsn="Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/CO_Counties", layer="counties")
+
+colocounties <- spTransform(colocounties.UTM,CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+coElev_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/ElevationResampled_bioclim.tif")
+coAspect_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/AspectResampled_bioclim.tif")
+# COplus_ruggedInt50.tif
+coRugged_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/RuggedResampled_bioclim.tif")
+bio1_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio1Resampled_bioclim.tif")
+bio12_res <- raster("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/NationalMapUSDA_DEM_aroundcolorado/Bio12Resampled_bioclim.tif")
+rasterstack <- stack(coElev_res,coAspect_res,coRugged_res,bio1_res,bio12_res)
+
 # or use all worldclim data
 # bioclim.colorado <- getData("worldclim", var="bio", res=0.5, lon=-106, lat = 39)
 # save(bioclim.colorado, file = "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/R/bioclim.colorado.Rda")
@@ -387,6 +386,8 @@ Create my own glm for comparison with maxent
 # actual covariates
 predic_raster <- rasterstack_norm[[1]]
 predic_raster_quad <- rasterstack_norm[[1]]
+predic_raster_quad_noBio1 <- rasterstack_norm[[1]]
+predic_raster_quad_noBio11 <- rasterstack_norm[[1]]
 
 # linear predictor 
 betas <- c(0.5, 1,2.5,-7,4,-5,0.005)
@@ -408,6 +409,36 @@ lm2 <- as.formula(~ b[1] + getValues(rasterstack_norm[[1]])*b[2] + b[3]*(getValu
                     b[10]*getValues(rasterstack_norm[[5]]) + b[11]*(getValues(rasterstack_norm[[5]])^2) + 
                     b[12]*getValues(rasterstack_norm[[6]]) + b[13]*(getValues(rasterstack_norm[[6]])^2))
 
+# Bio1 and Bio11 are very similar. Remove Bio1
+names(rasterstack_norm) # remove [[2]]
+b_noBio1 <- c(0.5, 1, 1,
+          NA, NA, # 2.5, 2.5,
+          -7, -7,
+          4, -4,
+          -5, 5,
+          0.005, 0.005)
+lm2_nobio1 <- as.formula(~ b_noBio1[1] + getValues(rasterstack_norm[[1]])*b_noBio1[2] + b_noBio1[3]*(getValues(rasterstack_norm[[1]])^2) +
+                    b_noBio1[6]*getValues(rasterstack_norm[[3]]) + b_noBio1[7]*(getValues(rasterstack_norm[[3]])^2) + 
+                    b_noBio1[8]*getValues(rasterstack_norm[[4]]) + b_noBio1[9]*(getValues(rasterstack_norm[[4]])^2) +
+                    b_noBio1[10]*getValues(rasterstack_norm[[5]]) + b_noBio1[11]*(getValues(rasterstack_norm[[5]])^2) + 
+                    b_noBio1[12]*getValues(rasterstack_norm[[6]]) + b_noBio1[13]*(getValues(rasterstack_norm[[6]])^2))
+
+
+# Bio1 and Bio11 are simlar, what if you removed Bio11 instead?
+# remove [[3]]
+b_noB11 <- c(0.5, 1, 1,
+          2.5, 2.5,
+          NA, NA,  # -7, -7,
+          4, -4,
+          -5, 5,
+          0.005, 0.005)
+lm2_nobio11 <- as.formula(~ b_noB11[1] + getValues(rasterstack_norm[[1]])*b_noB11[2] + b_noB11[3]*(getValues(rasterstack_norm[[1]])^2) + 
+                    b_noB11[4]*getValues(rasterstack_norm[[2]]) + b_noB11[5]*(getValues(rasterstack_norm[[2]])^2) +
+                    # b[6]*getValues(rasterstack_norm[[3]]) + b[7]*(getValues(rasterstack_norm[[3]])^2) + 
+                    b_noB11[8]*getValues(rasterstack_norm[[4]]) + b_noB11[9]*(getValues(rasterstack_norm[[4]])^2) +
+                    b_noB11[10]*getValues(rasterstack_norm[[5]]) + b_noB11[11]*(getValues(rasterstack_norm[[5]])^2) + 
+                    b_noB11[12]*getValues(rasterstack_norm[[6]]) + b_noB11[13]*(getValues(rasterstack_norm[[6]])^2))
+
 #  suitability data
 # Occurrence probability
 predic_raster <- setValues(predic_raster, as.vector(exp(as.formula(lm1[[2]]))/(1+exp(as.formula(lm1[[2]])))))
@@ -415,8 +446,18 @@ predic_raster <- setValues(predic_raster, as.vector(exp(as.formula(lm1[[2]]))/(1
 # with quadratic 
 predic_raster_quad <- setValues(predic_raster_quad, as.vector(exp(as.formula(lm2[[2]]))/(1+exp(as.formula(lm2[[2]])))))
 
+# with quadratic, no Bio1
+predic_raster_quad_noBio1 <- setValues(predic_raster_quad_noBio1, as.vector(exp(as.formula(lm2_nobio1[[2]]))/(1+exp(as.formula(lm2_nobio1[[2]])))))
+
+# with quadratic, no Bio11
+predic_raster_quad_noBio11 <- setValues(predic_raster_quad_noBio11, as.vector(exp(as.formula(lm2_nobio11[[2]]))/(1+exp(as.formula(lm2_nobio11[[2]])))))
+
+
+
 plot(predic_raster)
 plot(predic_raster_quad)
+plot(predic_raster_quad_noBio1)
+plot(predic_raster_quad_noBio11)
 ```
 
 
@@ -527,25 +568,6 @@ for(i in 1:13){
 
 Updated exponentials and sampling
 ```{r}
-# Should I include exponentials to better match maxent?
-b <- c(0.5, 1, 1,
-          2.5, 2.5,
-          -7, -7,
-          4, -4,
-          -5, 5,
-          0.005, 0.005)
-lm2 <- as.formula(~ b[1] + getValues(rasterstack_norm[[1]])*b[2] + b[3]*(getValues(rasterstack_norm[[1]])^2) + 
-                    b[4]*getValues(rasterstack_norm[[2]]) + b[5]*(getValues(rasterstack_norm[[2]])^2) +
-                    b[6]*getValues(rasterstack_norm[[3]]) + b[7]*(getValues(rasterstack_norm[[3]])^2) + 
-                    b[8]*getValues(rasterstack_norm[[4]]) + b[9]*(getValues(rasterstack_norm[[4]])^2) +
-                    b[10]*getValues(rasterstack_norm[[5]]) + b[11]*(getValues(rasterstack_norm[[5]])^2) + 
-                    b[12]*getValues(rasterstack_norm[[6]]) + b[13]*(getValues(rasterstack_norm[[6]])^2))
-
-#  suitability data
-# with quadratic 
-predic_raster_quad <- setValues(predic_raster_quad, as.vector(exp(as.formula(lm2[[2]]))/(1+exp(as.formula(lm2[[2]])))))
-plot(predic_raster_quad)
-
 # try it with quadratic
 predic_raster <- predic_raster_quad
 
@@ -1127,15 +1149,6 @@ for(r in 1:reps){
    
 }
 
-# 
-# plot(xm)
-# r <- response(xm, var="Elevation")
-# plot(r, type = "l")
-# 
-# response(xm)
-
-contribs <- xm@results[grep("contribution", dimnames(xm@results)[[1]])]
-names(contribs) <- dimnames(xm@results)[[1]][grep("contribution", dimnames(xm@results)[[1]])]
 ```
 
 
@@ -1245,20 +1258,36 @@ maxnet_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
 <https://www.youtube.com/watch?v=2vgX7QoyPJo&feature=youtu.be&fbclid=IwAR2mvP8p9LDdz1LefrCwjcMMXi1l_uLI1m-1-sIiydHqHyIpMwcooSoz6lc> 
 
 ```{r}
-pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200427/"
-
+pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200501/"
 
 # 3:10, 
 lapply(c(3,10, 20, 30, 50, 100), function(sampsize){
-    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "random", reps = 10, samplesize = sampsize, pathstart = pathstart)
+    # maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "random", reps = 100, samplesize = sampsize, pathstart = pathstart)
     
-    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "system", reps = 10, samplesize = 100, pathstart = pathstart)
+    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "system", reps = 100, samplesize = sampsize, pathstart = pathstart)
     
-    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "convenience", reps = 10, samplesize = sampsize, pathstart = pathstart)
+    # maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "convenience", reps = 100, samplesize = sampsize, pathstart = pathstart)
     
-    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "cluster", reps = 10, samplesize = sampsize, pathstart = pathstart)
+    # maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "cluster", reps = 100, samplesize = sampsize, pathstart = pathstart)
 })
 
+
+```
+
+# Check if spatial autocorrelation between explainatory variables causes problems   
+```{r}
+
+pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200501_noBio1/"
+
+lapply(c(3,10, 20, 30, 50, 100), function(sampsize){
+    # maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad_noBio1, sampling_type = "random", reps = 100, samplesize = sampsize, pathstart = pathstart)
+    
+    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad_noBio1, sampling_type = "system", reps = 100, samplesize = sampsize, pathstart = pathstart)
+    
+    # maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad_noBio1, sampling_type = "convenience", reps = 100, samplesize = sampsize, pathstart = pathstart)
+    
+    # maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad_noBio1, sampling_type = "cluster", reps = 100, samplesize = sampsize, pathstart = pathstart)
+})
 
 ```
 
@@ -1270,39 +1299,37 @@ lapply(c(3,10, 20, 30, 50, 100), function(sampsize){
 
 # testing
 # ss <-30
-pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200428/"
+# pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200428/"
+pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200501/"
 
-for(ss in c(3,10, 20,30,50,100)){
-
-  df_plots <- do.call(rbind, lapply(1:10, function(i){
+lapply(c(3,10, 20,30,50,100), function(ss){
+  df_plots <- do.call(rbind, lapply(1:100, function(i){
     r_random <- raster(list.files(path = pathstart, 
                                       pattern = paste("ProbTiffrandomRep",
                                                       i,"SampleSize",ss, ".tif", sep=""),
                                       full.names = TRUE))
-    sampleof <- sample(1:length(r_random), 10000)
+    sampleof <- sample(1:length(r_random), 50000)
     out <- data.frame(Y=getValues(predic_raster_quad)[sampleof],
                       X=getValues(r_random)[sampleof], Rep = i)
     out
   }))
 
-p <- ggplot(df_plots, aes(X, Y, colour = as.factor(Rep)))+
-  geom_smooth()+
-  # geom_point()+
-  geom_abline(slope = 1, intercept = 0, colour = "red")+
-  guides(color=FALSE)+
-  theme_bw()+
-  ggtitle(paste("Random sampling (n = ", ss,")", sep=""))
-
-ggsave(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/random2true_samplesize",ss,".jpg", sep=""), p, width=170, height=175,units='mm', dpi=300)
-
-rm(p)
-}
-
+ggsave(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/samplesize",ss,"randompoints.jpg", sep=""),
+       ggplot(df_plots, aes(X, Y, colour = as.factor(Rep)))+
+  # geom_smooth(se = FALSE)+
+        geom_point(alpha = 0.5, size = 0.5)+
+          geom_abline(slope = 1, intercept = 0, colour = "black")+
+          guides(color=FALSE)+
+          theme_bw()+
+         xlab("Maxent suitability index")+
+         ylab("True probability of occurrence")+
+          ggtitle(paste("Random sampling (n = ", ss,")", sep="")),
+       width=170, height=175,units='mm', dpi=300)
+})
 
 # systematic
-for(ss in c(3,10, 20,30,50,100)){
-
-  df_plots <- do.call(rbind, lapply(1:10, function(i){
+lapply(c(3,10, 20,30,50,100), function(ss){
+  df_plots <- do.call(rbind, lapply(1:100, function(i){
     r_random <- raster(list.files(path = pathstart, 
                                       pattern = paste("ProbTiffsystemRep",
                                                       i,"SampleSize",ss, ".tif", sep=""),
@@ -1313,24 +1340,22 @@ for(ss in c(3,10, 20,30,50,100)){
     out
   }))
 
-p <- ggplot(df_plots, aes(X, Y, colour = as.factor(Rep)))+
-  geom_smooth()+
-  # geom_point()+
-  geom_abline(slope = 1, intercept = 0, colour = "red")+
+ggsave(filename = paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/samplesize",ss,"systempoints.jpg", sep=""),
+  ggplot(df_plots, aes(X, Y, colour = as.factor(Rep)))+
+  # geom_smooth(se = FALSE)+
+        geom_point(alpha = 0.5, size = 0.5)+
+  geom_abline(slope = 1, intercept = 0, colour = "black")+
   guides(color=FALSE)+
   theme_bw()+
-  ggtitle(paste("Systematic sampling (n = ", ss,")", sep=""))
+         xlab("Maxent suitability index")+
+         ylab("True probability of occurrence")+
+  ggtitle(paste("Systematic sampling (n = ", ss,")", sep="")),
+  width=170, height=175,units='mm', dpi=300)
+})
 
-ggsave(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/system2true_samplesize",ss,".jpg", sep=""), p, width=170, height=175,units='mm', dpi=300)
-
-rm(p)
-}
-
-
-# adaptive cluster
-for(ss in c(3,10, 20,30,50,100)){
-
-  df_plots <- do.call(rbind, lapply(1:10, function(i){
+# adaptive cluster   c(3,10, 20,30,50,100)
+lapply(c(3,10, 20,30,50,100), function(ss){
+  df_plots <- do.call(rbind, lapply(1:100, function(i){
     r_random <- raster(list.files(path = pathstart, 
                                       pattern = paste("ProbTiffclusterRep",
                                                       i,"SampleSize",ss, ".tif", sep=""),
@@ -1341,24 +1366,22 @@ for(ss in c(3,10, 20,30,50,100)){
     out
   }))
 
-p <- ggplot(df_plots, aes(X, Y, colour = as.factor(Rep)))+
-  geom_smooth()+
-  # geom_point()+
-  geom_abline(slope = 1, intercept = 0, colour = "red")+
-  guides(color=FALSE)+
-  theme_bw()+
-  ggtitle(paste("Adaptive cluster sampling (n = ", ss,")", sep=""))
-
-ggsave(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/cluster2true_samplesize",ss,".jpg", sep=""), p, width=170, height=175,units='mm', dpi=300)
-
-rm(p)
-}
+ggsave(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/samplesize",ss,"clusterpoints.jpg", sep=""),
+       ggplot(df_plots, aes(X, Y, colour = as.factor(Rep)))+  
+        # geom_smooth(se = FALSE, method = "gam" )+
+        geom_point(alpha = 0.5, size = 0.5)+
+        geom_abline(slope = 1, intercept = 0, colour = "black")+
+        guides(color=FALSE)+
+        theme_bw()+
+         xlab("Maxent suitability index")+
+         ylab("True probability of occurrence")+
+        ggtitle(paste("Adaptive cluster sampling (n = ", ss,")", sep=""))
+       ,width=170, height=175,units='mm', dpi=300)
+})
 
 # Convenience
-
-for(ss in c(3,10, 20,30,50,100)){
-
-  df_plots <- do.call(rbind, lapply(1:10, function(i){
+lapply(c(3,10, 20,30,50,100), function(ss){
+  df_plots <- do.call(rbind, lapply(1:100, function(i){
     r_random <- raster(list.files(path = pathstart, 
                                       pattern = paste("ProbTiffconvenienceRep",
                                                       i,"SampleSize",ss, ".tif", sep=""),
@@ -1369,20 +1392,142 @@ for(ss in c(3,10, 20,30,50,100)){
     out
   }))
 
-p <- ggplot(df_plots, aes(X, Y, colour = as.factor(Rep)))+
-  geom_smooth()+
-  # geom_point()+
-  geom_abline(slope = 1, intercept = 0, colour = "red")+
-  guides(color=FALSE)+
-  theme_bw()+
-  ggtitle(paste("Convenience sampling (n = ", ss,")", sep=""))
-
-ggsave(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/convenience2true_samplesize",ss,".jpg", sep=""), p, width=170, height=175,units='mm', dpi=300)
-
-rm(p)
-}
+ggsave(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/samplesize",ss,"conveniencepoints.jpg", sep=""), 
+       ggplot(df_plots, aes(X, Y, colour = as.factor(Rep)))+  
+        # geom_smooth(se = FALSE, method = "gam" )+
+        geom_point(alpha = 0.5, size = 0.5)+
+          geom_abline(slope = 1, intercept = 0, colour = "black")+
+          guides(color=FALSE)+
+          theme_bw()+
+         xlab("Maxent suitability index")+
+         ylab("True probability of occurrence")+
+          ggtitle(paste("Convenience sampling (n = ", ss,")", sep="")), 
+       width=170, height=175,units='mm', dpi=300)
+})
 
 ```
+
+
+# Pattern: correlation to the true distribution  All one plot
+```{r}
+
+pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200501/"
+
+plots_random <- lapply(c(3,10, 20,30,50,100), function(ss){
+  df_plots <- do.call(rbind, lapply(1:100, function(i){
+    r_random <- raster(list.files(path = pathstart, 
+                                      pattern = paste("ProbTiffrandomRep",
+                                                      i,"SampleSize",ss, ".tif", sep=""),
+                                      full.names = TRUE))
+    sampleof <- sample(1:length(r_random), 10000)
+    out <- data.frame(Y=getValues(predic_raster_quad)[sampleof],
+                      X=getValues(r_random)[sampleof], Rep = i)
+    out
+  }))
+
+   p <- ggplotGrob(ggplot(df_plots, aes(X, Y, colour = as.factor(Rep)))+
+  # geom_smooth(se = FALSE)+
+        geom_point(alpha = 0.5, size = 0.5)+
+          geom_abline(slope = 1, intercept = 0, colour = "black")+
+          guides(color=FALSE)+
+          theme_bw()+
+         xlab("Maxent suitability index")+
+         ylab("True probability of occurrence")+
+          ggtitle(paste("Random sampling (n = ", ss,")", sep="")))
+
+   p
+})
+
+
+# systematic
+plots_system <- lapply(c(3,10, 20,30,50,100), function(ss){
+  df_plots <- do.call(rbind, lapply(1:100, function(i){
+    r_random <- raster(list.files(path = pathstart, 
+                                      pattern = paste("ProbTiffsystemRep",
+                                                      i,"SampleSize",ss, ".tif", sep=""),
+                                      full.names = TRUE))
+    sampleof <- sample(1:length(r_random), 10000)
+    out <- data.frame(Y=getValues(predic_raster_quad)[sampleof],
+                      X=getValues(r_random)[sampleof], Rep = i)
+    out
+  }))
+
+  p <- ggplotGrob(ggplot(df_plots, aes(X, Y, colour = as.factor(Rep)))+
+        geom_point(alpha = 0.5, size = 0.5)+
+  geom_abline(slope = 1, intercept = 0, colour = "black")+
+  guides(color=FALSE)+
+  theme_bw()+
+         xlab("Maxent suitability index")+
+         ylab("True probability of occurrence")+
+  ggtitle(paste("Systematic sampling (n = ", ss,")", sep="")))
+  p
+})
+
+# adaptive cluster  
+plots_cluster <- lapply(c(3,10, 20,30,50,100), function(ss){
+  df_plots <- do.call(rbind, lapply(1:100, function(i){
+    r_random <- raster(list.files(path = pathstart, 
+                                      pattern = paste("ProbTiffclusterRep",
+                                                      i,"SampleSize",ss, ".tif", sep=""),
+                                      full.names = TRUE))
+    sampleof <- sample(1:length(r_random), 10000)
+    out <- data.frame(Y=getValues(predic_raster_quad)[sampleof],
+                      X=getValues(r_random)[sampleof], Rep = i)
+    out
+  }))
+
+p <- ggplotGrob(ggplot(df_plots, aes(X, Y, colour = as.factor(Rep)))+  
+        # geom_smooth(se = FALSE, method = "gam" )+
+        geom_point(alpha = 0.5, size = 0.5)+
+        geom_abline(slope = 1, intercept = 0, colour = "black")+
+        guides(color=FALSE)+
+        theme_bw()+
+         xlab("Maxent suitability index")+
+         ylab("True probability of occurrence")+
+        ggtitle(paste("Adaptive cluster sampling (n = ", ss,")", sep="")))
+p
+})
+
+# Convenience
+plots_conven <- lapply(c(3,10, 20,30,50,100), function(ss){
+  df_plots <- do.call(rbind, lapply(1:100, function(i){
+    r_random <- raster(list.files(path = pathstart, 
+                                      pattern = paste("ProbTiffconvenienceRep",
+                                                      i,"SampleSize",ss, ".tif", sep=""),
+                                      full.names = TRUE))
+    sampleof <- sample(1:length(r_random), 10000)
+    out <- data.frame(Y=getValues(predic_raster_quad)[sampleof],
+                      X=getValues(r_random)[sampleof], Rep = i)
+    out
+  }))
+
+p <- ggplotGrob(ggplot(df_plots, aes(X, Y, colour = as.factor(Rep)))+  
+        # geom_smooth(se = FALSE, method = "gam" )+
+        geom_point(alpha = 0.5, size = 0.5)+
+          geom_abline(slope = 1, intercept = 0, colour = "black")+
+          guides(color=FALSE)+
+          theme_bw()+
+         xlab("Maxent suitability index")+
+         ylab("True probability of occurrence")+
+          ggtitle(paste("Convenience sampling (n = ", ss,")", sep="")))
+p
+})
+
+ ggsave("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/AlldesignsAllss.jpg",
+        grid.arrange(plots_random[[1]], plots_random[[2]],plots_random[[3]],
+                     plots_random[[4]],plots_random[[5]],plots_random[[6]],
+                     plots_conven[[1]], plots_conven[[2]],plots_conven[[3]],
+                     plots_conven[[4]],plots_conven[[5]],plots_conven[[6]],
+                     plots_cluster[[1]], plots_cluster[[2]],plots_cluster[[3]],
+                     plots_cluster[[4]],plots_cluster[[5]],plots_cluster[[6]],
+                     plots_system[[1]], plots_system[[2]],plots_system[[3]],
+                     plots_system[[4]],plots_system[[5]],plots_system[[6]],nrow = 4),
+       width=870, height=450,units='mm', dpi=300)
+        
+
+
+```
+
 
 Pattern distilled down to a correlation
 ```{r}
