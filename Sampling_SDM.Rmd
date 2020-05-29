@@ -39,6 +39,11 @@ library(rJava)
 library(maxnet)
 library(dismo)
 # library(MIAmaxent)
+# install.packages("devtools")
+library(devtools)
+# install.packages("ecospat")
+# install_github("danlwarren/ENMTools")
+# library(ENMTools)
 
 # Mapping
 library(rgeos)
@@ -1157,6 +1162,9 @@ If use the new Maxent from maxnet::maxnet where Phillips addresses complaints of
 
 # testing
 rasterstack <- rasterstack_norm
+rasterstack_noBio1 <- dropLayer(rasterstack_norm, 2)
+rasterstack_noBio11 <- dropLayer(rasterstack_norm, 3)
+
 sampling_type <- "system"
 samplesize <- 100
 true.dist <- predic_raster_quad
@@ -1274,19 +1282,21 @@ lapply(c(3,10, 20, 30, 50, 100), function(sampsize){
 
 ```
 
-# Check if spatial autocorrelation between explainatory variables causes problems   
+# Check if spatial autocorrelation between explainatory variables causes problems 
+But! Should still treat true.dist as the predic_raster_quad with bio1, it's just that I'm not using.
+true.dist should still be predic_raster_quad, not predic_raster_quad_noBio1
 ```{r}
 
 pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200501_noBio1/"
 
 lapply(c(3,10, 20, 30, 50, 100), function(sampsize){
-    # maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad_noBio1, sampling_type = "random", reps = 100, samplesize = sampsize, pathstart = pathstart)
+    maxent_sampling(rasterstack = rasterstack_noBio1, true.dist = predic_raster_quad, sampling_type = "random", reps = 100, samplesize = sampsize, pathstart = pathstart)
     
-    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad_noBio1, sampling_type = "system", reps = 100, samplesize = sampsize, pathstart = pathstart)
+    maxent_sampling(rasterstack = rasterstack_noBio1, true.dist = predic_raster_quad, sampling_type = "system", reps = 100, samplesize = sampsize, pathstart = pathstart)
     
-    # maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad_noBio1, sampling_type = "convenience", reps = 100, samplesize = sampsize, pathstart = pathstart)
+    maxent_sampling(rasterstack = rasterstack_noBio1, true.dist = predic_raster_quad, sampling_type = "convenience", reps = 100, samplesize = sampsize, pathstart = pathstart)
     
-    # maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad_noBio1, sampling_type = "cluster", reps = 100, samplesize = sampsize, pathstart = pathstart)
+    maxent_sampling(rasterstack = rasterstack_noBio1, true.dist = predic_raster_quad, sampling_type = "cluster", reps = 100, samplesize = sampsize, pathstart = pathstart)
 })
 
 ```
@@ -1630,14 +1640,44 @@ ggsave("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents
 ```
 
 
-
-# Nicheoverlap function    
+# Process: variable importance when remove Bio1
 ```{r}
+pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200501_noBio1/"
 
+modelstoload <- unlist(lapply(c("random","system","cluster","convenience"), function(x){
+  resultpath <- list.files(path = pathstart,
+                           pattern = paste("^","maxent",x,"rep",sep=""),
+                           full.names = TRUE)
+  }))
+
+maxModels <- do.call(rbind,lapply(modelstoload, function(x){ 
+  load(x)
+  contribs <- xm@results[grep("contribution", dimnames(xm@results)[[1]])]
+  names(contribs) <- dimnames(xm@results)[[1]][grep("contribution",
+                                                    dimnames(xm@results)[[1]])]
+  out <- data.frame(SampleDesign =  strsplit(gsub("maxent", "",
+                                                  strsplit(x,"rep")[[1]][1]),"/")[[1]][11],
+                    SampleSize = gsub("[^[:digit:],]", "", strsplit(x, "SampleSize")[[1]][2]),
+                    feature = names(contribs), contribs)
+  out
+  }))
+
+maxModels$SampleSize <- factor(maxModels$SampleSize, levels = c("3","10","20","30","50","100"))
+maxModels$feature <- factor(maxModels$feature, levels = c("Bio11.contribution","Bio19.contribution",
+                                                          "Bio12.contribution", # "Bio1.contribution",
+                                                          "Elevation.contribution","dummy.contribution"))
+p1 <- ggplot(maxModels, aes(x = feature, y = contribs, colour = SampleDesign))+
+  facet_wrap(~SampleSize)+
+  geom_jitter(width = 0.02)+
+  geom_boxplot()+
+  ylab("")+
+  xlab("")+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+
+ggsave("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/Process_noBio1_fig.jpg",
+       p1, width = 400, height=100, units="mm", dpi=300)
 ```
-
-
-
 
 
 
