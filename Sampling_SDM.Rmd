@@ -52,6 +52,10 @@ library(maptools)
 library(dismo)
 library(RNRCS)
 library(rgdal)
+library(gdalUtils)
+# library(arulesViz)
+# install.packages("MODISTools")
+library("MODISTools")
 
 
 # Parallelization
@@ -229,6 +233,61 @@ grViz("digraph flowchart {
 ```
 
 
+MODIS hdf files   
+```{r}
+# detailed data on hdf4 files
+# gdalinfo("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/MODIS_monthlysnowcover/72159724/MOD10CM.A2011001.006.2016053180423.hdf")
+
+products <- mt_products()
+# MOD13Q1	MODIS/Terra Vegetation Indices (NDVI/EVI) 16-Day L3 Global 250m SIN Grid
+
+# via MODISTools
+df<- data.frame("site_name" = "COLO")
+df$lat <- 40
+df$lon <- -109
+
+subsets <- mt_batch_subset()
+
+dates <- mt_dates(product = "MOD10CM", lat = 40, lon = -109)
+
+snowpath <- "Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/MODIS_monthlysnowcover/"
+
+# Have to run next two at same time, otherwise it drops the WD
+# setwd("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/MODIS_monthlysnowcover/")
+# folders <- list.files("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/MODIS_monthlysnowcover/")
+# end with $
+files <- dir(path = snowpath, pattern = ".hdf$", recursive = TRUE, full.names = TRUE)
+
+# sds <- get_subdatasets("Q:/Research/All_Projects_by_Species/aa_Shapefiles_Maps/aa_GENERAL_non-species_files/All_General_Background_Layers/Colorado/MODIS_monthlysnowcover/72159724/MOD10CM.A2011001.006.2016053180423.hdf")
+sds <- sapply(files, function(x){ 
+  sds1 <- get_subdatasets(x)
+  sds1[1]
+  })
+
+# Where is the month information?!!?
+YearMonth <- sapply(sds, function(s) {
+  out <- strsplit(s, "MOD10CM.A")
+  substr(out[[1]][2],1,4)
+  })
+lapply(1:length(sds), function(i) gdal_translate(sds[i], dst_dataset = paste(snowpath, "Snow_Cover", YearMonth[i],"_",i, ".tif", sep="")))
+
+
+resultpath <- list.files(path = snowpath,
+                           pattern = ".tif",
+                           full.names=TRUE)
+rastout <- lapply(resultpath, function(x){
+    raster(x)
+    })
+
+plot(rastout[[2]])
+
+wtf <- raster(resultpath[1])
+plot(wtf)
+```
+
+
+
+
 ### Skip ###
 Use maxent, and then refine the relatonships of environment and points  
 Virtual species 
@@ -319,7 +378,8 @@ names(rasterstack_norm) <- c("Elevation","Bio1","Bio11","Bio12","Bio19","dummy")
 
 
 Wilson 2011 
-None of these take into account spatially how close they are to each other in addition to how close the values are...
+None of these take into account spatially how close they are to each other in addition to how close the values are...  
+What about Bio12 and Bio19 - they look super identical
 ```{r}
 # install.packages("LaplacesDemon")
 library(LaplacesDemon)
@@ -333,6 +393,11 @@ intrinsicdisc <- do.call(rbind,apply(combn(1:6,2), 2, function(x){
   out
 }))
 
+# which have smallest distance? 
+intrinsicdisc[order(abs(intrinsicdisc$IntrinsicDisc)),]
+```
+
+```{r}
 # measure of the information gain in moving from a prior distribution to a posterior distribution; mutual informaiton content, divergence is the value reated by adding the two complementary measures. 
 intrinsicdisc[order(intrinsicdisc$IntrinsicDisc),]
 
@@ -347,6 +412,12 @@ HellingerDist <- do.call(rbind,apply(combn(1:6,2), 2, function(x){
                                    IHDist = hell)
   out
 }))
+
+HellingerDist[order(abs(HellingerDist$IHDist)),]
+
+```
+
+```{r}
 
 # smallest distance between bio1 and bio11
 HellingerDist[order(HellingerDist$IHDist),]
@@ -366,8 +437,10 @@ EuclideanDist <- do.call(rbind,apply(combn(1:6,2), 2, function(x){
 }))
 
 EuclideanDist[order(EuclideanDist$NormEucldist),]
+```
 
 
+```{r}
 # Correlation
 Corr <- do.call(rbind,apply(combn(1:6,2), 2, function(x){
   Corr <- cor(getValues(rasterstack_norm[[x[1]]]),getValues(rasterstack_norm[[x[2]]]))
@@ -378,7 +451,7 @@ Corr <- do.call(rbind,apply(combn(1:6,2), 2, function(x){
   out
 }))
 
-Corr[order(abs(Corr$cor)),]
+Corr[order(-abs(Corr$cor)),]
 
 
 ```
@@ -452,7 +525,7 @@ predic_raster <- setValues(predic_raster, as.vector(exp(as.formula(lm1[[2]]))/(1
 predic_raster_quad <- setValues(predic_raster_quad, as.vector(exp(as.formula(lm2[[2]]))/(1+exp(as.formula(lm2[[2]])))))
 
 # with quadratic, no Bio1
-predic_raster_quad_noBio1 <- setValues(predic_raster_quad_noBio1, as.vector(exp(as.formula(lm2_nobio1[[2]]))/(1+exp(as.formula(lm2_nobio1[[2]])))))
+# predic_raster_quad_noBio1 <- setValues(predic_raster_quad_noBio1, as.vector(exp(as.formula(lm2_nobio1[[2]]))/(1+exp(as.formula(lm2_nobio1[[2]])))))
 
 # with quadratic, no Bio11
 predic_raster_quad_noBio11 <- setValues(predic_raster_quad_noBio11, as.vector(exp(as.formula(lm2_nobio11[[2]]))/(1+exp(as.formula(lm2_nobio11[[2]])))))
@@ -1062,9 +1135,9 @@ Maxent compared to the 'true' distribution
 ```{r}
 
 #test 
-rasterstack <- rasterstack_norm
+# rasterstack <- rasterstack_norm
 # sampling_type <- "system"
-true.dist <- predic_raster_quad
+# true.dist <- predic_raster_quad
 # reps <- 2
 # rm(rasterstack); rm(true.dist); rm(sampling_type)
 
@@ -1092,7 +1165,7 @@ for(r in 1:reps){
   xm <- dismo::maxent(x = rasterstack, p = sample_xy, args=c(
     "outputformat=logistic",
     # 'maximumbackground=10000',
-    'defaultprevalence=1.00',
+    'defaultprevalence=0.5', # to match the virtual plants' alpha, intercept term. and that it's hard to measure with small numbers of points
     'betamultiplier=0',
     # 'pictures=true',
     # 'randomtestpoints=30',
@@ -1165,10 +1238,10 @@ rasterstack <- rasterstack_norm
 rasterstack_noBio1 <- dropLayer(rasterstack_norm, 2)
 rasterstack_noBio11 <- dropLayer(rasterstack_norm, 3)
 
-sampling_type <- "system"
-samplesize <- 100
-true.dist <- predic_raster_quad
-reps <- 2
+# sampling_type <- "system"
+# samplesize <- 100
+# true.dist <- predic_raster_quad
+# reps <- 2
 
 maxnet_sampling <- function(rasterstack, true.dist, sampling_type = c("random","systematic","convenience","cluster"),
                             convenience.raster = p_norm,
@@ -1266,17 +1339,19 @@ maxnet_sampling <- function(rasterstack, true.dist, sampling_type = c("random","
 <https://www.youtube.com/watch?v=2vgX7QoyPJo&feature=youtu.be&fbclid=IwAR2mvP8p9LDdz1LefrCwjcMMXi1l_uLI1m-1-sIiydHqHyIpMwcooSoz6lc> 
 
 ```{r}
-pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200501/"
+# pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200501/"
+pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200615/"
+
 
 # 3:10, 
 lapply(c(3,10, 20, 30, 50, 100), function(sampsize){
-    # maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "random", reps = 100, samplesize = sampsize, pathstart = pathstart)
+    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "random", reps = 100, samplesize = sampsize, pathstart = pathstart)
     
     maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "system", reps = 100, samplesize = sampsize, pathstart = pathstart)
     
-    # maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "convenience", reps = 100, samplesize = sampsize, pathstart = pathstart)
+    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "convenience", reps = 100, samplesize = sampsize, pathstart = pathstart)
     
-    # maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "cluster", reps = 100, samplesize = sampsize, pathstart = pathstart)
+    maxent_sampling(rasterstack = rasterstack_norm, true.dist = predic_raster_quad, sampling_type = "cluster", reps = 100, samplesize = sampsize, pathstart = pathstart)
 })
 
 
@@ -1304,13 +1379,15 @@ lapply(c(3,10, 20, 30, 50, 100), function(sampsize){
 
  
 
-# Pattern: correlation to the true distribution  
+# Pattern: correlation to the true distribution  ***Use the all one plot below, next****
 ```{r}
 
 # testing
 # ss <-30
 # pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200428/"
-pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200501/"
+# pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200501/"
+pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200615/"
+
 
 lapply(c(3,10, 20,30,50,100), function(ss){
   df_plots <- do.call(rbind, lapply(1:100, function(i){
@@ -1421,7 +1498,9 @@ ggsave(paste("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Doc
 # Pattern: correlation to the true distribution  All one plot
 ```{r}
 
-pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200501/"
+# pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200501/"
+pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200615/"
+
 
 plots_random <- lapply(c(3,10, 20,30,50,100), function(ss){
   df_plots <- do.call(rbind, lapply(1:100, function(i){
@@ -1537,7 +1616,125 @@ p
 
 
 ```
+# Pattern: correlation to the true distribution  All one plot; no bio1
+```{r}
 
+pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200501_noBio1/"
+
+plots_random <- lapply(c(3,10, 20,30,50,100), function(ss){
+  df_plots <- do.call(rbind, lapply(1:100, function(i){
+    r_random <- raster(list.files(path = pathstart, 
+                                      pattern = paste("ProbTiffrandomRep",
+                                                      i,"SampleSize",ss, ".tif", sep=""),
+                                      full.names = TRUE))
+    sampleof <- sample(1:length(r_random), 10000)
+    out <- data.frame(Y=getValues(predic_raster_quad)[sampleof],
+                      X=getValues(r_random)[sampleof], Rep = i)
+    out
+  }))
+
+   p <- ggplotGrob(ggplot(df_plots, aes(X, Y, colour = as.factor(Rep)))+
+  # geom_smooth(se = FALSE)+
+        geom_point(alpha = 0.5, size = 0.5)+
+          geom_abline(slope = 1, intercept = 0, colour = "black")+
+          guides(color=FALSE)+
+          theme_bw()+
+         xlab("Maxent suitability index")+
+         ylab("True probability of occurrence")+
+          ggtitle(paste("Random sampling (n = ", ss,")", sep="")))
+
+   p
+})
+
+
+# systematic
+plots_system <- lapply(c(3,10, 20,30,50,100), function(ss){
+  df_plots <- do.call(rbind, lapply(1:100, function(i){
+    r_random <- raster(list.files(path = pathstart, 
+                                      pattern = paste("ProbTiffsystemRep",
+                                                      i,"SampleSize",ss, ".tif", sep=""),
+                                      full.names = TRUE))
+    sampleof <- sample(1:length(r_random), 10000)
+    out <- data.frame(Y=getValues(predic_raster_quad)[sampleof],
+                      X=getValues(r_random)[sampleof], Rep = i)
+    out
+  }))
+
+  p <- ggplotGrob(ggplot(df_plots, aes(X, Y, colour = as.factor(Rep)))+
+        geom_point(alpha = 0.5, size = 0.5)+
+  geom_abline(slope = 1, intercept = 0, colour = "black")+
+  guides(color=FALSE)+
+  theme_bw()+
+         xlab("Maxent suitability index")+
+         ylab("True probability of occurrence")+
+  ggtitle(paste("Systematic sampling (n = ", ss,")", sep="")))
+  p
+})
+
+# adaptive cluster  
+plots_cluster <- lapply(c(3,10, 20,30,50,100), function(ss){
+  df_plots <- do.call(rbind, lapply(1:100, function(i){
+    r_random <- raster(list.files(path = pathstart, 
+                                      pattern = paste("ProbTiffclusterRep",
+                                                      i,"SampleSize",ss, ".tif", sep=""),
+                                      full.names = TRUE))
+    sampleof <- sample(1:length(r_random), 10000)
+    out <- data.frame(Y=getValues(predic_raster_quad)[sampleof],
+                      X=getValues(r_random)[sampleof], Rep = i)
+    out
+  }))
+
+p <- ggplotGrob(ggplot(df_plots, aes(X, Y, colour = as.factor(Rep)))+  
+        # geom_smooth(se = FALSE, method = "gam" )+
+        geom_point(alpha = 0.5, size = 0.5)+
+        geom_abline(slope = 1, intercept = 0, colour = "black")+
+        guides(color=FALSE)+
+        theme_bw()+
+         xlab("Maxent suitability index")+
+         ylab("True probability of occurrence")+
+        ggtitle(paste("Adaptive cluster sampling (n = ", ss,")", sep="")))
+p
+})
+
+# Convenience
+plots_conven <- lapply(c(3,10, 20,30,50,100), function(ss){
+  df_plots <- do.call(rbind, lapply(1:100, function(i){
+    r_random <- raster(list.files(path = pathstart, 
+                                      pattern = paste("ProbTiffconvenienceRep",
+                                                      i,"SampleSize",ss, ".tif", sep=""),
+                                      full.names = TRUE))
+    sampleof <- sample(1:length(r_random), 10000)
+    out <- data.frame(Y=getValues(predic_raster_quad)[sampleof],
+                      X=getValues(r_random)[sampleof], Rep = i)
+    out
+  }))
+
+p <- ggplotGrob(ggplot(df_plots, aes(X, Y, colour = as.factor(Rep)))+  
+        # geom_smooth(se = FALSE, method = "gam" )+
+        geom_point(alpha = 0.5, size = 0.5)+
+          geom_abline(slope = 1, intercept = 0, colour = "black")+
+          guides(color=FALSE)+
+          theme_bw()+
+         xlab("Maxent suitability index")+
+         ylab("True probability of occurrence")+
+          ggtitle(paste("Convenience sampling (n = ", ss,")", sep="")))
+p
+})
+
+ ggsave("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/Figures/AlldesignsAllss_noBio1.jpg",
+        grid.arrange(plots_random[[1]], plots_random[[2]],plots_random[[3]],
+                     plots_random[[4]],plots_random[[5]],plots_random[[6]],
+                     plots_conven[[1]], plots_conven[[2]],plots_conven[[3]],
+                     plots_conven[[4]],plots_conven[[5]],plots_conven[[6]],
+                     plots_cluster[[1]], plots_cluster[[2]],plots_cluster[[3]],
+                     plots_cluster[[4]],plots_cluster[[5]],plots_cluster[[6]],
+                     plots_system[[1]], plots_system[[2]],plots_system[[3]],
+                     plots_system[[4]],plots_system[[5]],plots_system[[6]],nrow = 4),
+       width=870, height=450,units='mm', dpi=300)
+        
+
+
+```
 
 Pattern distilled down to a correlation
 ```{r}
@@ -1640,7 +1837,8 @@ ggsave("C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents
 ```
 
 
-# Process: variable importance when remove Bio1
+# Process: variable importance when remove Bio1   
+    <<https://cran.r-project.org/web/packages/ENMeval/vignettes/ENMeval-vignette.html>> 
 ```{r}
 pathstart <- "C:/Users/deprengm/OneDrive - Denver Botanic Gardens/P drive/My Documents/UCDenver_phd/Dissertation/Chapter1/maxent_simulations_20200501_noBio1/"
 
@@ -1649,6 +1847,11 @@ modelstoload <- unlist(lapply(c("random","system","cluster","convenience"), func
                            pattern = paste("^","maxent",x,"rep",sep=""),
                            full.names = TRUE)
   }))
+
+load(modelstoload[1])
+xm@lambdas # the weights? Why are there three? the first is the "variable coefficient, then the min and max of that variable for the inut data. If the coefficient is 0, that variable was not included in the model. "
+class(xm)
+
 
 maxModels <- do.call(rbind,lapply(modelstoload, function(x){ 
   load(x)
